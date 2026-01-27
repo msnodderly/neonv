@@ -11,9 +11,9 @@ struct ContentView: View {
     @State private var searchText = ""
     @State private var selectedNoteID: UUID?
     @State private var editorContent = ""
+    @State private var originalContent = ""
     @State private var isDirty = false
     @State private var saveTask: Task<Void, Never>?
-    @State private var isLoadingNote = false
     @State private var saveError: SaveError?
     @State private var unsavedNoteIDs: Set<UUID> = []
     @FocusState private var focusedField: FocusedField?
@@ -138,28 +138,29 @@ struct ContentView: View {
     private func loadSelectedNote(id: UUID?) {
         guard let id = id,
               let note = noteStore.notes.first(where: { $0.id == id }) else {
+            originalContent = ""
             editorContent = ""
             isDirty = false
             return
         }
 
-        isLoadingNote = true
         let noteID = id
         Task {
             do {
                 let content = try await loadFileAsync(url: note.url)
                 await MainActor.run {
+                    originalContent = content
                     editorContent = content
                     isDirty = false
                     unsavedNoteIDs.remove(noteID)
-                    isLoadingNote = false
                 }
             } catch {
+                let errorContent = "Error loading file: \(error.localizedDescription)"
                 await MainActor.run {
-                    editorContent = "Error loading file: \(error.localizedDescription)"
+                    originalContent = errorContent
+                    editorContent = errorContent
                     isDirty = false
                     unsavedNoteIDs.remove(noteID)
-                    isLoadingNote = false
                 }
             }
         }
@@ -238,7 +239,9 @@ struct ContentView: View {
     }
 
     private func scheduleAutoSave() {
-        guard let selectedID = selectedNoteID, !isLoadingNote else { return }
+        guard let selectedID = selectedNoteID else { return }
+        guard editorContent != originalContent else { return }
+        
         isDirty = true
         unsavedNoteIDs.insert(selectedID)
         AppDelegate.shared.hasUnsavedChanges = true
@@ -262,6 +265,7 @@ struct ContentView: View {
         do {
             try await atomicWrite(content: content, to: note.url)
             await MainActor.run {
+                originalContent = content
                 isDirty = false
                 unsavedNoteIDs.remove(id)
                 saveError = nil
