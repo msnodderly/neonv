@@ -370,69 +370,51 @@ class CustomKeyTextView: NSTextView {
 
 ## Landing the Plane
 
-When the user says "let's land the plane", you MUST complete ALL steps below. The plane is NOT landed until git push succeeds. NEVER stop before pushing. NEVER say "ready to push when you are!" - that is a FAILURE.
+When the user says "let's land the plane", you MUST complete ALL steps below using the Pull Request workflow. Direct pushes to `main` are FORBIDDEN.
 
-### Pull Request Workflow (Optional but Recommended)
+### Mandatory Pull Request Workflow
 
-If working on a feature branch (`task/...`), prefer creating a Pull Request before merging, especially for complex changes.
+1.  **Finalize Work & Issues:**
+    - Run quality gates: `xcodebuild -scheme NeoNV -destination 'platform=macOS' build`
+    - Update beads: `bd close <id> --reason "..."`
+    - Sync beads: `bd sync` (This commits the JSONL changes to your branch)
 
-1. **Push branch:** `git push origin task/my-feature`
-2. **Create PR:** `gh pr create --title "feat: Description" --body "Details..."`
-3. **Merge PR:** `gh pr merge --squash --delete-branch`
-4. **Pull Main:** `git checkout main && git pull`
+2.  **Push Branch:**
+    ```bash
+    git push origin task/feature-name
+    ```
 
-### Standard Workflow (Direct Push)
+3.  **Create Pull Request:**
+    ```bash
+    gh pr create --title "feat: Description" --body "Detailed description of changes..."
+    ```
 
-MANDATORY WORKFLOW - COMPLETE ALL STEPS:
+4.  **Merge Pull Request:**
+    - If you have authority to merge:
+      ```bash
+      gh pr merge --squash --delete-branch
+      ```
+    - If waiting for review, stop here and inform the user.
 
-    File beads issues for any remaining work that needs follow-up
+5.  **Sync Local Main:**
+    ```bash
+    git checkout main
+    git pull
+    bd sync  # Ensure local beads DB matches the merged main
+    ```
 
-    Ensure all quality gates pass (only if code changes were made):
-        Run make lint or golangci-lint run ./... (if pre-commit installed: pre-commit run --all-files)
-        Run make test or go test ./...
-        File P0 issues if quality gates are broken
+6.  **Cleanup:**
+    ```bash
+    git branch -d task/feature-name
+    git remote prune origin
+    ```
 
-    Update beads issues - close finished work, update status
+    Verify clean state:
+    ```bash
+    git status
+    ```
 
-    PUSH TO REMOTE - NON-NEGOTIABLE - This step is MANDATORY. Execute ALL commands below:
-
-    # Pull first to catch any remote changes
-    git pull --rebase
-
-    # If conflicts in .beads/issues.jsonl, resolve thoughtfully:
-    #   - git checkout --theirs .beads/issues.jsonl (accept remote)
-    #   - bd import -i .beads/issues.jsonl (re-import)
-    #   - Or manual merge, then import
-
-    # Sync the database (exports to JSONL, commits)
-    bd sync
-
-    # MANDATORY: Push everything to remote
-    # DO NOT STOP BEFORE THIS COMMAND COMPLETES
-    git push
-
-    # MANDATORY: Verify push succeeded
-    git status  # MUST show "up to date with origin/main"
-
-    CRITICAL RULES:
-        The plane has NOT landed until git push completes successfully
-        NEVER stop before git push - that leaves work stranded locally
-        NEVER say "ready to push when you are!" - YOU must push, not the user
-        If git push fails, resolve the issue and retry until it succeeds
-        The user is managing multiple agents - unpushed work breaks their coordination workflow
-
-    Clean up git state - Clear old stashes and prune dead remote branches:
-
-    git stash clear                    # Remove old stashes
-    git remote prune origin            # Clean up deleted remote branches
-
-    Verify clean state - Ensure all changes are committed AND PUSHED, no untracked files remain
-
-    Choose a follow-up issue for next session
-        Provide a prompt for the user to give to you in the next session
-        Format: "Continue work on bd-X: [issue title]. [Brief context about what's been done and what's next]"
-
-REMEMBER: Landing the plane means EVERYTHING is pushed to remote. No exceptions. No "ready when you are". PUSH IT.
+    Choose a follow-up issue for next session.
 
 Example "land the plane" session:
 
