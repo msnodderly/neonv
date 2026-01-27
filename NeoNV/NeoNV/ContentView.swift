@@ -65,11 +65,24 @@ struct ContentView: View {
             return
         }
         
-        do {
-            editorContent = try String(contentsOf: note.url, encoding: .utf8)
-        } catch {
-            editorContent = ""
+        Task {
+            do {
+                let content = try await loadFileAsync(url: note.url)
+                await MainActor.run {
+                    editorContent = content
+                }
+            } catch {
+                await MainActor.run {
+                    editorContent = "Error loading file: \(error.localizedDescription)"
+                }
+            }
         }
+    }
+    
+    private func loadFileAsync(url: URL) async throws -> String {
+        try await Task.detached(priority: .userInitiated) {
+            try String(contentsOf: url, encoding: .utf8)
+        }.value
     }
 }
 
