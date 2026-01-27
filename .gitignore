@@ -72,3 +72,9 @@ unsaved-indicator/
 
 # bv (beads viewer) local config and caches
 .bv/
+# bd worktree
+opencode/
+
+# Local test files
+testnotes/
+issues.txt
