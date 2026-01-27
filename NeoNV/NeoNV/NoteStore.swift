@@ -7,13 +7,22 @@ struct NoteFile: Identifiable, Equatable {
     let relativePath: String
     var modificationDate: Date
     var title: String
+    var contentPreview: String
     
-    init(url: URL, relativePath: String, modificationDate: Date, title: String) {
+    init(url: URL, relativePath: String, modificationDate: Date, title: String, contentPreview: String = "") {
         self.id = UUID()
         self.url = url
         self.relativePath = relativePath
         self.modificationDate = modificationDate
         self.title = title
+        self.contentPreview = contentPreview
+    }
+    
+    func matches(query: String) -> Bool {
+        let lowercasedQuery = query.lowercased()
+        return title.lowercased().contains(lowercasedQuery) ||
+               relativePath.lowercased().contains(lowercasedQuery) ||
+               contentPreview.lowercased().contains(lowercasedQuery)
     }
     
     var displayTitle: String {
