@@ -18,7 +18,11 @@ struct ContentView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            SearchBar(text: $searchText, focusedField: _focusedField)
+            SearchBar(
+                text: $searchText,
+                focusedField: _focusedField,
+                onNavigateToList: navigateToList
+            )
             
             Divider()
             
@@ -30,7 +34,10 @@ struct ContentView: View {
                         notes: noteStore.notes,
                         selectedNoteID: $selectedNoteID,
                         focusedField: _focusedField,
-                        isLoading: noteStore.isLoading
+                        isLoading: noteStore.isLoading,
+                        onTabToEditor: { focusedField = .editor },
+                        onShiftTabToSearch: { focusedField = .search },
+                        onEnterToEditor: { focusedField = .editor }
                     )
                     .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
                     
@@ -103,6 +110,13 @@ struct ContentView: View {
         try await Task.detached(priority: .userInitiated) {
             try String(contentsOf: url, encoding: .utf8)
         }.value
+    }
+    
+    private func navigateToList() {
+        if selectedNoteID == nil, let firstNote = noteStore.notes.first {
+            selectedNoteID = firstNote.id
+        }
+        focusedField = .noteList
     }
     
     private func scheduleAutoSave() {
@@ -179,6 +193,7 @@ struct EmptyStateView: View {
 struct SearchBar: View {
     @Binding var text: String
     @FocusState var focusedField: FocusedField?
+    var onNavigateToList: () -> Void
     
     var body: some View {
         HStack {
@@ -188,6 +203,17 @@ struct SearchBar: View {
             TextField("Search or create...", text: $text)
                 .textFieldStyle(.plain)
                 .focused($focusedField, equals: .search)
+                .onKeyPress(.tab) {
+                    onNavigateToList()
+                    return .handled
+                }
+                .onKeyPress(.downArrow) {
+                    onNavigateToList()
+                    return .handled
+                }
+                .onKeyPress(.upArrow) {
+                    return .handled
+                }
         }
         .padding(8)
         .background(Color(NSColor.controlBackgroundColor))
@@ -199,6 +225,9 @@ struct NoteListView: View {
     @Binding var selectedNoteID: UUID?
     @FocusState var focusedField: FocusedField?
     var isLoading: Bool
+    var onTabToEditor: () -> Void
+    var onShiftTabToSearch: () -> Void
+    var onEnterToEditor: () -> Void
     
     var body: some View {
         Group {
@@ -224,6 +253,21 @@ struct NoteListView: View {
                 .listStyle(.sidebar)
                 .focusable()
                 .focused($focusedField, equals: .noteList)
+                .onKeyPress { press in
+                    if press.key == .tab && press.modifiers.contains(.shift) {
+                        onShiftTabToSearch()
+                        return .handled
+                    }
+                    if press.key == .tab {
+                        onTabToEditor()
+                        return .handled
+                    }
+                    if press.key == .return {
+                        onEnterToEditor()
+                        return .handled
+                    }
+                    return .ignored
+                }
             }
         }
     }
