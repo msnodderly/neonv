@@ -11,6 +11,9 @@ struct ContentView: View {
     @State private var searchText = ""
     @State private var selectedNoteID: UUID?
     @State private var editorContent = ""
+    @State private var isDirty = false
+    @State private var saveTask: Task<Void, Never>?
+    @State private var isLoadingNote = false
     @FocusState private var focusedField: FocusedField?
     
     var body: some View {
@@ -47,6 +50,14 @@ struct ContentView: View {
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {
+                if isDirty {
+                    Circle()
+                        .fill(.orange)
+                        .frame(width: 8, height: 8)
+                        .help("Unsaved changes")
+                }
+            }
+            ToolbarItem(placement: .automatic) {
                 Button(action: noteStore.selectFolder) {
                     Image(systemName: "folder")
                 }
@@ -56,24 +67,33 @@ struct ContentView: View {
         .onChange(of: selectedNoteID) { _, newID in
             loadSelectedNote(id: newID)
         }
+        .onChange(of: editorContent) { _, _ in
+            scheduleAutoSave()
+        }
     }
     
     private func loadSelectedNote(id: UUID?) {
         guard let id = id,
               let note = noteStore.notes.first(where: { $0.id == id }) else {
             editorContent = ""
+            isDirty = false
             return
         }
         
+        isLoadingNote = true
         Task {
             do {
                 let content = try await loadFileAsync(url: note.url)
                 await MainActor.run {
                     editorContent = content
+                    isDirty = false
+                    isLoadingNote = false
                 }
             } catch {
                 await MainActor.run {
                     editorContent = "Error loading file: \(error.localizedDescription)"
+                    isDirty = false
+                    isLoadingNote = false
                 }
             }
         }
@@ -82,6 +102,53 @@ struct ContentView: View {
     private func loadFileAsync(url: URL) async throws -> String {
         try await Task.detached(priority: .userInitiated) {
             try String(contentsOf: url, encoding: .utf8)
+        }.value
+    }
+    
+    private func scheduleAutoSave() {
+        guard selectedNoteID != nil, !isLoadingNote else { return }
+        isDirty = true
+        
+        saveTask?.cancel()
+        saveTask = Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            await performSave()
+        }
+    }
+    
+    private func performSave() async {
+        guard let id = selectedNoteID,
+              let note = noteStore.notes.first(where: { $0.id == id }) else {
+            return
+        }
+        
+        let content = editorContent
+        
+        do {
+            try await atomicWrite(content: content, to: note.url)
+            await MainActor.run {
+                isDirty = false
+            }
+        } catch {
+            print("Save failed: \(error)")
+        }
+    }
+    
+    private func atomicWrite(content: String, to url: URL) async throws {
+        try await Task.detached(priority: .userInitiated) {
+            let data = content.data(using: .utf8)!
+            let tempURL = url.deletingLastPathComponent()
+                .appendingPathComponent(".\(url.lastPathComponent).tmp")
+            
+            try data.write(to: tempURL, options: .atomic)
+            
+            let fileManager = FileManager.default
+            if fileManager.fileExists(atPath: url.path) {
+                _ = try fileManager.replaceItemAt(url, withItemAt: tempURL)
+            } else {
+                try fileManager.moveItem(at: tempURL, to: url)
+            }
         }.value
     }
 }
