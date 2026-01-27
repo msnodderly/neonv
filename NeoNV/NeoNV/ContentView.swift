@@ -27,7 +27,9 @@ struct ContentView: View {
                 
                 EditorView(
                     content: $editorContent,
-                    focusedField: _focusedField
+                    focusedField: _focusedField,
+                    onShiftTab: { focusedField = .noteList },
+                    onEscape: { focusedField = .noteList }
                 )
                 .frame(minWidth: 300)
             }
@@ -88,13 +90,16 @@ struct NoteListView: View {
 struct EditorView: View {
     @Binding var content: String
     @FocusState var focusedField: FocusedField?
+    var onShiftTab: (() -> Void)?
+    var onEscape: (() -> Void)?
     
     var body: some View {
-        TextEditor(text: $content)
-            .font(.system(.body, design: .monospaced))
-            .focused($focusedField, equals: .editor)
-            .scrollContentBackground(.hidden)
-            .background(Color(NSColor.textBackgroundColor))
+        PlainTextEditor(
+            text: $content,
+            onShiftTab: onShiftTab,
+            onEscape: onEscape
+        )
+        .focused($focusedField, equals: .editor)
     }
 }
 
