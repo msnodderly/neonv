@@ -2,6 +2,40 @@
 
 This document captures workflows, patterns, gotchas, and learnings for AI-assisted development of neonv.
 
+**Continuous Improvement:** Update this document as you work. When you discover new patterns, encounter gotchas, or learn something that would help future agents, add it here. This is a living document—keeping it current is part of your workflow, not an afterthought.
+
+---
+
+## Running the App
+
+```bash
+./run.sh  # Builds and launches NeoNV
+```
+
+---
+
+## Manual Testing Instructions
+
+When making UI or keyboard-related changes, include step-by-step manual testing instructions in the PR description so the operator can verify behavior.
+
+**In your PR, include a "Manual Testing" section with:**
+1. Prerequisites (e.g., "select a notes folder first")
+2. Numbered steps to verify each change
+3. Expected behavior for each step
+4. Note if any shortcut should produce no beep
+
+**Example PR section:**
+
+> ## Manual Testing
+> 1. Run `./run.sh`
+> 2. From editor, press Cmd-L
+>    - Expected: Search bar focused, text selected
+> 3. Press Cmd-N
+>    - Expected: Search clears, cursor in search bar
+> 4. Navigate to note list, press Escape
+>    - Expected: Focus returns to search
+> 5. Verify no system beeps on any shortcut
+
 ---
 
 ## Task Tracking with `bd`
