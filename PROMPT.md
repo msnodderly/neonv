@@ -65,7 +65,7 @@ When the task is complete, follow the "Session Completion Procedure" in `AGENTS.
 5. **Create PR**: `gh pr create --title "..." --body "..."` (for code changes only)
 6. **STOP** — Do not pick another task
 
-**Note:** Beads database changes go directly to `main` (no PR needed). Only code changes require a PR.
+**Note:** Beads database changes go directly to `main` (no PR needed). Code changes require a PR.
 
 ---
 

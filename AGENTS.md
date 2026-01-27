@@ -15,10 +15,10 @@ bd show <id>                  View task details and audit trail
 bd update <id> --status in_progress   Claim a task
 bd close <id> --reason "..."  Close a completed task
 bd dep add <child> <parent>   Link tasks (blocks, related, parent-child)
-bd sync                       Immediately export/commit/push changes
+bd sync --full                Immediately export/commit/push issue changes
 ```
 
-**WARNING:** Do NOT use `bd edit` — it opens an interactive editor which AI agents cannot use. Use `bd update` with flags instead:
+**WARNING:** Do not use `bd edit` — it opens an interactive editor which AI agents cannot use. Use `bd update` with flags instead:
 
 ```bash
 bd update <id> --description "new description"

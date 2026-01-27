@@ -14,6 +14,7 @@ Do NOT implement the issue. Do NOT start additional tasks.
 
 Read these files first:
 - `AGENTS.md` — Contains `bd` command reference and sync procedures
+- Reference `docs/neonv-product-spec.md` if additional product guidance is required.
 
 ---
 
@@ -132,21 +133,6 @@ git stash --include-untracked
 bd sync --full
 git stash pop
 ```
-
-If sync still fails, use manual recovery:
-
-```bash
-git stash --include-untracked
-git checkout main
-git pull
-git add .beads/issues.jsonl
-git commit -m "chore: Update beads database"
-git push origin main
-git checkout -
-git stash pop
-```
-
-Then re-run `bd show <id>` to confirm the issue still exists.
 
 ---
 
