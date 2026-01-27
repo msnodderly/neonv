@@ -11,6 +11,7 @@
 		A01234560000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01234560000000000000012 /* ContentView.swift */; };
 		A01234560000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A01234560000000000000013 /* Assets.xcassets */; };
 		A01234560000000000000004 /* PlainTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01234560000000000000015 /* PlainTextEditor.swift */; };
+		A01234560000000000000005 /* NoteStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01234560000000000000016 /* NoteStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -20,6 +21,7 @@
 		A01234560000000000000013 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A01234560000000000000014 /* NeoNV.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NeoNV.entitlements; sourceTree = "<group>"; };
 		A01234560000000000000015 /* PlainTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlainTextEditor.swift; sourceTree = "<group>"; };
+		A01234560000000000000016 /* NoteStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -47,6 +49,7 @@
 				A01234560000000000000011 /* NeoNVApp.swift */,
 				A01234560000000000000012 /* ContentView.swift */,
 				A01234560000000000000015 /* PlainTextEditor.swift */,
+				A01234560000000000000016 /* NoteStore.swift */,
 				A01234560000000000000013 /* Assets.xcassets */,
 				A01234560000000000000014 /* NeoNV.entitlements */,
 			);
@@ -133,6 +136,7 @@
 				A01234560000000000000001 /* NeoNVApp.swift in Sources */,
 				A01234560000000000000002 /* ContentView.swift in Sources */,
 				A01234560000000000000004 /* PlainTextEditor.swift in Sources */,
+				A01234560000000000000005 /* NoteStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
