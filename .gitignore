@@ -1,0 +1,63 @@
+# Xcode
+#
+# gitignore contributors: remember to update Global Business Conduct Xcode.gitignore, Objective-C.gitignore & Swift.gitignore
+
+## User settings
+xcuserdata/
+
+## Xcode build artifacts
+build/
+DerivedData/
+
+## Package Manager
+.build/
+
+## Object files
+*.o
+*.a
+*.dSYM/
+
+## Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+## Swift Package Manager
+Packages/
+Package.pins
+Package.resolved
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+.swiftpm/
+
+## CocoaPods (not used, but good to have)
+Pods/
+*.xcworkspace
+
+## Carthage (not used, but good to have)
+Carthage/Build/
+Carthage/Checkouts/
+
+## Code Injection
+*.inject.data
+
+## Archives
+*.xcarchive
+
+## App Store submission
+*.ipa
+*.dSYM.zip
+
+## macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+## Metal shader cache (can cause build issues)
+*.metallib
+*.air
+
+## Crash logs
+*.crash
+
+## Test coverage
+*.profdata
+*.profraw
