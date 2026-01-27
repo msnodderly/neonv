@@ -40,6 +40,12 @@ git worktree add -b task/<id>-short-description ../neonv-<feature> main
 cd ../neonv-<feature>
 ```
 
+**Syntax note:** The argument order is `-b <branch> <path> <start-point>`. Getting this wrong produces a confusing "invalid reference" error.
+
+### Beads in Worktrees
+
+The `bd` command works from any worktree — it finds the shared `.beads/` directory in the main repo. You don't need to do anything special; just run `bd` commands as normal.
+
 ### Why Worktrees?
 
 - Each agent gets an isolated working directory
