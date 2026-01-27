@@ -8,6 +8,7 @@ struct NoteFile: Identifiable, Equatable {
     var modificationDate: Date
     var title: String
     var contentPreview: String
+    var isUnsaved: Bool = false
     
     init(url: URL, relativePath: String, modificationDate: Date, title: String, contentPreview: String = "") {
         self.id = UUID()
@@ -43,6 +44,14 @@ struct NoteFile: Identifiable, Equatable {
         }
         
         return title.isEmpty ? "Untitled" : title
+    }
+    
+    var displayPath: String {
+        if isUnsaved {
+            return "[unsaved]"
+        } else {
+            return relativePath
+        }
     }
 }
 

@@ -13,10 +13,11 @@ struct ContentView: View {
     @State private var lastManualSelection: UUID?
     @State private var previousSearchWasEmpty = true
     @State private var editorContent = ""
+    @State private var originalContent = ""
     @State private var isDirty = false
     @State private var saveTask: Task<Void, Never>?
-    @State private var isLoadingNote = false
     @State private var saveError: SaveError?
+    @State private var unsavedNoteIDs: Set<UUID> = []
     @FocusState private var focusedField: FocusedField?
 
     struct SaveError: Identifiable {
@@ -27,10 +28,12 @@ struct ContentView: View {
     }
 
     private var filteredNotes: [NoteFile] {
-        if searchText.isEmpty {
-            return noteStore.notes
-        } else {
-            return noteStore.notes.filter { $0.matches(query: searchText) }
+        let baseNotes = searchText.isEmpty ? noteStore.notes : noteStore.notes.filter { $0.matches(query: searchText) }
+        
+        return baseNotes.map { note in
+            var updatedNote = note
+            updatedNote.isUnsaved = unsavedNoteIDs.contains(note.id)
+            return updatedNote
         }
     }
 
@@ -145,25 +148,29 @@ struct ContentView: View {
     private func loadSelectedNote(id: UUID?) {
         guard let id = id,
               let note = noteStore.notes.first(where: { $0.id == id }) else {
+            originalContent = ""
             editorContent = ""
             isDirty = false
             return
         }
 
-        isLoadingNote = true
+        let noteID = id
         Task {
             do {
                 let content = try await loadFileAsync(url: note.url)
                 await MainActor.run {
+                    originalContent = content
                     editorContent = content
                     isDirty = false
-                    isLoadingNote = false
+                    unsavedNoteIDs.remove(noteID)
                 }
             } catch {
+                let errorContent = "Error loading file: \(error.localizedDescription)"
                 await MainActor.run {
-                    editorContent = "Error loading file: \(error.localizedDescription)"
+                    originalContent = errorContent
+                    editorContent = errorContent
                     isDirty = false
-                    isLoadingNote = false
+                    unsavedNoteIDs.remove(noteID)
                 }
             }
         }
@@ -243,8 +250,11 @@ struct ContentView: View {
     }
 
     private func scheduleAutoSave() {
-        guard selectedNoteID != nil, !isLoadingNote else { return }
+        guard let selectedID = selectedNoteID else { return }
+        guard editorContent != originalContent else { return }
+        
         isDirty = true
+        unsavedNoteIDs.insert(selectedID)
         AppDelegate.shared.hasUnsavedChanges = true
 
         saveTask?.cancel()
@@ -266,7 +276,9 @@ struct ContentView: View {
         do {
             try await atomicWrite(content: content, to: note.url)
             await MainActor.run {
+                originalContent = content
                 isDirty = false
+                unsavedNoteIDs.remove(id)
                 saveError = nil
                 AppDelegate.shared.hasUnsavedChanges = false
             }
@@ -300,6 +312,9 @@ struct ContentView: View {
             try await atomicWrite(content: error.content, to: error.fileURL)
             await MainActor.run {
                 isDirty = false
+                if let noteID = noteStore.notes.first(where: { $0.url == error.fileURL })?.id {
+                    unsavedNoteIDs.remove(noteID)
+                }
                 saveError = nil
                 AppDelegate.shared.hasUnsavedChanges = false
             }
@@ -481,9 +496,10 @@ struct NoteListView: View {
                         Text(note.displayTitle)
                             .font(.system(size: 13, weight: .medium))
                             .lineLimit(1)
-                        Text(note.relativePath)
+                        Text(note.displayPath)
                             .font(.system(size: 11))
-                            .foregroundColor(.secondary)
+                            .italic(note.isUnsaved)
+                            .foregroundColor(note.isUnsaved ? .orange : .secondary)
                     }
                     .tag(note.id)
                 }
