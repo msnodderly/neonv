@@ -96,6 +96,9 @@ struct ContentView: View {
         .onChange(of: editorContent) { _, _ in
             scheduleAutoSave()
         }
+        .onChange(of: searchText) { _, newText in
+            autoSelectTopMatch()
+        }
         .alert(item: $saveError) { error in
             Alert(
                 title: Text("Save Failed"),
@@ -113,6 +116,22 @@ struct ContentView: View {
         .disabled(saveError != nil)
     }
     
+    private func autoSelectTopMatch() {
+        if searchText.isEmpty {
+            // When clearing search, preserve current selection if it's still in the list
+            if let currentID = selectedNoteID,
+               noteStore.notes.contains(where: { $0.id == currentID }) {
+                // Keep current selection
+                return
+            }
+        } else {
+            // When typing, auto-select the first match
+            if let firstMatch = filteredNotes.first {
+                selectedNoteID = firstMatch.id
+            }
+        }
+    }
+
     private func loadSelectedNote(id: UUID?) {
         guard let id = id,
               let note = noteStore.notes.first(where: { $0.id == id }) else {
@@ -120,7 +139,7 @@ struct ContentView: View {
             isDirty = false
             return
         }
-        
+
         isLoadingNote = true
         Task {
             do {
