@@ -519,6 +519,10 @@ struct NoteListView: View {
                         onEnterToEditor()
                         return .handled
                     }
+                    if press.key == .rightArrow {
+                        onTabToEditor()
+                        return .handled
+                    }
                     return .ignored
                 }
             }
