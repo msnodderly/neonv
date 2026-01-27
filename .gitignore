@@ -77,4 +77,5 @@ opencode/
 
 # Local test files
 testnotes/
+testnotes/*
 issues.txt
