@@ -171,6 +171,76 @@ if let storedPath = UserDefaults.standard.string(forKey: "selectedNotesFolder"),
 
 **Note:** For sandboxed apps, use security-scoped bookmarks instead of plain paths.
 
+### Loud Error Handling with NSAlert (macOS)
+
+For critical errors (like save failures) that require immediate user attention and recovery options, use `NSAlert`.
+
+```swift
+private func showSaveErrorAlert(saveError: SaveError) {
+    let alert = NSAlert()
+    alert.messageText = "Save Failed"
+    alert.informativeText = "Could not save to \(saveError.url.lastPathComponent).\n\nError: \(saveError.error.localizedDescription)"
+    alert.alertStyle = .critical
+    
+    alert.addButton(withTitle: "Retry")
+    alert.addButton(withTitle: "Save As...")
+    alert.addButton(withTitle: "Copy to Clipboard")
+    
+    let response = alert.runModal()
+    switch response {
+    case .alertFirstButtonReturn:
+        // Handle Retry
+    case .alertSecondButtonReturn:
+        // Handle Save As
+    case .alertThirdButtonReturn:
+        // Handle Copy
+    default:
+        break
+    }
+}
+```
+
+### Intercepting App Quit for Unsaved Changes
+
+To prevent data loss on exit, use `NSApplicationDelegateAdaptor` to intercept the termination request.
+
+```swift
+class AppDelegate: NSObject, NSApplicationDelegate {
+    var noteStore: NoteStore?
+    
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let noteStore = noteStore, noteStore.isDirty else {
+            return .terminateNow
+        }
+        
+        let alert = NSAlert()
+        alert.messageText = "Unsaved Changes"
+        alert.informativeText = "You have unsaved changes. Do you want to save before quitting?"
+        alert.addButton(withTitle: "Quit Anyway")
+        alert.addButton(withTitle: "Cancel")
+        alert.alertStyle = .warning
+        
+        return alert.runModal() == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
+    }
+}
+
+// In your App struct:
+@main
+struct NeoNVApp: App {
+    @StateObject private var noteStore = NoteStore()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
+    var body: some Scene {
+        WindowGroup {
+            ContentView(noteStore: noteStore)
+                .onAppear {
+                    appDelegate.noteStore = noteStore
+                }
+        }
+    }
+}
+```
+
 ---
 
 ## Philosophy

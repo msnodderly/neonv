@@ -51,6 +51,7 @@ class NoteStore: ObservableObject {
     @Published var notes: [NoteFile] = []
     @Published var selectedFolderURL: URL?
     @Published var isLoading = false
+    @Published var isDirty = false
     
     private let allowedExtensions: Set<String> = ["txt", "md", "markdown", "org", "text"]
     private let folderBookmarkKey = "selectedFolderBookmark"

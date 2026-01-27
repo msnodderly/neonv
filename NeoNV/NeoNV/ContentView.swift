@@ -6,14 +6,20 @@ enum FocusedField: Hashable {
     case editor
 }
 
+struct SaveError: Identifiable {
+    let id = UUID()
+    let url: URL
+    let error: Error
+}
+
 struct ContentView: View {
-    @StateObject private var noteStore = NoteStore()
+    @ObservedObject var noteStore: NoteStore
     @State private var searchText = ""
     @State private var selectedNoteID: UUID?
     @State private var editorContent = ""
-    @State private var isDirty = false
     @State private var saveTask: Task<Void, Never>?
     @State private var isLoadingNote = false
+    @State private var lastSaveError: SaveError?
     @FocusState private var focusedField: FocusedField?
     
     var body: some View {
@@ -40,6 +46,7 @@ struct ContentView: View {
                         onEnterToEditor: { focusedField = .editor }
                     )
                     .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
+                    .disabled(lastSaveError != nil)
                     
                     EditorView(
                         content: $editorContent,
@@ -48,16 +55,18 @@ struct ContentView: View {
                         onEscape: { focusedField = .noteList }
                     )
                     .frame(minWidth: 300)
+                    .disabled(lastSaveError != nil)
                 }
             }
         }
+        .disabled(lastSaveError != nil)
         .frame(minWidth: 600, minHeight: 400)
         .onAppear {
             focusedField = .search
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {
-                if isDirty {
+                if noteStore.isDirty {
                     Circle()
                         .fill(.orange)
                         .frame(width: 8, height: 8)
@@ -77,13 +86,44 @@ struct ContentView: View {
         .onChange(of: editorContent) { _, _ in
             scheduleAutoSave()
         }
+        .onChange(of: lastSaveError?.id) { _, newID in
+            if newID != nil, let saveError = lastSaveError {
+                showSaveErrorAlert(saveError: saveError)
+            }
+        }
+    }
+    
+    private func showSaveErrorAlert(saveError: SaveError) {
+        let alert = NSAlert()
+        alert.messageText = "Save Failed"
+        alert.informativeText = "Could not save to \(saveError.url.lastPathComponent).\n\nError: \(saveError.error.localizedDescription)"
+        alert.alertStyle = .critical
+        
+        alert.addButton(withTitle: "Retry")
+        alert.addButton(withTitle: "Save As...")
+        alert.addButton(withTitle: "Copy to Clipboard")
+        alert.addButton(withTitle: "Show in Finder")
+        alert.addButton(withTitle: "Discard Changes")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            handleSaveRetry()
+        } else if response == .alertSecondButtonReturn {
+            handleSaveAs()
+        } else if response == .alertThirdButtonReturn {
+            handleCopyToClipboard()
+        } else if response.rawValue == NSApplication.ModalResponse.alertThirdButtonReturn.rawValue + 1 {
+            handleShowInFinder()
+        } else if response.rawValue == NSApplication.ModalResponse.alertThirdButtonReturn.rawValue + 2 {
+            handleDiscardChanges()
+        }
     }
     
     private func loadSelectedNote(id: UUID?) {
         guard let id = id,
               let note = noteStore.notes.first(where: { $0.id == id }) else {
             editorContent = ""
-            isDirty = false
+            noteStore.isDirty = false
             return
         }
         
@@ -93,13 +133,13 @@ struct ContentView: View {
                 let content = try await loadFileAsync(url: note.url)
                 await MainActor.run {
                     editorContent = content
-                    isDirty = false
+                    noteStore.isDirty = false
                     isLoadingNote = false
                 }
             } catch {
                 await MainActor.run {
                     editorContent = "Error loading file: \(error.localizedDescription)"
-                    isDirty = false
+                    noteStore.isDirty = false
                     isLoadingNote = false
                 }
             }
@@ -121,7 +161,7 @@ struct ContentView: View {
     
     private func scheduleAutoSave() {
         guard selectedNoteID != nil, !isLoadingNote else { return }
-        isDirty = true
+        noteStore.isDirty = true
         
         saveTask?.cancel()
         saveTask = Task {
@@ -142,11 +182,64 @@ struct ContentView: View {
         do {
             try await atomicWrite(content: content, to: note.url)
             await MainActor.run {
-                isDirty = false
+                noteStore.isDirty = false
+                lastSaveError = nil
             }
         } catch {
-            print("Save failed: \(error)")
+            await MainActor.run {
+                lastSaveError = SaveError(url: note.url, error: error)
+            }
         }
+    }
+    
+    private func handleSaveRetry() {
+        Task {
+            await performSave()
+        }
+    }
+    
+    private func handleSaveAs() {
+        guard let saveError = lastSaveError else { return }
+        
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.plainText]
+        panel.nameFieldStringValue = saveError.url.lastPathComponent
+        
+        if panel.runModal() == .OK, let url = panel.url {
+            let content = editorContent
+            Task {
+                do {
+                    try await atomicWrite(content: content, to: url)
+                    await MainActor.run {
+                        noteStore.isDirty = false
+                        lastSaveError = nil
+                        // Ideally we should also update the note store or selection here
+                        // but for now we just clear the error state
+                    }
+                } catch {
+                    await MainActor.run {
+                        lastSaveError = SaveError(url: url, error: error)
+                    }
+                }
+            }
+        }
+    }
+    
+    private func handleCopyToClipboard() {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(editorContent, forType: .string)
+    }
+    
+    private func handleShowInFinder() {
+        guard let saveError = lastSaveError else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([saveError.url])
+    }
+    
+    private func handleDiscardChanges() {
+        noteStore.isDirty = false
+        lastSaveError = nil
+        loadSelectedNote(id: selectedNoteID)
     }
     
     private func atomicWrite(content: String, to url: URL) async throws {
@@ -290,5 +383,5 @@ struct EditorView: View {
 }
 
 #Preview {
-    ContentView()
+    ContentView(noteStore: NoteStore())
 }
