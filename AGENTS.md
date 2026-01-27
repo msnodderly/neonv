@@ -6,6 +6,8 @@ This document captures workflows, patterns, gotchas, and learnings for AI-assist
 
 ## Task Tracking with `bd`
 
+Use 'bd' for task tracking.
+
 ```
 bd ready                      List tasks with no open blockers
 bd create "Title" -p 0        Create a P0 task
@@ -90,23 +92,54 @@ Use `--force` to skip checks (not recommended).
 
 ## Syncing Changes
 
-**IMPORTANT:** Always run `bd sync` before ending a session.
+**CRITICAL:** The `.beads/issues.jsonl` file is tracked in git and changes are pushed directly to `main` (no PR required).
+
+### When to Sync
+
+Run `bd sync` at these points:
+1. **Before ending your session** (mandatory)
+2. After closing a task
+3. After creating/updating tasks
+4. Before pushing your feature branch
 
 ```bash
 bd sync
 ```
 
 This immediately:
-1. Exports pending changes to JSONL (bypasses 30-second debounce)
-2. Commits to git
-3. Pulls from remote
-4. Imports any updates
-5. Pushes to remote
+1. Exports pending changes to `.beads/issues.jsonl`
+2. **Commits to `main` branch** (switches to main temporarily)
+3. **Pushes to `origin/main`** (beads changes bypass PR workflow)
+4. Returns to your working branch
+5. Imports any updates from other agents
 
-**Why this matters:**
-- Without `bd sync`, changes sit in a 30-second debounce window
-- User might think you pushed but JSONL is still dirty
-- `bd sync` forces immediate flush/commit/push
+### Why Beads Go Directly to Main
+
+- Task tracking is metadata, not code
+- Other agents need immediate visibility of task updates
+- PRs are only for code/implementation changes
+- Prevents merge conflicts in task tracking
+
+### Verification
+
+**Always verify after `bd sync`:**
+```bash
+git status  # Should show clean working directory on your feature branch
+git log origin/main -1 --oneline  # Should show recent beads commit on main
+```
+
+If `bd sync` fails or `.beads/issues.jsonl` shows as modified:
+```bash
+# Manual sync (last resort)
+git stash  # Save your work
+git checkout main
+git pull
+git add .beads/issues.jsonl
+git commit -m "chore: Update beads database"
+git push origin main
+git checkout -  # Return to feature branch
+git stash pop
+```
 
 ### Recommended: Install Git Hooks
 
@@ -125,7 +158,9 @@ This installs:
 
 ## Session Completion Procedure
 
-When the user says "let's land the plane" or when your task is complete, follow ALL steps below. Direct pushes to `main` are FORBIDDEN.
+When the user says "let's land the plane" or when your task is complete, follow ALL steps below.
+
+**Important:** Code changes require PR workflow. Beads database changes go directly to `main`.
 
 ### 1. Finalize Work
 
@@ -136,16 +171,27 @@ xcodebuild -scheme NeoNV -destination 'platform=macOS' build
 # Close the task
 bd close <id> --reason "Completed"
 
-# Sync beads (commits JSONL changes to your branch)
+# Sync beads to main (pushes .beads/issues.jsonl directly to origin/main)
 bd sync
+
+# Verify sync succeeded
+git status  # Should show clean working directory
+git log origin/main -1 --oneline  # Should show recent beads commit
 ```
 
-### 2. Push and Create PR
+**CRITICAL:** If `bd sync` fails or you see uncommitted `.beads/issues.jsonl`, stop and fix before proceeding.
+
+### 2. Push Code and Create PR
 
 ```bash
+# Push your feature branch (code changes only)
 git push -u origin task/<branch-name>
+
+# Create PR for code review
 gh pr create --title "feat: Description" --body "Detailed description..."
 ```
+
+**Note:** The beads database was already pushed to `main` in step 1. The PR only contains code changes.
 
 ### 3. Merge (if authorized)
 
@@ -178,10 +224,16 @@ Provide:
 - Summary of what was completed
 - Issues filed for follow-up
 - Status of quality gates
-- Confirmation that ALL changes have been pushed
+- Confirmation that beads were synced to `main`
+- Confirmation that code was pushed to feature branch
+- PR link (if created)
 - Recommended prompt for next session
 
-**CRITICAL:** Never end a session without successfully pushing. Unpushed work causes severe rebase conflicts when coordinating multiple agents.
+**CRITICAL:**
+- Never end a session without successfully syncing beads (`bd sync`)
+- Never end with uncommitted changes in `.beads/issues.jsonl`
+- Unpushed beads mean other agents can't see task updates
+- Unpushed code causes rebase conflicts
 
 ---
 

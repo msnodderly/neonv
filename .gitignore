@@ -61,3 +61,7 @@ Carthage/Checkouts/
 ## Test coverage
 *.profdata
 *.profraw
+# bd worktree
+auto-naming/
+# bd worktree
+auto-select-match/

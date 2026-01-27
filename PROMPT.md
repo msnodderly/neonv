@@ -55,10 +55,12 @@ When the task is complete, follow the "Session Completion Procedure" in `AGENTS.
 
 1. Build passes: `xcodebuild -scheme NeoNV -destination 'platform=macOS' build`
 2. Close task: `bd close <id> --reason "Completed"`
-3. Sync beads: `bd sync`
-4. Push branch: `git push -u origin <branch-name>`
-5. Create PR: `gh pr create --title "..." --body "..."`
+3. **Sync beads to main**: `bd sync` (commits and pushes `.beads/issues.jsonl` directly to `main`)
+4. **Push code branch**: `git push -u origin <branch-name>` (your feature branch)
+5. **Create PR**: `gh pr create --title "..." --body "..."` (for code changes only)
 6. **STOP** — Do not pick another task
+
+**Note:** Beads database changes go directly to `main` (no PR needed). Only code changes require a PR.
 
 ---
 
@@ -68,5 +70,6 @@ Before creating the PR, confirm:
 
 - [ ] `xcodebuild build` succeeds with no errors
 - [ ] `bd show <id>` shows task closed
-- [ ] `git status` shows clean working directory
+- [ ] `bd sync` completed successfully (beads pushed to `main`)
+- [ ] `git status` shows clean working directory (no uncommitted changes)
 - [ ] `AGENTS.md` updated if patterns/gotchas discovered
