@@ -372,6 +372,17 @@ class CustomKeyTextView: NSTextView {
 
 When the user says "let's land the plane", you MUST complete ALL steps below. The plane is NOT landed until git push succeeds. NEVER stop before pushing. NEVER say "ready to push when you are!" - that is a FAILURE.
 
+### Pull Request Workflow (Optional but Recommended)
+
+If working on a feature branch (`task/...`), prefer creating a Pull Request before merging, especially for complex changes.
+
+1. **Push branch:** `git push origin task/my-feature`
+2. **Create PR:** `gh pr create --title "feat: Description" --body "Details..."`
+3. **Merge PR:** `gh pr merge --squash --delete-branch`
+4. **Pull Main:** `git checkout main && git pull`
+
+### Standard Workflow (Direct Push)
+
 MANDATORY WORKFLOW - COMPLETE ALL STEPS:
 
     File beads issues for any remaining work that needs follow-up
