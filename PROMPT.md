@@ -1,10 +1,13 @@
 # Autonomous Agent Workflow
+Select the single highest priority item to work on, and work on it until it is complete, and then stop. 
+
+Only work on a single issue, after completing that issue you are done.
 
 We are working on the project "neonv"
 ## Core Task
 1.  **Task Tracking** Use 'bd' for task tracking.
 2.  **Specs**: Read `docs/alt-nv-product-spec.md` for context.
-3.  **Pick Task**: Select the highest priority item using 'bd ready'
+3.  **Pick Task**: Select the SINGLE highest priority item using 'bd ready'
 4.  **Plan**: Check `docs/implement_plan.md` for guidance on creating and implementing plans.
 5.  **Implement**: Work on the task using Swift/SwiftUI conventions (macOS target).
 6.  **Project Guidance:** Read 'AGENTS.md' for project-specific development guidance, project management procedure and `bd` reference.
@@ -28,8 +31,11 @@ We are working on the project "neonv"
 - **Spec**: Do not modify `docs/alt-nv-product-spec.md` unless explicitly instructed.
 
 ## Completion Checklist
+
 - [ ] Code compiles and runs without errors.
 - [ ] Tests passed.
 - [ ] beads database updated
 - [ ] `AGENTS.md` updated with learnings.
 - [ ] Changes committed.
+- [ ] Pull request created
+
