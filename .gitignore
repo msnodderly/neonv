@@ -65,3 +65,10 @@ Carthage/Checkouts/
 auto-naming/
 # bd worktree
 auto-select-match/
+# bd worktree
+search-selection-fix/
+# bd worktree
+unsaved-indicator/
+
+# bv (beads viewer) local config and caches
+.bv/

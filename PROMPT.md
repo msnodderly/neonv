@@ -13,7 +13,7 @@ Do not start additional tasks after completing your assigned work.
 ## Session Start
 
 1. **Read context**:
-   - `docs/alt-nv-product-spec.md` (product spec)
+   - `docs/neonv-product-spec.md` (product spec)
    - `AGENTS.md` (patterns, procedures, `bd` reference)
 
 2. **Pick task**: Run `bd ready` and select the SINGLE highest priority item
