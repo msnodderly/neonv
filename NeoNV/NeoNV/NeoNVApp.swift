@@ -34,5 +34,25 @@ struct NeoNVApp: App {
         }
         .windowResizability(.contentSize)
         .defaultSize(width: 900, height: 600)
+        .commands {
+            CommandGroup(after: .newItem) {
+                Button("New Note") {
+                    NotificationCenter.default.post(name: .createNewNote, object: nil)
+                }
+                .keyboardShortcut("n", modifiers: .command)
+            }
+
+            CommandGroup(after: .textEditing) {
+                Button("Focus Search") {
+                    NotificationCenter.default.post(name: .focusSearch, object: nil)
+                }
+                .keyboardShortcut("l", modifiers: .command)
+            }
+        }
     }
+}
+
+extension Notification.Name {
+    static let focusSearch = Notification.Name("focusSearch")
+    static let createNewNote = Notification.Name("createNewNote")
 }
