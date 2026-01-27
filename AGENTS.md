@@ -1,16 +1,201 @@
 # Agent Development Notes
 
-This document captures patterns, gotchas, and learnings discovered during AI-assisted development of neonv.
+This document captures workflows, patterns, gotchas, and learnings for AI-assisted development of neonv.
 
 ---
 
-## Task Tracking
-Use 'bd' for task tracking
-bd ready 	List tasks with no open blockers.
-bd create "Title" -p 0 	Create a P0 task.
-bd dep add <child> <parent> 	Link tasks (blocks, related, parent-child).
-bd show <id> 	View task details and audit trail.
+## Task Tracking with `bd`
 
+```
+bd ready                      List tasks with no open blockers
+bd create "Title" -p 0        Create a P0 task
+bd show <id>                  View task details and audit trail
+bd update <id> --status in_progress   Claim a task
+bd close <id> --reason "..."  Close a completed task
+bd dep add <child> <parent>   Link tasks (blocks, related, parent-child)
+bd sync                       Immediately export/commit/push changes
+```
+
+**WARNING:** Do NOT use `bd edit` — it opens an interactive editor which AI agents cannot use. Use `bd update` with flags instead:
+
+```bash
+bd update <id> --description "new description"
+bd update <id> --title "new title"
+bd update <id> --design "design notes"
+bd update <id> --notes "additional notes"
+bd update <id> --acceptance "acceptance criteria"
+```
+
+---
+
+## Worktree Workflow (Parallel Agents)
+
+Multiple agents can work simultaneously on different tasks. Each agent must use a separate git worktree to avoid conflicts.
+
+**Always use `bd worktree` instead of `git worktree`** — it automatically configures beads to share the database across all worktrees.
+
+### Creating a Worktree
+
+```bash
+bd worktree create <name> --branch task/<id>-short-description
+cd <name>
+```
+
+Examples:
+```bash
+bd worktree create auth-feature --branch task/neonv-abc-auth
+bd worktree create bugfix-123                  # Branch defaults to "bugfix-123"
+bd worktree create ../agents/worker-1          # Create at relative path
+```
+
+### Listing Worktrees
+
+```bash
+bd worktree list
+```
+
+Shows all worktrees with their beads status (shared vs local).
+
+### Checking Current Worktree
+
+```bash
+bd worktree info
+```
+
+Shows worktree path, branch, main repo location, and beads configuration.
+
+### Why Worktrees?
+
+- Each agent gets an isolated working directory
+- No branch-switching conflicts between agents
+- Changes stay isolated until PR merge
+- Main repo stays clean for other agents to spawn from
+- Beads database is automatically shared (via redirect file)
+
+### Cleanup After Merge
+
+```bash
+# From main repo directory
+bd worktree remove <name>
+```
+
+This command includes safety checks:
+- Warns about uncommitted changes
+- Warns about unpushed commits
+- Warns about stashes
+
+Use `--force` to skip checks (not recommended).
+
+---
+
+## Syncing Changes
+
+**IMPORTANT:** Always run `bd sync` before ending a session.
+
+```bash
+bd sync
+```
+
+This immediately:
+1. Exports pending changes to JSONL (bypasses 30-second debounce)
+2. Commits to git
+3. Pulls from remote
+4. Imports any updates
+5. Pushes to remote
+
+**Why this matters:**
+- Without `bd sync`, changes sit in a 30-second debounce window
+- User might think you pushed but JSONL is still dirty
+- `bd sync` forces immediate flush/commit/push
+
+### Recommended: Install Git Hooks
+
+```bash
+# One-time setup per workspace
+bd hooks install
+```
+
+This installs:
+- **pre-commit** — Flushes pending changes before commit
+- **post-merge** — Imports updated JSONL after pull/merge
+- **pre-push** — Exports database to JSONL before push
+- **post-checkout** — Imports JSONL after branch checkout
+
+---
+
+## Session Completion Procedure
+
+When the user says "let's land the plane" or when your task is complete, follow ALL steps below. Direct pushes to `main` are FORBIDDEN.
+
+### 1. Finalize Work
+
+```bash
+# Run quality gates (if code changes were made)
+xcodebuild -scheme NeoNV -destination 'platform=macOS' build
+
+# Close the task
+bd close <id> --reason "Completed"
+
+# Sync beads (commits JSONL changes to your branch)
+bd sync
+```
+
+### 2. Push and Create PR
+
+```bash
+git push -u origin task/<branch-name>
+gh pr create --title "feat: Description" --body "Detailed description..."
+```
+
+### 3. Merge (if authorized)
+
+```bash
+gh pr merge --squash --delete-branch
+```
+
+If waiting for review, stop here and inform the user.
+
+### 4. Sync Local Main (after merge)
+
+```bash
+git checkout main
+git pull
+bd sync  # Ensure local beads DB matches merged main
+```
+
+### 5. Cleanup
+
+```bash
+bd worktree remove <name>  # If using worktree (includes safety checks)
+git branch -d task/<branch-name>  # Delete local branch
+git remote prune origin
+git status  # Verify clean state
+```
+
+### 6. Report to User
+
+Provide:
+- Summary of what was completed
+- Issues filed for follow-up
+- Status of quality gates
+- Confirmation that ALL changes have been pushed
+- Recommended prompt for next session
+
+**CRITICAL:** Never end a session without successfully pushing. Unpushed work causes severe rebase conflicts when coordinating multiple agents.
+
+---
+
+## Resolving Beads Conflicts
+
+If conflicts occur in `.beads/issues.jsonl`:
+
+```bash
+git checkout --theirs .beads/issues.jsonl  # Accept remote version
+bd import -i .beads/issues.jsonl           # Re-import
+# Or manually merge, then import
+```
+
+---
 
 ## Patterns
 
@@ -301,7 +486,7 @@ The beep reveals a gap between user expectation and app behavior. Use beeps diag
 2. **Ask:** What did the user probably expect to happen?
 3. **Implement** that behavior, OR document why not
 
-Don't suppress beeps - they're telling you what users want.
+Don't suppress beeps — they're telling you what users want.
 
 ---
 
@@ -365,152 +550,3 @@ class CustomKeyTextView: NSTextView {
     }
 }
 ```
-
-
-
-## Landing the Plane
-
-When the user says "let's land the plane", you MUST complete ALL steps below using the Pull Request workflow. Direct pushes to `main` are FORBIDDEN.
-
-### Mandatory Pull Request Workflow
-
-1.  **Finalize Work & Issues:**
-    - Run quality gates: `xcodebuild -scheme NeoNV -destination 'platform=macOS' build`
-    - Update beads: `bd close <id> --reason "..."`
-    - Sync beads: `bd sync` (This commits the JSONL changes to your branch)
-
-2.  **Push Branch:**
-    ```bash
-    git push origin task/feature-name
-    ```
-
-3.  **Create Pull Request:**
-    ```bash
-    gh pr create --title "feat: Description" --body "Detailed description of changes..."
-    ```
-
-4.  **Merge Pull Request:**
-    - If you have authority to merge:
-      ```bash
-      gh pr merge --squash --delete-branch
-      ```
-    - If waiting for review, stop here and inform the user.
-
-5.  **Sync Local Main:**
-    ```bash
-    git checkout main
-    git pull
-    bd sync  # Ensure local beads DB matches the merged main
-    ```
-
-6.  **Cleanup:**
-    ```bash
-    git branch -d task/feature-name
-    git remote prune origin
-    ```
-
-    Verify clean state:
-    ```bash
-    git status
-    ```
-
-    Choose a follow-up issue for next session.
-
-Example "land the plane" session:
-
-# 1. File remaining work
-bd create "Add integration tests for sync" -t task -p 2 --json
-
-# 2. Run quality gates (only if code changes were made)
-go test -short ./...
-golangci-lint run ./...
-
-# 3. Close finished issues
-bd close bd-42 bd-43 --reason "Completed" --json
-
-# 4. PUSH TO REMOTE - MANDATORY, NO STOPPING BEFORE THIS IS DONE
-git pull --rebase
-# If conflicts in .beads/issues.jsonl, resolve thoughtfully:
-#   - git checkout --theirs .beads/issues.jsonl (accept remote)
-#   - bd import -i .beads/issues.jsonl (re-import)
-#   - Or manual merge, then import
-bd sync        # Export/import/commit
-git push       # MANDATORY - THE PLANE IS STILL IN THE AIR UNTIL THIS SUCCEEDS
-git status     # MUST verify "up to date with origin/main"
-
-# 5. Clean up git state
-git stash clear
-git remote prune origin
-
-# 6. Verify everything is clean and pushed
-git status
-
-# 7. Choose next work
-bd ready --json
-bd show bd-44 --json
-
-Then provide the user with:
-
-    Summary of what was completed this session
-    What issues were filed for follow-up
-    Status of quality gates (all passing / issues filed)
-    Confirmation that ALL changes have been pushed to remote
-    Recommended prompt for next session
-
-CRITICAL: Never end a "land the plane" session without successfully pushing. The user is coordinating multiple agents and unpushed work causes severe rebase conflicts.
-Agent Session Workflow
-
-WARNING: DO NOT use bd edit - it opens an interactive editor ($EDITOR) which AI agents cannot use. Use bd update with flags instead:
-
-bd update <id> --description "new description"
-bd update <id> --title "new title"
-bd update <id> --design "design notes"
-bd update <id> --notes "additional notes"
-bd update <id> --acceptance "acceptance criteria"
-
-IMPORTANT for AI agents: When you finish making issue changes, always run:
-
-bd sync
-
-This immediately:
-
-    Exports pending changes to JSONL (no 30s wait)
-    Commits to git
-    Pulls from remote
-    Imports any updates
-    Pushes to remote
-
-Example agent session:
-
-# Make multiple changes (batched in 30-second window)
-bd create "Fix bug" -p 1
-bd create "Add tests" -p 1
-bd update bd-42 --status in_progress
-bd close bd-40 --reason "Completed"
-
-# Force immediate sync at end of session
-bd sync
-
-# Now safe to end session - everything is committed and pushed
-
-Why this matters:
-
-    Without bd sync, changes sit in 30-second debounce window
-    User might think you pushed but JSONL is still dirty
-    bd sync forces immediate flush/commit/push
-
-STRONGLY RECOMMENDED: Install git hooks for automatic sync (prevents stale JSONL problems):
-
-# One-time setup - run this in each beads workspace
-bd hooks install
-
-This installs:
-
-    pre-commit - Flushes pending changes immediately before commit (bypasses 30s debounce)
-    post-merge - Imports updated JSONL after pull/merge (guaranteed sync)
-    pre-push - Exports database to JSONL before push (prevents stale JSONL from reaching remote)
-    post-checkout - Imports JSONL after branch checkout (ensures consistency)
-
-Why git hooks matter: Without the pre-push hook, you can have database changes committed locally but stale JSONL pushed to remote, causing multi-workspace divergence. The hooks guarantee DB ↔ JSONL consistency.
-
-Note: Hooks are embedded in the bd binary and work for all bd users (not just source repo users).
