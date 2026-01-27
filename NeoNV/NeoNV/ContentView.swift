@@ -144,18 +144,21 @@ struct ContentView: View {
         }
 
         isLoadingNote = true
+        let noteID = id
         Task {
             do {
                 let content = try await loadFileAsync(url: note.url)
                 await MainActor.run {
                     editorContent = content
                     isDirty = false
+                    unsavedNoteIDs.remove(noteID)
                     isLoadingNote = false
                 }
             } catch {
                 await MainActor.run {
                     editorContent = "Error loading file: \(error.localizedDescription)"
                     isDirty = false
+                    unsavedNoteIDs.remove(noteID)
                     isLoadingNote = false
                 }
             }
