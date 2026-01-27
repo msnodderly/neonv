@@ -32,19 +32,37 @@ bd update <id> --acceptance "acceptance criteria"
 
 Multiple agents can work simultaneously on different tasks. Each agent must use a separate git worktree to avoid conflicts.
 
+**Always use `bd worktree` instead of `git worktree`** — it automatically configures beads to share the database across all worktrees.
+
 ### Creating a Worktree
 
 ```bash
-# From the main repo directory
-git worktree add -b task/<id>-short-description ../neonv-<feature> main
-cd ../neonv-<feature>
+bd worktree create <name> --branch task/<id>-short-description
+cd <name>
 ```
 
-**Syntax note:** The argument order is `-b <branch> <path> <start-point>`. Getting this wrong produces a confusing "invalid reference" error.
+Examples:
+```bash
+bd worktree create auth-feature --branch task/neonv-abc-auth
+bd worktree create bugfix-123                  # Branch defaults to "bugfix-123"
+bd worktree create ../agents/worker-1          # Create at relative path
+```
 
-### Beads in Worktrees
+### Listing Worktrees
 
-The `bd` command works from any worktree — it finds the shared `.beads/` directory in the main repo. You don't need to do anything special; just run `bd` commands as normal.
+```bash
+bd worktree list
+```
+
+Shows all worktrees with their beads status (shared vs local).
+
+### Checking Current Worktree
+
+```bash
+bd worktree info
+```
+
+Shows worktree path, branch, main repo location, and beads configuration.
 
 ### Why Worktrees?
 
@@ -52,14 +70,21 @@ The `bd` command works from any worktree — it finds the shared `.beads/` direc
 - No branch-switching conflicts between agents
 - Changes stay isolated until PR merge
 - Main repo stays clean for other agents to spawn from
+- Beads database is automatically shared (via redirect file)
 
 ### Cleanup After Merge
 
 ```bash
-# After PR is merged, from main repo
-git worktree remove ../neonv-<feature>
-git branch -d task/<id>-short-description
+# From main repo directory
+bd worktree remove <name>
 ```
+
+This command includes safety checks:
+- Warns about uncommitted changes
+- Warns about unpushed commits
+- Warns about stashes
+
+Use `--force` to skip checks (not recommended).
 
 ---
 
@@ -141,8 +166,8 @@ bd sync  # Ensure local beads DB matches merged main
 ### 5. Cleanup
 
 ```bash
-git worktree remove ../neonv-<feature>  # If using worktree
-git branch -d task/<branch-name>
+bd worktree remove <name>  # If using worktree (includes safety checks)
+git branch -d task/<branch-name>  # Delete local branch
 git remote prune origin
 git status  # Verify clean state
 ```

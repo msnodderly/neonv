@@ -20,13 +20,13 @@ Do not start additional tasks after completing your assigned work.
 
 3. **Claim task**: Run `bd update <id> --status in_progress`
 
-4. **Create worktree**: Create a new git worktree with a feature branch
+4. **Create worktree**: Use `bd worktree` to create an isolated working directory
    ```bash
-   git worktree add -b task/<id>-short-description ../neonv-<feature> main
-   cd ../neonv-<feature>
+   bd worktree create <feature-name> --branch task/<id>-short-description
+   cd <feature-name>
    ```
 
-   **Why worktrees?** Multiple agents can work in parallel on different tasks. Each agent gets an isolated working directory without branch-switching conflicts.
+   **Why worktrees?** Multiple agents can work in parallel on different tasks. Each agent gets an isolated working directory without branch-switching conflicts. Using `bd worktree` (instead of `git worktree`) automatically configures beads to share the database across all worktrees.
 
 ---
 
