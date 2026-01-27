@@ -10,6 +10,8 @@ struct ContentView: View {
     @StateObject private var noteStore = NoteStore()
     @State private var searchText = ""
     @State private var selectedNoteID: UUID?
+    @State private var lastManualSelection: UUID?
+    @State private var previousSearchWasEmpty = true
     @State private var editorContent = ""
     @State private var isDirty = false
     @State private var saveTask: Task<Void, Never>?
@@ -118,17 +120,25 @@ struct ContentView: View {
     
     private func autoSelectTopMatch() {
         if searchText.isEmpty {
-            // When clearing search, preserve current selection if it's still in the list
-            if let currentID = selectedNoteID,
-               noteStore.notes.contains(where: { $0.id == currentID }) {
-                // Keep current selection
-                return
+            // When clearing search, restore the last manual selection
+            if let manualID = lastManualSelection,
+               noteStore.notes.contains(where: { $0.id == manualID }) {
+                selectedNoteID = manualID
             }
+            previousSearchWasEmpty = true
         } else {
-            // When typing, auto-select the first match
+            // Before auto-selecting, save the current selection as manual
+            // (only if search was previously empty, indicating this is the start of a search)
+            if previousSearchWasEmpty, let currentID = selectedNoteID {
+                lastManualSelection = currentID
+            }
+
+            // Auto-select the first match
             if let firstMatch = filteredNotes.first {
                 selectedNoteID = firstMatch.id
             }
+
+            previousSearchWasEmpty = false
         }
     }
 
@@ -210,7 +220,8 @@ struct ContentView: View {
 
     private func clearSearch() {
         searchText = ""
-        selectedNoteID = nil
+        // Don't clear selectedNoteID - let autoSelectTopMatch() handle it
+        // This allows it to restore the last manual selection
     }
 
     private func sanitizeFileName(_ name: String) -> String {
