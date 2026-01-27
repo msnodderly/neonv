@@ -1,41 +1,72 @@
 # Autonomous Agent Workflow
-Select the single highest priority item to work on, and work on it until it is complete, and then stop. 
 
-Only work on a single issue, after completing that issue you are done.
+**Project:** neonv (Swift/SwiftUI macOS app)
 
-We are working on the project "neonv"
-## Core Task
-1.  **Task Tracking** Use 'bd' for task tracking.
-2.  **Specs**: Read `docs/alt-nv-product-spec.md` for context.
-3.  **Pick Task**: Select the SINGLE highest priority item using 'bd ready'
-4.  **Plan**: Check `docs/implement_plan.md` for guidance on creating and implementing plans.
-5.  **Implement**: Work on the task using Swift/SwiftUI conventions (macOS target).
-6.  **Project Guidance:** Read 'AGENTS.md' for project-specific development guidance, project management procedure and `bd` reference.
+## Prime Directive
 
-## Workflow Rules
+Select ONE task. Complete it. Stop.
 
-### 1. Preparation
-- **Docs**: Read existing specs and plans before coding.
-- **Git**: Commit often with clear messages.
+Do not start additional tasks after completing your assigned work.
 
-### 2. Implementation (Swift/macOS)
-- **PLANING**: Before implementing a complex chain, create a design doc in the docs/plans folder. Use 'bd' to create an issue to track the planning process.
-- **Style**: Follow Swift API Design Guidelines and existing project patterns.
-- **Tests**: Run tests via `xcodebuild` or Xcode to ensure stability.
-- **Scope**: Focus strictly on the selected issue.
+---
 
-### 3. Documentation
-- **Learnings**: Create/Update `AGENTS.md` with:
-  - **Patterns**: Reusable code patterns found.
-  - **Gotchas**: Common pitfalls and solutions.
-- **Spec**: Do not modify `docs/alt-nv-product-spec.md` unless explicitly instructed.
+## Session Start
 
-## Completion Checklist
+1. **Read context**:
+   - `docs/alt-nv-product-spec.md` (product spec)
+   - `AGENTS.md` (patterns, procedures, `bd` reference)
 
-- [ ] Code compiles and runs without errors.
-- [ ] Tests passed.
-- [ ] beads database updated
-- [ ] `AGENTS.md` updated with learnings.
-- [ ] Changes committed.
-- [ ] Pull request created
+2. **Pick task**: Run `bd ready` and select the SINGLE highest priority item
 
+3. **Claim task**: Run `bd update <id> --status in_progress`
+
+4. **Create worktree**: Create a new git worktree with a feature branch
+   ```bash
+   git worktree add -b task/<id>-short-description ../neonv-<feature> main
+   cd ../neonv-<feature>
+   ```
+
+   **Why worktrees?** Multiple agents can work in parallel on different tasks. Each agent gets an isolated working directory without branch-switching conflicts.
+
+---
+
+## Implementation
+
+### Before Coding
+- Read the task description fully: `bd show <id>`
+- Check `docs/implement_plan.md` for planning guidance
+- For complex features: create a design doc in `docs/plans/` before writing code
+
+### While Coding
+- **Scope**: Only work on the selected task—no drive-by refactors
+- **Style**: Follow Swift API Design Guidelines and existing project patterns
+- **Commits**: Commit frequently with clear messages
+- **Build**: Run `xcodebuild -scheme NeoNV -destination 'platform=macOS' build` regularly
+
+### After Coding
+- Update `AGENTS.md` with any new patterns or gotchas discovered
+- Do NOT modify `docs/alt-nv-product-spec.md` unless explicitly instructed
+
+---
+
+## Session End
+
+When the task is complete, follow the "Session Completion Procedure" in `AGENTS.md`:
+
+1. Build passes: `xcodebuild -scheme NeoNV -destination 'platform=macOS' build`
+2. Close task: `bd close <id> --reason "Completed"`
+3. Sync beads: `bd sync`
+4. Push branch: `git push -u origin <branch-name>`
+5. Create PR: `gh pr create --title "..." --body "..."`
+6. **STOP** — Do not pick another task
+
+---
+
+## Verification Checklist
+
+Before creating the PR, confirm:
+
+- [ ] `xcodebuild build` succeeds with no errors
+- [ ] `bd show <id>` shows task closed
+- [ ] `git status` shows clean working directory
+- [ ] `AGENTS.md` updated if patterns/gotchas discovered
