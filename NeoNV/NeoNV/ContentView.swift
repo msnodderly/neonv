@@ -6,28 +6,41 @@ enum FocusedField: Hashable {
     case editor
 }
 
-struct SaveError: Identifiable {
-    let id = UUID()
-    let url: URL
-    let error: Error
-}
-
 struct ContentView: View {
-    @ObservedObject var noteStore: NoteStore
+    @StateObject private var noteStore = NoteStore()
     @State private var searchText = ""
     @State private var selectedNoteID: UUID?
     @State private var editorContent = ""
+    @State private var isDirty = false
     @State private var saveTask: Task<Void, Never>?
     @State private var isLoadingNote = false
-    @State private var lastSaveError: SaveError?
+    @State private var saveError: SaveError?
     @FocusState private var focusedField: FocusedField?
-    
+
+    struct SaveError: Identifiable {
+        let id = UUID()
+        let fileURL: URL
+        let error: Error
+        let content: String
+    }
+
+    private var filteredNotes: [NoteFile] {
+        if searchText.isEmpty {
+            return noteStore.notes
+        } else {
+            return noteStore.notes.filter { $0.matches(query: searchText) }
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             SearchBar(
                 text: $searchText,
                 focusedField: _focusedField,
-                onNavigateToList: navigateToList
+                matchCount: filteredNotes.count,
+                onNavigateToList: navigateToList,
+                onCreateNote: createNewNote,
+                onClearSearch: clearSearch
             )
             
             Divider()
@@ -37,7 +50,7 @@ struct ContentView: View {
             } else {
                 HSplitView {
                     NoteListView(
-                        notes: noteStore.notes,
+                        notes: filteredNotes,
                         selectedNoteID: $selectedNoteID,
                         focusedField: _focusedField,
                         isLoading: noteStore.isLoading,
@@ -46,7 +59,6 @@ struct ContentView: View {
                         onEnterToEditor: { focusedField = .editor }
                     )
                     .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
-                    .disabled(lastSaveError != nil)
                     
                     EditorView(
                         content: $editorContent,
@@ -55,18 +67,16 @@ struct ContentView: View {
                         onEscape: { focusedField = .noteList }
                     )
                     .frame(minWidth: 300)
-                    .disabled(lastSaveError != nil)
                 }
             }
         }
-        .disabled(lastSaveError != nil)
         .frame(minWidth: 600, minHeight: 400)
         .onAppear {
             focusedField = .search
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {
-                if noteStore.isDirty {
+                if isDirty {
                     Circle()
                         .fill(.orange)
                         .frame(width: 8, height: 8)
@@ -86,44 +96,28 @@ struct ContentView: View {
         .onChange(of: editorContent) { _, _ in
             scheduleAutoSave()
         }
-        .onChange(of: lastSaveError?.id) { _, newID in
-            if newID != nil, let saveError = lastSaveError {
-                showSaveErrorAlert(saveError: saveError)
-            }
+        .alert(item: $saveError) { error in
+            Alert(
+                title: Text("Save Failed"),
+                message: Text("Failed to save \(error.fileURL.lastPathComponent):\n\n\(error.error.localizedDescription)"),
+                primaryButton: .default(Text("Retry")) {
+                    Task {
+                        await retrySave(error: error)
+                    }
+                },
+                secondaryButton: .default(Text("More Options...")) {
+                    showSaveErrorSheet(error: error)
+                }
+            )
         }
-    }
-    
-    private func showSaveErrorAlert(saveError: SaveError) {
-        let alert = NSAlert()
-        alert.messageText = "Save Failed"
-        alert.informativeText = "Could not save to \(saveError.url.lastPathComponent).\n\nError: \(saveError.error.localizedDescription)"
-        alert.alertStyle = .critical
-        
-        alert.addButton(withTitle: "Retry")
-        alert.addButton(withTitle: "Save As...")
-        alert.addButton(withTitle: "Copy to Clipboard")
-        alert.addButton(withTitle: "Show in Finder")
-        alert.addButton(withTitle: "Discard Changes")
-        
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            handleSaveRetry()
-        } else if response == .alertSecondButtonReturn {
-            handleSaveAs()
-        } else if response == .alertThirdButtonReturn {
-            handleCopyToClipboard()
-        } else if response.rawValue == NSApplication.ModalResponse.alertThirdButtonReturn.rawValue + 1 {
-            handleShowInFinder()
-        } else if response.rawValue == NSApplication.ModalResponse.alertThirdButtonReturn.rawValue + 2 {
-            handleDiscardChanges()
-        }
+        .disabled(saveError != nil)
     }
     
     private func loadSelectedNote(id: UUID?) {
         guard let id = id,
               let note = noteStore.notes.first(where: { $0.id == id }) else {
             editorContent = ""
-            noteStore.isDirty = false
+            isDirty = false
             return
         }
         
@@ -133,13 +127,13 @@ struct ContentView: View {
                 let content = try await loadFileAsync(url: note.url)
                 await MainActor.run {
                     editorContent = content
-                    noteStore.isDirty = false
+                    isDirty = false
                     isLoadingNote = false
                 }
             } catch {
                 await MainActor.run {
                     editorContent = "Error loading file: \(error.localizedDescription)"
-                    noteStore.isDirty = false
+                    isDirty = false
                     isLoadingNote = false
                 }
             }
@@ -153,16 +147,76 @@ struct ContentView: View {
     }
     
     private func navigateToList() {
-        if selectedNoteID == nil, let firstNote = noteStore.notes.first {
+        if selectedNoteID == nil, let firstNote = filteredNotes.first {
             selectedNoteID = firstNote.id
         }
         focusedField = .noteList
     }
-    
+
+    private func createNewNote() {
+        guard let folderURL = noteStore.selectedFolderURL, !searchText.isEmpty else {
+            return
+        }
+
+        let fileName = sanitizeFileName(searchText)
+        let fileURL = folderURL.appendingPathComponent(fileName + ".md")
+
+        let initialContent = searchText + "\n\n"
+
+        Task {
+            do {
+                try await atomicWrite(content: initialContent, to: fileURL)
+
+                await noteStore.discoverFiles()
+
+                await MainActor.run {
+                    searchText = ""
+                    if let newNote = noteStore.notes.first(where: { $0.url == fileURL }) {
+                        selectedNoteID = newNote.id
+                        focusedField = .editor
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    let alert = NSAlert()
+                    alert.messageText = "Failed to Create Note"
+                    alert.informativeText = "Could not create new note: \(error.localizedDescription)"
+                    alert.alertStyle = .warning
+                    alert.addButton(withTitle: "OK")
+                    alert.runModal()
+                }
+            }
+        }
+    }
+
+    private func clearSearch() {
+        searchText = ""
+        selectedNoteID = nil
+    }
+
+    private func sanitizeFileName(_ name: String) -> String {
+        var sanitized = name.lowercased()
+            .replacingOccurrences(of: " ", with: "-")
+            .replacingOccurrences(of: "[^a-z0-9-]", with: "", options: .regularExpression)
+
+        if sanitized.count > 100 {
+            sanitized = String(sanitized.prefix(100))
+        }
+
+        if sanitized.isEmpty {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyyMMdd-HHmmss"
+            sanitized = "untitled-\(formatter.string(from: Date()))"
+        }
+
+        return sanitized
+    }
+
     private func scheduleAutoSave() {
         guard selectedNoteID != nil, !isLoadingNote else { return }
-        noteStore.isDirty = true
-        
+        isDirty = true
+        AppDelegate.shared.hasUnsavedChanges = true
+
         saveTask?.cancel()
         saveTask = Task {
             try? await Task.sleep(for: .milliseconds(500))
@@ -176,70 +230,22 @@ struct ContentView: View {
               let note = noteStore.notes.first(where: { $0.id == id }) else {
             return
         }
-        
+
         let content = editorContent
-        
+
         do {
             try await atomicWrite(content: content, to: note.url)
             await MainActor.run {
-                noteStore.isDirty = false
-                lastSaveError = nil
+                isDirty = false
+                saveError = nil
+                AppDelegate.shared.hasUnsavedChanges = false
             }
         } catch {
             await MainActor.run {
-                lastSaveError = SaveError(url: note.url, error: error)
+                saveError = SaveError(fileURL: note.url, error: error, content: content)
+                AppDelegate.shared.hasUnsavedChanges = true
             }
         }
-    }
-    
-    private func handleSaveRetry() {
-        Task {
-            await performSave()
-        }
-    }
-    
-    private func handleSaveAs() {
-        guard let saveError = lastSaveError else { return }
-        
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.plainText]
-        panel.nameFieldStringValue = saveError.url.lastPathComponent
-        
-        if panel.runModal() == .OK, let url = panel.url {
-            let content = editorContent
-            Task {
-                do {
-                    try await atomicWrite(content: content, to: url)
-                    await MainActor.run {
-                        noteStore.isDirty = false
-                        lastSaveError = nil
-                        // Ideally we should also update the note store or selection here
-                        // but for now we just clear the error state
-                    }
-                } catch {
-                    await MainActor.run {
-                        lastSaveError = SaveError(url: url, error: error)
-                    }
-                }
-            }
-        }
-    }
-    
-    private func handleCopyToClipboard() {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(editorContent, forType: .string)
-    }
-    
-    private func handleShowInFinder() {
-        guard let saveError = lastSaveError else { return }
-        NSWorkspace.shared.activateFileViewerSelecting([saveError.url])
-    }
-    
-    private func handleDiscardChanges() {
-        noteStore.isDirty = false
-        lastSaveError = nil
-        loadSelectedNote(id: selectedNoteID)
     }
     
     private func atomicWrite(content: String, to url: URL) async throws {
@@ -247,9 +253,9 @@ struct ContentView: View {
             let data = content.data(using: .utf8)!
             let tempURL = url.deletingLastPathComponent()
                 .appendingPathComponent(".\(url.lastPathComponent).tmp")
-            
+
             try data.write(to: tempURL, options: .atomic)
-            
+
             let fileManager = FileManager.default
             if fileManager.fileExists(atPath: url.path) {
                 _ = try fileManager.replaceItemAt(url, withItemAt: tempURL)
@@ -257,6 +263,92 @@ struct ContentView: View {
                 try fileManager.moveItem(at: tempURL, to: url)
             }
         }.value
+    }
+
+    private func retrySave(error: SaveError) async {
+        do {
+            try await atomicWrite(content: error.content, to: error.fileURL)
+            await MainActor.run {
+                isDirty = false
+                saveError = nil
+                AppDelegate.shared.hasUnsavedChanges = false
+            }
+        } catch let writeError {
+            await MainActor.run {
+                saveError = SaveError(fileURL: error.fileURL, error: writeError, content: error.content)
+                AppDelegate.shared.hasUnsavedChanges = true
+            }
+        }
+    }
+
+    private func showSaveErrorSheet(error: SaveError) {
+        let alert = NSAlert()
+        alert.messageText = "Save Failed"
+        alert.informativeText = "Failed to save \(error.fileURL.lastPathComponent):\n\n\(error.error.localizedDescription)\n\nWhat would you like to do?"
+        alert.alertStyle = .critical
+
+        alert.addButton(withTitle: "Retry")
+        alert.addButton(withTitle: "Save Elsewhere...")
+        alert.addButton(withTitle: "Copy to Clipboard")
+        alert.addButton(withTitle: "Show in Finder")
+        alert.addButton(withTitle: "Cancel")
+
+        let response = alert.runModal()
+
+        switch response {
+        case .alertFirstButtonReturn:
+            Task {
+                await retrySave(error: error)
+            }
+        case .alertSecondButtonReturn:
+            saveToAlternateLocation(error: error)
+        case .alertThirdButtonReturn:
+            copyToClipboard(error: error)
+        default:
+            if response.rawValue == 1003 {
+                showInFinder(error: error)
+            }
+        }
+    }
+
+    private func saveToAlternateLocation(error: SaveError) {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = error.fileURL.lastPathComponent
+        panel.message = "Choose a new location to save this file"
+
+        if panel.runModal() == .OK, let url = panel.url {
+            Task {
+                do {
+                    try await atomicWrite(content: error.content, to: url)
+                    await MainActor.run {
+                        saveError = nil
+                        AppDelegate.shared.hasUnsavedChanges = false
+                    }
+                } catch let writeError {
+                    await MainActor.run {
+                        saveError = SaveError(fileURL: url, error: writeError, content: error.content)
+                        AppDelegate.shared.hasUnsavedChanges = true
+                    }
+                }
+            }
+        }
+    }
+
+    private func copyToClipboard(error: SaveError) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(error.content, forType: .string)
+
+        let alert = NSAlert()
+        alert.messageText = "Content Copied"
+        alert.informativeText = "The file content has been copied to the clipboard.\n\nThe save error persists - you should still resolve it."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
+    private func showInFinder(error: SaveError) {
+        NSWorkspace.shared.selectFile(error.fileURL.path, inFileViewerRootedAtPath: error.fileURL.deletingLastPathComponent().path)
     }
 }
 
@@ -286,13 +378,16 @@ struct EmptyStateView: View {
 struct SearchBar: View {
     @Binding var text: String
     @FocusState var focusedField: FocusedField?
+    var matchCount: Int
     var onNavigateToList: () -> Void
-    
+    var onCreateNote: () -> Void
+    var onClearSearch: () -> Void
+
     var body: some View {
         HStack {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.secondary)
-            
+
             TextField("Search or create...", text: $text)
                 .textFieldStyle(.plain)
                 .focused($focusedField, equals: .search)
@@ -307,6 +402,25 @@ struct SearchBar: View {
                 .onKeyPress(.upArrow) {
                     return .handled
                 }
+                .onKeyPress(.return) {
+                    if matchCount > 0 {
+                        onNavigateToList()
+                    } else if !text.isEmpty {
+                        onCreateNote()
+                    }
+                    return .handled
+                }
+                .onKeyPress(.escape) {
+                    onClearSearch()
+                    return .handled
+                }
+
+            if !text.isEmpty {
+                Text(matchCount > 0 ? "\(matchCount) match\(matchCount == 1 ? "" : "es")" : "⏎ to create")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .padding(.trailing, 4)
+            }
         }
         .padding(8)
         .background(Color(NSColor.controlBackgroundColor))
@@ -383,5 +497,5 @@ struct EditorView: View {
 }
 
 #Preview {
-    ContentView(noteStore: NoteStore())
+    ContentView()
 }

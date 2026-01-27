@@ -171,75 +171,119 @@ if let storedPath = UserDefaults.standard.string(forKey: "selectedNotesFolder"),
 
 **Note:** For sandboxed apps, use security-scoped bookmarks instead of plain paths.
 
-### Loud Error Handling with NSAlert (macOS)
+### Error Handling with Modal Alerts (NSAlert)
 
-For critical errors (like save failures) that require immediate user attention and recovery options, use `NSAlert`.
+For critical errors that require user intervention:
 
 ```swift
-private func showSaveErrorAlert(saveError: SaveError) {
-    let alert = NSAlert()
-    alert.messageText = "Save Failed"
-    alert.informativeText = "Could not save to \(saveError.url.lastPathComponent).\n\nError: \(saveError.error.localizedDescription)"
-    alert.alertStyle = .critical
-    
-    alert.addButton(withTitle: "Retry")
-    alert.addButton(withTitle: "Save As...")
-    alert.addButton(withTitle: "Copy to Clipboard")
-    
-    let response = alert.runModal()
-    switch response {
-    case .alertFirstButtonReturn:
-        // Handle Retry
-    case .alertSecondButtonReturn:
-        // Handle Save As
-    case .alertThirdButtonReturn:
-        // Handle Copy
-    default:
-        break
-    }
+@State private var saveError: SaveError?
+
+struct SaveError: Identifiable {
+    let id = UUID()
+    let fileURL: URL
+    let error: Error
+    let content: String
+}
+
+// Present error with SwiftUI alert
+.alert(item: $saveError) { error in
+    Alert(
+        title: Text("Save Failed"),
+        message: Text("Failed to save \(error.fileURL.lastPathComponent):\n\n\(error.error.localizedDescription)"),
+        primaryButton: .default(Text("Retry")) { /* retry logic */ },
+        secondaryButton: .default(Text("More Options...")) { /* show NSAlert */ }
+    )
+}
+
+// For more complex dialogs, use NSAlert directly
+let alert = NSAlert()
+alert.messageText = "Save Failed"
+alert.informativeText = "Details..."
+alert.alertStyle = .critical
+alert.addButton(withTitle: "Option 1")
+alert.addButton(withTitle: "Option 2")
+let response = alert.runModal()
+```
+
+**Important:** Use `.disabled(saveError != nil)` to block UI interaction during error states.
+
+### File Creation with Atomic Writes
+
+Create new files safely:
+
+```swift
+private func atomicWrite(content: String, to url: URL) async throws {
+    try await Task.detached(priority: .userInitiated) {
+        let data = content.data(using: .utf8)!
+        let tempURL = url.deletingLastPathComponent()
+            .appendingPathComponent(".\(url.lastPathComponent).tmp")
+
+        try data.write(to: tempURL, options: .atomic)
+
+        let fileManager = FileManager.default
+        if fileManager.fileExists(atPath: url.path) {
+            _ = try fileManager.replaceItemAt(url, withItemAt: tempURL)
+        } else {
+            try fileManager.moveItem(at: tempURL, to: url)
+        }
+    }.value
 }
 ```
 
-### Intercepting App Quit for Unsaved Changes
+**Pattern:** Always write to temp file first, then rename. Prevents corruption on failure.
 
-To prevent data loss on exit, use `NSApplicationDelegateAdaptor` to intercept the termination request.
+### Unified Search/Create Pattern
+
+Implement Notational Velocity-style unified input:
 
 ```swift
-class AppDelegate: NSObject, NSApplicationDelegate {
-    var noteStore: NoteStore?
-    
-    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard let noteStore = noteStore, noteStore.isDirty else {
-            return .terminateNow
-        }
-        
-        let alert = NSAlert()
-        alert.messageText = "Unsaved Changes"
-        alert.informativeText = "You have unsaved changes. Do you want to save before quitting?"
-        alert.addButton(withTitle: "Quit Anyway")
-        alert.addButton(withTitle: "Cancel")
-        alert.alertStyle = .warning
-        
-        return alert.runModal() == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
+// In search bar, handle Enter key
+.onKeyPress(.return) {
+    if matchCount > 0 {
+        // Select first match
+        onNavigateToList()
+    } else if !text.isEmpty {
+        // Create new note
+        onCreateNote()
     }
+    return .handled
 }
 
-// In your App struct:
-@main
-struct NeoNVApp: App {
-    @StateObject private var noteStore = NoteStore()
-    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    
-    var body: some Scene {
-        WindowGroup {
-            ContentView(noteStore: noteStore)
-                .onAppear {
-                    appDelegate.noteStore = noteStore
-                }
-        }
-    }
+// Visual feedback
+if !text.isEmpty {
+    Text(matchCount > 0 ? "\(matchCount) match\(matchCount == 1 ? "" : "es")" : "⏎ to create")
+        .font(.system(size: 11))
+        .foregroundColor(.secondary)
 }
 ```
+
+**Key insight:** Single input for both search and create eliminates decision friction.
+
+### Filename Sanitization
+
+Convert user input to filesystem-safe names:
+
+```swift
+private func sanitizeFileName(_ name: String) -> String {
+    var sanitized = name.lowercased()
+        .replacingOccurrences(of: " ", with: "-")
+        .replacingOccurrences(of: "[^a-z0-9-]", with: "", options: .regularExpression)
+
+    if sanitized.count > 100 {
+        sanitized = String(sanitized.prefix(100))
+    }
+
+    if sanitized.isEmpty {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        sanitized = "untitled-\(formatter.string(from: Date()))"
+    }
+
+    return sanitized
+}
+```
+
+**Pattern:** Lowercase, replace spaces with hyphens, remove special chars, truncate, fallback to timestamp.
 
 ---
 

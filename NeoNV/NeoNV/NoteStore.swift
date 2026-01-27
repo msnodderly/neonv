@@ -51,7 +51,6 @@ class NoteStore: ObservableObject {
     @Published var notes: [NoteFile] = []
     @Published var selectedFolderURL: URL?
     @Published var isLoading = false
-    @Published var isDirty = false
     
     private let allowedExtensions: Set<String> = ["txt", "md", "markdown", "org", "text"]
     private let folderBookmarkKey = "selectedFolderBookmark"
@@ -109,12 +108,14 @@ class NoteStore: ObservableObject {
                 let modDate = resourceValues.contentModificationDate ?? Date.distantPast
                 let relativePath = fileURL.path.replacingOccurrences(of: folderURL.path + "/", with: "")
                 let title = readFirstLine(from: fileURL)
-                
+                let contentPreview = readContentPreview(from: fileURL)
+
                 let note = NoteFile(
                     url: fileURL,
                     relativePath: relativePath,
                     modificationDate: modDate,
-                    title: title
+                    title: title,
+                    contentPreview: contentPreview
                 )
                 discoveredNotes.append(note)
             } catch {
@@ -129,12 +130,22 @@ class NoteStore: ObservableObject {
     private func readFirstLine(from url: URL) -> String {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
         defer { try? handle.close() }
-        
+
         guard let data = try? handle.read(upToCount: 256) else { return "" }
         guard let content = String(data: data, encoding: .utf8) else { return "" }
-        
+
         let firstLine = content.components(separatedBy: .newlines).first ?? ""
         return firstLine.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func readContentPreview(from url: URL, maxBytes: Int = 2048) -> String {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
+        defer { try? handle.close() }
+
+        guard let data = try? handle.read(upToCount: maxBytes) else { return "" }
+        guard let content = String(data: data, encoding: .utf8) else { return "" }
+
+        return content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
     private func saveFolder(_ url: URL) {
