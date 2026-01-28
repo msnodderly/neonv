@@ -168,6 +168,13 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .togglePreview)) { _ in
             togglePreview()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .deleteNote)) { _ in
+            guard focusedField == .noteList else { return }
+            if let id = selectedNoteID,
+               let note = noteStore.notes.first(where: { $0.id == id }) {
+                noteToDelete = note
+            }
+        }
     }
 
     private func focusSearch() {
@@ -648,13 +655,6 @@ struct NoteListView: View {
                     }
                     if press.key == .rightArrow {
                         onTabToEditor()
-                        return .handled
-                    }
-                    if press.key == .delete || press.key == .deleteForward {
-                        if let id = selectedNoteID,
-                           let note = notes.first(where: { $0.id == id }) {
-                            onDeleteNote?(note)
-                        }
                         return .handled
                     }
                     return .ignored
