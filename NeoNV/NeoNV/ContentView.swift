@@ -133,8 +133,18 @@ struct ContentView: View {
     }
 
     private func createNewNoteFromShortcut() {
-        focusedField = .search
+        guard noteStore.selectedFolderURL != nil else { return }
+        
         searchText = ""
+        
+        if let newNote = noteStore.createNewUnsavedNote() {
+            unsavedNoteIDs.insert(newNote.id)
+            selectedNoteID = newNote.id
+            originalContent = ""
+            editorContent = ""
+            isDirty = false
+            focusedField = .editor
+        }
     }
     
     private func autoSelectTopMatch() {
@@ -164,6 +174,14 @@ struct ContentView: View {
     private func loadSelectedNote(id: UUID?) {
         guard let id = id,
               let note = noteStore.notes.first(where: { $0.id == id }) else {
+            originalContent = ""
+            editorContent = ""
+            isDirty = false
+            return
+        }
+
+        // Skip file loading for unsaved notes - file doesn't exist on disk yet
+        if unsavedNoteIDs.contains(id) {
             originalContent = ""
             editorContent = ""
             isDirty = false

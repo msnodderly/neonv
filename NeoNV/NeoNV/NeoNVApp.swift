@@ -35,7 +35,7 @@ struct NeoNVApp: App {
         .windowResizability(.contentSize)
         .defaultSize(width: 900, height: 600)
         .commands {
-            CommandGroup(after: .newItem) {
+            CommandGroup(replacing: .newItem) {
                 Button("New Note") {
                     NotificationCenter.default.post(name: .createNewNote, object: nil)
                 }

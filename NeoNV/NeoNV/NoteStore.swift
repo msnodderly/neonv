@@ -10,13 +10,14 @@ struct NoteFile: Identifiable, Equatable {
     var contentPreview: String
     var isUnsaved: Bool = false
     
-    init(url: URL, relativePath: String, modificationDate: Date, title: String, contentPreview: String = "") {
+    init(url: URL, relativePath: String, modificationDate: Date, title: String, contentPreview: String = "", isUnsaved: Bool = false) {
         self.id = UUID()
         self.url = url
         self.relativePath = relativePath
         self.modificationDate = modificationDate
         self.title = title
         self.contentPreview = contentPreview
+        self.isUnsaved = isUnsaved
     }
     
     func matches(query: String) -> Bool {
@@ -66,6 +67,28 @@ class NoteStore: ObservableObject {
     
     init() {
         loadSavedFolder()
+    }
+    
+    func createNewUnsavedNote() -> NoteFile? {
+        guard let folderURL = selectedFolderURL else { return nil }
+        
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let timestamp = formatter.string(from: Date())
+        let fileName = "untitled-\(timestamp).md"
+        let fileURL = folderURL.appendingPathComponent(fileName)
+        
+        let note = NoteFile(
+            url: fileURL,
+            relativePath: fileName,
+            modificationDate: Date(),
+            title: "",
+            contentPreview: "",
+            isUnsaved: true
+        )
+        
+        notes.insert(note, at: 0)
+        return note
     }
     
     func selectFolder() {
