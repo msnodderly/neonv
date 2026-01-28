@@ -114,7 +114,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
     func markAsSavedLocally(_ url: URL) {
         recentlySavedURLs.insert(url)
         Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(500))
+            try? await Task.sleep(for: .seconds(1))
             self.recentlySavedURLs.remove(url)
         }
     }
@@ -125,7 +125,13 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         for event in events {
             switch event {
             case .created(let url):
+                let existed = notes.contains { $0.url == url }
                 addOrUpdateNote(at: url, folderURL: folderURL)
+                // Atomic saves (vim, VS Code, etc.) appear as rename/create, not modify.
+                // Treat a "create" on an already-tracked file as a modification.
+                if existed && !recentlySavedURLs.contains(url) {
+                    lastExternalChange = ExternalChangeEvent(url: url, kind: .modified)
+                }
 
             case .modified(let url):
                 addOrUpdateNote(at: url, folderURL: folderURL)
@@ -135,15 +141,23 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
 
             case .deleted(let url):
                 notes.removeAll { $0.url == url }
-                lastExternalChange = ExternalChangeEvent(url: url, kind: .deleted)
+                if !recentlySavedURLs.contains(url) {
+                    lastExternalChange = ExternalChangeEvent(url: url, kind: .deleted)
+                }
 
             case .renamed(let oldURL, let newURL):
                 if let oldURL = oldURL {
                     notes.removeAll { $0.url == oldURL }
-                    lastExternalChange = ExternalChangeEvent(url: oldURL, kind: .deleted)
+                    if !recentlySavedURLs.contains(oldURL) {
+                        lastExternalChange = ExternalChangeEvent(url: oldURL, kind: .deleted)
+                    }
                 }
                 if let newURL = newURL {
+                    let existed = notes.contains { $0.url == newURL }
                     addOrUpdateNote(at: newURL, folderURL: folderURL)
+                    if existed && !recentlySavedURLs.contains(newURL) {
+                        lastExternalChange = ExternalChangeEvent(url: newURL, kind: .modified)
+                    }
                 }
             }
         }
