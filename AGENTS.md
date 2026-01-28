@@ -2,7 +2,18 @@
 
 This document captures workflows, patterns, gotchas, and learnings for AI-assisted development of neonv.
 
-**Continuous Improvement:** Update this document as you work. When you discover new patterns, encounter gotchas, or learn something that would help future agents, add it here. This is a living document—keeping it current is part of your workflow, not an afterthought.
+---
+
+## ⚠️ BEFORE COMPLETING YOUR TASK
+
+**You MUST update this file (AGENTS.md) before finishing.** This is part of the task, not optional.
+
+Ask yourself:
+- Did I learn a new SwiftUI/AppKit pattern? → Add to **Patterns** section
+- Did I hit a confusing error or unexpected behavior? → Add to **Gotchas** section
+- Did I find a useful command or workflow? → Add to relevant section
+
+Even small discoveries help future agents. If you learned nothing new, that's fine—but actively check.
 
 ---
 
@@ -551,6 +562,85 @@ if !text.isEmpty {
 ```
 
 **Key insight:** Single input for both search and create eliminates decision friction.
+
+### Settings Scene for Cmd+, Preferences
+
+**Pattern:** Use SwiftUI's `Settings` scene to add a standard preferences window.
+
+```swift
+@main
+struct MyApp: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+
+        Settings {
+            SettingsView()
+        }
+    }
+}
+```
+
+This automatically:
+- Responds to Cmd+, keyboard shortcut
+- Creates a standard macOS preferences window
+- Adds "Settings..." to the app menu
+
+### Sharing State Between Scenes
+
+**Pattern:** When multiple scenes need the same data (e.g., main window and settings), create the `@StateObject` in the App struct and pass it to both scenes.
+
+```swift
+@main
+struct MyApp: App {
+    @StateObject private var sharedStore = DataStore()
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView(store: sharedStore)
+        }
+
+        Settings {
+            SettingsView(store: sharedStore)
+        }
+    }
+}
+```
+
+**Important:** The receiving views should use `@ObservedObject`, not `@StateObject`:
+```swift
+struct ContentView: View {
+    @ObservedObject var store: DataStore  // Not @StateObject
+}
+```
+
+### Singleton Settings with UserDefaults
+
+**Pattern:** For app-wide settings that need to be accessed from multiple places, use a singleton with `@Published` properties backed by `UserDefaults`.
+
+```swift
+@MainActor
+class AppSettings: ObservableObject {
+    static let shared = AppSettings()
+
+    @Published var fontSize: Double {
+        didSet {
+            UserDefaults.standard.set(fontSize, forKey: "fontSize")
+        }
+    }
+
+    private init() {
+        let stored = UserDefaults.standard.double(forKey: "fontSize")
+        self.fontSize = stored > 0 ? stored : 13.0  // Default value
+    }
+}
+
+// Usage in views:
+@ObservedObject private var settings = AppSettings.shared
+```
+
+**Note:** Changes to `@Published` properties automatically trigger UI updates in any view observing the singleton.
 
 ### Filename Sanitization
 

@@ -71,11 +71,12 @@ class NoteStore: ObservableObject {
     
     func createNewUnsavedNote() -> NoteFile? {
         guard let folderURL = selectedFolderURL else { return nil }
-        
+
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd-HHmmss"
         let timestamp = formatter.string(from: Date())
-        let fileName = "untitled-\(timestamp).md"
+        let ext = AppSettings.shared.defaultExtension.rawValue
+        let fileName = "untitled-\(timestamp).\(ext)"
         let fileURL = folderURL.appendingPathComponent(fileName)
         
         let note = NoteFile(

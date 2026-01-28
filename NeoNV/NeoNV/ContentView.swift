@@ -7,7 +7,7 @@ enum FocusedField: Hashable {
 }
 
 struct ContentView: View {
-    @StateObject private var noteStore = NoteStore()
+    @ObservedObject var noteStore: NoteStore
     @State private var searchText = ""
     @State private var selectedNoteID: UUID?
     @State private var lastManualSelection: UUID?
@@ -230,7 +230,8 @@ struct ContentView: View {
         }
 
         let fileName = sanitizeFileName(searchText)
-        let fileURL = folderURL.appendingPathComponent(fileName + ".md")
+        let ext = AppSettings.shared.defaultExtension.rawValue
+        let fileURL = folderURL.appendingPathComponent(fileName + ".\(ext)")
 
         let initialContent = searchText + "\n\n"
 
@@ -573,12 +574,14 @@ struct NoteListView: View {
 struct EditorView: View {
     @Binding var content: String
     @FocusState var focusedField: FocusedField?
+    @ObservedObject private var settings = AppSettings.shared
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
-    
+
     var body: some View {
         PlainTextEditor(
             text: $content,
+            fontSize: CGFloat(settings.fontSize),
             onShiftTab: onShiftTab,
             onEscape: onEscape
         )
@@ -587,5 +590,5 @@ struct EditorView: View {
 }
 
 #Preview {
-    ContentView()
+    ContentView(noteStore: NoteStore())
 }

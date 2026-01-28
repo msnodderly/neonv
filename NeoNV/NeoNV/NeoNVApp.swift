@@ -27,10 +27,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 @main
 struct NeoNVApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @StateObject private var noteStore = NoteStore()
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(noteStore: noteStore)
         }
         .windowResizability(.contentSize)
         .defaultSize(width: 900, height: 600)
@@ -48,6 +49,10 @@ struct NeoNVApp: App {
                 }
                 .keyboardShortcut("l", modifiers: .command)
             }
+        }
+
+        Settings {
+            SettingsView(noteStore: noteStore)
         }
     }
 }
