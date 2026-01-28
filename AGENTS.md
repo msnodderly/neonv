@@ -73,6 +73,27 @@ bd worktree info    # Show current worktree details
 bd worktree remove <name>  # Cleanup after merge (includes safety checks)
 ```
 
+### Cleaning Up Worktrees
+
+Check status of all worktrees:
+```bash
+bd worktree list
+# For each worktree, check git status and unpushed commits:
+git -C <worktree-path> status --short
+git -C <worktree-path> log origin/main..HEAD --oneline
+```
+
+Check for existing PRs (to identify already-merged work):
+```bash
+gh pr list --state all --json headRefName,state,title
+```
+
+Remove worktrees:
+```bash
+bd worktree remove <name>          # Safe removal (checks for unpushed work)
+bd worktree remove <name> --force  # Force removal (discards local work)
+```
+
 ---
 
 ## Syncing Changes
