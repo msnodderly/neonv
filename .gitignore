@@ -75,3 +75,9 @@ testnotes/
 testnotes/*
 issues.txt
 keyboard-shortcuts/
+# bd worktree
+fsevents-watching/
+# bd worktree
+external-edit-reload/
+# bd worktree
+neonv-naming/
