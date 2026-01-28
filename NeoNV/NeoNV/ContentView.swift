@@ -66,7 +66,7 @@ struct ContentView: View {
                         onEnterToEditor: { focusedField = .editor },
                         onEscapeToSearch: { focusedField = .search }
                     )
-                    .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
+                    .frame(minWidth: 200, idealWidth: 300, maxWidth: 450)
 
                     if showPreview {
                         MarkdownPreviewView(
