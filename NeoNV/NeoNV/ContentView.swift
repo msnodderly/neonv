@@ -4,6 +4,7 @@ enum FocusedField: Hashable {
     case search
     case noteList
     case editor
+    case preview
 }
 
 struct ContentView: View {
@@ -18,6 +19,7 @@ struct ContentView: View {
     @State private var saveTask: Task<Void, Never>?
     @State private var saveError: SaveError?
     @State private var unsavedNoteIDs: Set<UUID> = []
+    @State private var showPreview = false
     @FocusState private var focusedField: FocusedField?
 
     struct SaveError: Identifiable {
@@ -66,13 +68,24 @@ struct ContentView: View {
                     )
                     .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
 
-                    EditorView(
-                        content: $editorContent,
-                        focusedField: _focusedField,
-                        onShiftTab: { focusedField = .noteList },
-                        onEscape: { focusedField = .noteList }
-                    )
-                    .frame(minWidth: 300)
+                    if showPreview {
+                        MarkdownPreviewView(
+                            content: editorContent,
+                            fontSize: CGFloat(AppSettings.shared.fontSize),
+                            onShiftTab: { focusedField = .noteList },
+                            onTypeToEdit: { switchToEditor() }
+                        )
+                        .focused($focusedField, equals: .preview)
+                        .frame(minWidth: 300)
+                    } else {
+                        EditorView(
+                            content: $editorContent,
+                            focusedField: _focusedField,
+                            onShiftTab: { focusedField = .noteList },
+                            onEscape: { focusedField = .noteList }
+                        )
+                        .frame(minWidth: 300)
+                    }
                 }
             }
         }
@@ -89,6 +102,12 @@ struct ContentView: View {
                         .frame(width: 8, height: 8)
                         .help("Unsaved changes")
                 }
+            }
+            ToolbarItem(placement: .automatic) {
+                Button(action: togglePreview) {
+                    Image(systemName: showPreview ? "eye.fill" : "eye")
+                }
+                .help(showPreview ? "Hide preview (⌘P)" : "Show preview (⌘P)")
             }
             ToolbarItem(placement: .automatic) {
                 Button(action: noteStore.selectFolder) {
@@ -127,10 +146,27 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .createNewNote)) { _ in
             createNewNoteFromShortcut()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .togglePreview)) { _ in
+            togglePreview()
+        }
     }
 
     private func focusSearch() {
         focusedField = .search
+    }
+
+    private func togglePreview() {
+        showPreview.toggle()
+        if showPreview {
+            focusedField = .preview
+        } else {
+            focusedField = .editor
+        }
+    }
+
+    private func switchToEditor() {
+        showPreview = false
+        focusedField = .editor
     }
 
     private func createNewNoteFromShortcut() {
