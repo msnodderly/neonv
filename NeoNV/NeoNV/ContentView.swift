@@ -21,7 +21,16 @@ struct ContentView: View {
     @State private var unsavedNoteIDs: Set<UUID> = []
     @State private var showPreview = false
     @State private var noteToDelete: NoteFile?
+    @State private var externalConflict: ExternalConflict?
+    @State private var externalToastMessage: String?
+    @State private var selectedNoteURL: URL?
     @FocusState private var focusedField: FocusedField?
+
+    struct ExternalConflict: Identifiable {
+        let id = UUID()
+        let url: URL
+        let externalContent: String
+    }
 
     struct SaveError: Identifiable {
         let id = UUID()
@@ -127,6 +136,11 @@ struct ContentView: View {
         .onChange(of: searchText) { _, newText in
             autoSelectTopMatch()
         }
+        .onChange(of: noteStore.lastExternalChange) { _, change in
+            if let change = change {
+                handleExternalChange(change)
+            }
+        }
         .alert(item: $saveError) { error in
             Alert(
                 title: Text("Save Failed"),
@@ -140,6 +154,39 @@ struct ContentView: View {
                     showSaveErrorSheet(error: error)
                 }
             )
+        }
+        .alert(item: $externalConflict) { conflict in
+            Alert(
+                title: Text("File Changed Externally"),
+                message: Text("\(conflict.url.lastPathComponent) was modified outside neonv.\n\nYou have unsaved changes. What would you like to do?"),
+                primaryButton: .default(Text("Keep Mine")) {
+                    // Keep current editor content, mark dirty to re-save
+                    isDirty = true
+                    scheduleAutoSave()
+                },
+                secondaryButton: .destructive(Text("Use External")) {
+                    editorContent = conflict.externalContent
+                    originalContent = conflict.externalContent
+                    isDirty = false
+                }
+            )
+        }
+        .overlay(alignment: .bottom) {
+            if let message = externalToastMessage {
+                Text(message)
+                    .font(.system(size: 12))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                    .padding(.bottom, 8)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .onAppear {
+                        Task {
+                            try? await Task.sleep(for: .seconds(2))
+                            withAnimation { externalToastMessage = nil }
+                        }
+                    }
+            }
         }
         .disabled(saveError != nil)
         .alert("Delete Note", isPresented: Binding(
@@ -225,6 +272,37 @@ struct ContentView: View {
         focusedField = .editor
     }
 
+    private func handleExternalChange(_ change: ExternalChangeEvent) {
+        switch change.kind {
+        case .modified:
+            guard let selectedID = selectedNoteID,
+                  let selectedNote = noteStore.notes.first(where: { $0.id == selectedID }),
+                  selectedNote.url == change.url else { return }
+
+            Task {
+                guard let newContent = try? await loadFileAsync(url: change.url) else { return }
+                await MainActor.run {
+                    if isDirty {
+                        externalConflict = ExternalConflict(url: change.url, externalContent: newContent)
+                    } else {
+                        editorContent = newContent
+                        originalContent = newContent
+                        withAnimation { externalToastMessage = "Reloaded — file changed externally" }
+                    }
+                }
+            }
+        case .deleted:
+            guard selectedNoteURL == change.url else { return }
+            let name = change.url.lastPathComponent
+            editorContent = ""
+            originalContent = ""
+            isDirty = false
+            selectedNoteID = nil
+            selectedNoteURL = nil
+            withAnimation { externalToastMessage = "\(name) was deleted externally" }
+        }
+    }
+
     private func createNewNoteFromShortcut() {
         guard noteStore.selectedFolderURL != nil else { return }
         
@@ -267,11 +345,13 @@ struct ContentView: View {
     private func loadSelectedNote(id: UUID?) {
         guard let id = id,
               let note = noteStore.notes.first(where: { $0.id == id }) else {
+            selectedNoteURL = nil
             originalContent = ""
             editorContent = ""
             isDirty = false
             return
         }
+        selectedNoteURL = note.url
 
         // Skip file loading for unsaved notes - file doesn't exist on disk yet
         if unsavedNoteIDs.contains(id) {
@@ -329,6 +409,7 @@ struct ContentView: View {
 
         Task {
             do {
+                noteStore.markAsSavedLocally(fileURL)
                 try await atomicWrite(content: initialContent, to: fileURL)
 
                 await noteStore.discoverFiles()
@@ -402,6 +483,7 @@ struct ContentView: View {
         let content = editorContent
 
         do {
+            noteStore.markAsSavedLocally(note.url)
             try await atomicWrite(content: content, to: note.url)
             await MainActor.run {
                 originalContent = content
