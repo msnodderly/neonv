@@ -30,6 +30,3 @@ Open `NeoNV.xcodeproj` in Xcode 15+ and build (⌘B).
 xcodebuild -scheme NeoNV -configuration Release
 ```
 
-## License
-
-MIT License. See [LICENSE](LICENSE) for details.
