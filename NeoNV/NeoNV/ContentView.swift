@@ -23,6 +23,8 @@ struct ContentView: View {
     @State private var noteToDelete: NoteFile?
     @State private var externalConflict: ExternalConflict?
     @State private var showExternalReloadToast = false
+    @State private var selectedNoteURL: URL?
+    @State private var deletedNoteName: String?
     @FocusState private var focusedField: FocusedField?
 
     struct ExternalConflict: Identifiable {
@@ -78,7 +80,16 @@ struct ContentView: View {
                     )
                     .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
 
-                    if showPreview {
+                    if let name = deletedNoteName {
+                        VStack(spacing: 8) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 32))
+                                .foregroundColor(.secondary)
+                            Text("\(name) was deleted externally.")
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if showPreview {
                         MarkdownPreviewView(
                             content: editorContent,
                             fontSize: CGFloat(AppSettings.shared.fontSize),
@@ -272,13 +283,12 @@ struct ContentView: View {
     }
 
     private func handleExternalChange(_ change: ExternalChangeEvent) {
-        guard let selectedID = selectedNoteID,
-              let selectedNote = noteStore.notes.first(where: { $0.id == selectedID }) else { return }
-
-        guard selectedNote.url == change.url else { return }
-
         switch change.kind {
         case .modified:
+            guard let selectedID = selectedNoteID,
+                  let selectedNote = noteStore.notes.first(where: { $0.id == selectedID }),
+                  selectedNote.url == change.url else { return }
+
             Task {
                 guard let newContent = try? await loadFileAsync(url: change.url) else { return }
                 await MainActor.run {
@@ -292,10 +302,14 @@ struct ContentView: View {
                 }
             }
         case .deleted:
+            guard selectedNoteURL == change.url else { return }
+            let name = change.url.lastPathComponent
             editorContent = ""
             originalContent = ""
             isDirty = false
             selectedNoteID = nil
+            selectedNoteURL = nil
+            deletedNoteName = name
         }
     }
 
@@ -339,13 +353,16 @@ struct ContentView: View {
     }
 
     private func loadSelectedNote(id: UUID?) {
+        deletedNoteName = nil
         guard let id = id,
               let note = noteStore.notes.first(where: { $0.id == id }) else {
+            selectedNoteURL = nil
             originalContent = ""
             editorContent = ""
             isDirty = false
             return
         }
+        selectedNoteURL = note.url
 
         // Skip file loading for unsaved notes - file doesn't exist on disk yet
         if unsavedNoteIDs.contains(id) {
