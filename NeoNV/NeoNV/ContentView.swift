@@ -133,8 +133,18 @@ struct ContentView: View {
     }
 
     private func createNewNoteFromShortcut() {
-        focusedField = .search
+        guard noteStore.selectedFolderURL != nil else { return }
+        
         searchText = ""
+        
+        if let newNote = noteStore.createNewUnsavedNote() {
+            unsavedNoteIDs.insert(newNote.id)
+            selectedNoteID = newNote.id
+            originalContent = ""
+            editorContent = ""
+            isDirty = false
+            focusedField = .editor
+        }
     }
     
     private func autoSelectTopMatch() {
