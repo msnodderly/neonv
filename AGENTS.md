@@ -2,7 +2,18 @@
 
 This document captures workflows, patterns, gotchas, and learnings for AI-assisted development of neonv.
 
-**Continuous Improvement:** Update this document as you work. When you discover new patterns, encounter gotchas, or learn something that would help future agents, add it here. This is a living document—keeping it current is part of your workflow, not an afterthought.
+---
+
+## ⚠️ BEFORE COMPLETING YOUR TASK
+
+**You MUST update this file (AGENTS.md) before finishing.** This is part of the task, not optional.
+
+Ask yourself:
+- Did I learn a new SwiftUI/AppKit pattern? → Add to **Patterns** section
+- Did I hit a confusing error or unexpected behavior? → Add to **Gotchas** section
+- Did I find a useful command or workflow? → Add to relevant section
+
+Even small discoveries help future agents. If you learned nothing new, that's fine—but actively check.
 
 ---
 
