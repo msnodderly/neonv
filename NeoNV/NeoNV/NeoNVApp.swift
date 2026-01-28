@@ -54,6 +54,15 @@ struct NeoNVApp: App {
                 }
                 .keyboardShortcut("p", modifiers: .command)
             }
+
+            CommandGroup(replacing: .printItem) { }
+
+            CommandGroup(after: .pasteboard) {
+                Button("Delete Note") {
+                    NotificationCenter.default.post(name: .deleteNote, object: nil)
+                }
+                .keyboardShortcut(.delete, modifiers: [])
+            }
         }
 
         Settings {
@@ -66,4 +75,5 @@ extension Notification.Name {
     static let focusSearch = Notification.Name("focusSearch")
     static let createNewNote = Notification.Name("createNewNote")
     static let togglePreview = Notification.Name("togglePreview")
+    static let deleteNote = Notification.Name("deleteNote")
 }

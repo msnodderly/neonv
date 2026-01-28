@@ -20,6 +20,7 @@ struct ContentView: View {
     @State private var saveError: SaveError?
     @State private var unsavedNoteIDs: Set<UUID> = []
     @State private var showPreview = false
+    @State private var noteToDelete: NoteFile?
     @FocusState private var focusedField: FocusedField?
 
     struct SaveError: Identifiable {
@@ -64,7 +65,8 @@ struct ContentView: View {
                         onTabToEditor: { focusedField = .editor },
                         onShiftTabToSearch: { focusedField = .search },
                         onEnterToEditor: { focusedField = .editor },
-                        onEscapeToSearch: { focusedField = .search }
+                        onEscapeToSearch: { focusedField = .search },
+                        onDeleteNote: { note in noteToDelete = note }
                     )
                     .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
 
@@ -140,6 +142,23 @@ struct ContentView: View {
             )
         }
         .disabled(saveError != nil)
+        .alert("Delete Note", isPresented: Binding(
+            get: { noteToDelete != nil },
+            set: { if !$0 { noteToDelete = nil } }
+        )) {
+            Button("Cancel", role: .cancel) {
+                noteToDelete = nil
+            }
+            Button("Delete", role: .destructive) {
+                if let note = noteToDelete {
+                    deleteNote(note)
+                }
+            }
+        } message: {
+            if let note = noteToDelete {
+                Text("Are you sure you want to delete \"\(note.displayTitle)\"? This action cannot be undone.")
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .focusSearch)) { _ in
             focusSearch()
         }
@@ -149,10 +168,47 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .togglePreview)) { _ in
             togglePreview()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .deleteNote)) { _ in
+            guard focusedField == .noteList else { return }
+            if let id = selectedNoteID,
+               let note = noteStore.notes.first(where: { $0.id == id }) {
+                noteToDelete = note
+            }
+        }
     }
 
     private func focusSearch() {
         focusedField = .search
+    }
+
+    private func deleteNote(_ note: NoteFile) {
+        let notes = filteredNotes
+        let currentIndex = notes.firstIndex(where: { $0.id == note.id })
+
+        do {
+            try noteStore.deleteNote(id: note.id)
+            unsavedNoteIDs.remove(note.id)
+
+            // Select adjacent note
+            if let idx = currentIndex {
+                let remaining = filteredNotes
+                if !remaining.isEmpty {
+                    let newIndex = min(idx, remaining.count - 1)
+                    selectedNoteID = remaining[newIndex].id
+                } else {
+                    selectedNoteID = nil
+                }
+            }
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Failed to Delete Note"
+            alert.informativeText = "Could not delete \"\(note.displayTitle)\":\n\n\(error.localizedDescription)"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        }
+
+        noteToDelete = nil
     }
 
     private func togglePreview() {
@@ -553,7 +609,8 @@ struct NoteListView: View {
     var onShiftTabToSearch: () -> Void
     var onEnterToEditor: () -> Void
     var onEscapeToSearch: () -> Void
-    
+    var onDeleteNote: ((NoteFile) -> Void)?
+
     var body: some View {
         Group {
             if isLoading {
