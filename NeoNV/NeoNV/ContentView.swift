@@ -66,18 +66,9 @@ struct ContentView: View {
                         onEnterToEditor: { focusedField = .editor },
                         onEscapeToSearch: { focusedField = .search }
                     )
-                    .frame(minWidth: 200, idealWidth: 300, maxWidth: 350)
+                    .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
 
-                    ZStack {
-                        EditorView(
-                            content: $editorContent,
-                            focusedField: _focusedField,
-                            onShiftTab: { focusedField = .noteList },
-                            onEscape: { focusedField = .noteList }
-                        )
-                        .opacity(showPreview ? 0 : 1)
-                        .allowsHitTesting(!showPreview)
-
+                    if showPreview {
                         MarkdownPreviewView(
                             content: editorContent,
                             fontSize: CGFloat(AppSettings.shared.fontSize),
@@ -85,10 +76,16 @@ struct ContentView: View {
                             onTypeToEdit: { switchToEditor() }
                         )
                         .focused($focusedField, equals: .preview)
-                        .opacity(showPreview ? 1 : 0)
-                        .allowsHitTesting(showPreview)
+                        .frame(minWidth: 300)
+                    } else {
+                        EditorView(
+                            content: $editorContent,
+                            focusedField: _focusedField,
+                            onShiftTab: { focusedField = .noteList },
+                            onEscape: { focusedField = .noteList }
+                        )
+                        .frame(minWidth: 300)
                     }
-                    .frame(minWidth: 300)
                 }
             }
         }
