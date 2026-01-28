@@ -57,12 +57,27 @@ struct NoteFile: Identifiable, Equatable {
     }
 }
 
+struct ExternalChangeEvent: Equatable {
+    let id = UUID()
+    let url: URL
+    enum Kind {
+        case modified
+        case deleted
+    }
+    let kind: Kind
+
+    static func == (lhs: ExternalChangeEvent, rhs: ExternalChangeEvent) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
 @MainActor
 class NoteStore: ObservableObject, FileWatcherDelegate {
     @Published var notes: [NoteFile] = []
     @Published var selectedFolderURL: URL?
     @Published var isLoading = false
-    
+    @Published var lastExternalChange: ExternalChangeEvent?
+
     private let allowedExtensions: Set<String> = ["txt", "md", "markdown", "org", "text"]
     private let folderBookmarkKey = "selectedFolderBookmark"
     private var fileWatcher: FileWatcher?
@@ -93,30 +108,46 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         }
     }
     
+    /// URLs of files whose content was written by this app (to ignore self-triggered FSEvents)
+    private var recentlySavedURLs: Set<URL> = []
+
+    func markAsSavedLocally(_ url: URL) {
+        recentlySavedURLs.insert(url)
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(500))
+            self.recentlySavedURLs.remove(url)
+        }
+    }
+
     private func handleFileChanges(_ events: [FileChangeEvent]) {
         guard let folderURL = selectedFolderURL else { return }
-        
+
         for event in events {
             switch event {
             case .created(let url):
                 addOrUpdateNote(at: url, folderURL: folderURL)
-                
+
             case .modified(let url):
                 addOrUpdateNote(at: url, folderURL: folderURL)
-                
+                if !recentlySavedURLs.contains(url) {
+                    lastExternalChange = ExternalChangeEvent(url: url, kind: .modified)
+                }
+
             case .deleted(let url):
                 notes.removeAll { $0.url == url }
-                
+                lastExternalChange = ExternalChangeEvent(url: url, kind: .deleted)
+
             case .renamed(let oldURL, let newURL):
                 if let oldURL = oldURL {
                     notes.removeAll { $0.url == oldURL }
+                    lastExternalChange = ExternalChangeEvent(url: oldURL, kind: .deleted)
                 }
                 if let newURL = newURL {
                     addOrUpdateNote(at: newURL, folderURL: folderURL)
                 }
             }
         }
-        
+
         notes.sort { $0.modificationDate > $1.modificationDate }
     }
     

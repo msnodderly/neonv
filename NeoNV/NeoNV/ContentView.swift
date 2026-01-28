@@ -21,7 +21,15 @@ struct ContentView: View {
     @State private var unsavedNoteIDs: Set<UUID> = []
     @State private var showPreview = false
     @State private var noteToDelete: NoteFile?
+    @State private var externalConflict: ExternalConflict?
+    @State private var showExternalReloadToast = false
     @FocusState private var focusedField: FocusedField?
+
+    struct ExternalConflict: Identifiable {
+        let id = UUID()
+        let url: URL
+        let externalContent: String
+    }
 
     struct SaveError: Identifiable {
         let id = UUID()
@@ -127,6 +135,11 @@ struct ContentView: View {
         .onChange(of: searchText) { _, newText in
             autoSelectTopMatch()
         }
+        .onChange(of: noteStore.lastExternalChange) { _, change in
+            if let change = change {
+                handleExternalChange(change)
+            }
+        }
         .alert(item: $saveError) { error in
             Alert(
                 title: Text("Save Failed"),
@@ -140,6 +153,39 @@ struct ContentView: View {
                     showSaveErrorSheet(error: error)
                 }
             )
+        }
+        .alert(item: $externalConflict) { conflict in
+            Alert(
+                title: Text("File Changed Externally"),
+                message: Text("\(conflict.url.lastPathComponent) was modified outside neonv.\n\nYou have unsaved changes. What would you like to do?"),
+                primaryButton: .default(Text("Keep Mine")) {
+                    // Keep current editor content, mark dirty to re-save
+                    isDirty = true
+                    scheduleAutoSave()
+                },
+                secondaryButton: .destructive(Text("Use External")) {
+                    editorContent = conflict.externalContent
+                    originalContent = conflict.externalContent
+                    isDirty = false
+                }
+            )
+        }
+        .overlay(alignment: .bottom) {
+            if showExternalReloadToast {
+                Text("Reloaded — file changed externally")
+                    .font(.system(size: 12))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                    .padding(.bottom, 8)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .onAppear {
+                        Task {
+                            try? await Task.sleep(for: .seconds(2))
+                            withAnimation { showExternalReloadToast = false }
+                        }
+                    }
+            }
         }
         .disabled(saveError != nil)
         .alert("Delete Note", isPresented: Binding(
@@ -223,6 +269,34 @@ struct ContentView: View {
     private func switchToEditor() {
         showPreview = false
         focusedField = .editor
+    }
+
+    private func handleExternalChange(_ change: ExternalChangeEvent) {
+        guard let selectedID = selectedNoteID,
+              let selectedNote = noteStore.notes.first(where: { $0.id == selectedID }) else { return }
+
+        guard selectedNote.url == change.url else { return }
+
+        switch change.kind {
+        case .modified:
+            Task {
+                guard let newContent = try? await loadFileAsync(url: change.url) else { return }
+                await MainActor.run {
+                    if isDirty {
+                        externalConflict = ExternalConflict(url: change.url, externalContent: newContent)
+                    } else {
+                        editorContent = newContent
+                        originalContent = newContent
+                        withAnimation { showExternalReloadToast = true }
+                    }
+                }
+            }
+        case .deleted:
+            editorContent = ""
+            originalContent = ""
+            isDirty = false
+            selectedNoteID = nil
+        }
     }
 
     private func createNewNoteFromShortcut() {
@@ -329,6 +403,7 @@ struct ContentView: View {
 
         Task {
             do {
+                noteStore.markAsSavedLocally(fileURL)
                 try await atomicWrite(content: initialContent, to: fileURL)
 
                 await noteStore.discoverFiles()
@@ -402,6 +477,7 @@ struct ContentView: View {
         let content = editorContent
 
         do {
+            noteStore.markAsSavedLocally(note.url)
             try await atomicWrite(content: content, to: note.url)
             await MainActor.run {
                 originalContent = content
