@@ -540,6 +540,10 @@ struct NoteListView: View {
                         onEscapeToSearch()
                         return .handled
                     }
+                    if press.key == .rightArrow {
+                        onTabToEditor()
+                        return .handled
+                    }
                     return .ignored
                 }
             }

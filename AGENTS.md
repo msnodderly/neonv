@@ -49,10 +49,10 @@ bd show <id>                  View task details and audit trail
 bd update <id> --status in_progress   Claim a task
 bd close <id> --reason "..."  Close a completed task
 bd dep add <child> <parent>   Link tasks (blocks, related, parent-child)
-bd sync                       Immediately export/commit/push changes
+bd sync --full                Immediately export/commit/push issue changes
 ```
 
-**WARNING:** Do NOT use `bd edit` — it opens an interactive editor which AI agents cannot use. Use `bd update` with flags instead:
+**WARNING:** Do not use `bd edit` — it opens an interactive editor which AI agents cannot use. Use `bd update` with flags instead:
 
 ```bash
 bd update <id> --description "new description"
@@ -128,24 +128,44 @@ Use `--force` to skip checks (not recommended).
 
 **CRITICAL:** The `.beads/issues.jsonl` file is tracked in git and changes are pushed directly to `main` (no PR required).
 
+### Command Reference
+
+- `bd sync` — **Export only.** Writes pending changes to `.beads/issues.jsonl` but does NOT commit or push.
+- `bd sync --full` — **Full sync.** Exports, pulls, merges, commits, and pushes to remote.
+
+**Always use `bd sync --full`** when you need changes pushed to GitHub.
+
 ### When to Sync
 
-Run `bd sync` at these points:
+Run `bd sync --full` at these points:
 1. **Before ending your session** (mandatory)
 2. After closing a task
 3. After creating/updating tasks
 4. Before pushing your feature branch
 
+### How to Sync
+
+**Step 1:** Stash any uncommitted work (required — sync fails with dirty working directory):
 ```bash
-bd sync
+git stash --include-untracked
 ```
 
-This immediately:
+**Step 2:** Run full sync:
+```bash
+bd sync --full
+```
+
+**Step 3:** Restore your work:
+```bash
+git stash pop
+```
+
+This sync:
 1. Exports pending changes to `.beads/issues.jsonl`
-2. **Commits to `main` branch** (switches to main temporarily)
-3. **Pushes to `origin/main`** (beads changes bypass PR workflow)
-4. Returns to your working branch
-5. Imports any updates from other agents
+2. Pulls from remote
+3. Merges changes (3-way merge)
+4. Commits to current branch
+5. Pushes to `origin`
 
 ### Why Beads Go Directly to Main
 
@@ -156,16 +176,16 @@ This immediately:
 
 ### Verification
 
-**Always verify after `bd sync`:**
+**Always verify after `bd sync --full`:**
 ```bash
-git status  # Should show clean working directory on your feature branch
-git log origin/main -1 --oneline  # Should show recent beads commit on main
+git status  # Should show no uncommitted .beads/ changes
+git log origin/main -1 --oneline  # Should show recent "bd sync: <timestamp>" commit
 ```
 
-If `bd sync` fails or `.beads/issues.jsonl` shows as modified:
+If `bd sync --full` fails or `.beads/issues.jsonl` shows as modified:
 ```bash
 # Manual sync (last resort)
-git stash  # Save your work
+git stash --include-untracked
 git checkout main
 git pull
 git add .beads/issues.jsonl
@@ -206,14 +226,16 @@ xcodebuild -scheme NeoNV -destination 'platform=macOS' build
 bd close <id> --reason "Completed"
 
 # Sync beads to main (pushes .beads/issues.jsonl directly to origin/main)
-bd sync
+git stash --include-untracked
+bd sync --full
+git stash pop
 
 # Verify sync succeeded
-git status  # Should show clean working directory
-git log origin/main -1 --oneline  # Should show recent beads commit
+git status  # Should show no uncommitted .beads/ changes
+git log origin/main -1 --oneline  # Should show recent "bd sync: <timestamp>" commit
 ```
 
-**CRITICAL:** If `bd sync` fails or you see uncommitted `.beads/issues.jsonl`, stop and fix before proceeding.
+**CRITICAL:** If `bd sync --full` fails or you see uncommitted `.beads/issues.jsonl`, stop and fix before proceeding.
 
 ### 2. Push Code and Create PR
 
@@ -240,7 +262,7 @@ If waiting for review, stop here and inform the user.
 ```bash
 git checkout main
 git pull
-bd sync  # Ensure local beads DB matches merged main
+bd sync  # Import any remote changes to local DB
 ```
 
 ### 5. Cleanup

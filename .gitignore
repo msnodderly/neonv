@@ -61,21 +61,17 @@ Carthage/Checkouts/
 ## Test coverage
 *.profdata
 *.profraw
-# bd worktree
 auto-naming/
-# bd worktree
 auto-select-match/
-# bd worktree
 search-selection-fix/
-# bd worktree
 unsaved-indicator/
 
 # bv (beads viewer) local config and caches
 .bv/
-# bd worktree
 opencode/
 
 # Local test files
 testnotes/
 testnotes/*
 issues.txt
+keyboard-shortcuts/
