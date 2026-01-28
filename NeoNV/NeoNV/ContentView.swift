@@ -61,7 +61,8 @@ struct ContentView: View {
                         isLoading: noteStore.isLoading,
                         onTabToEditor: { focusedField = .editor },
                         onShiftTabToSearch: { focusedField = .search },
-                        onEnterToEditor: { focusedField = .editor }
+                        onEnterToEditor: { focusedField = .editor },
+                        onEscapeToSearch: { focusedField = .search }
                     )
                     .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
                     
@@ -119,6 +120,21 @@ struct ContentView: View {
             )
         }
         .disabled(saveError != nil)
+        .onReceive(NotificationCenter.default.publisher(for: .focusSearch)) { _ in
+            focusSearch()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .createNewNote)) { _ in
+            createNewNoteFromShortcut()
+        }
+    }
+
+    private func focusSearch() {
+        focusedField = .search
+    }
+
+    private func createNewNoteFromShortcut() {
+        focusedField = .search
+        searchText = ""
     }
     
     private func autoSelectTopMatch() {
@@ -480,6 +496,7 @@ struct NoteListView: View {
     var onTabToEditor: () -> Void
     var onShiftTabToSearch: () -> Void
     var onEnterToEditor: () -> Void
+    var onEscapeToSearch: () -> Void
     
     var body: some View {
         Group {
@@ -517,6 +534,10 @@ struct NoteListView: View {
                     }
                     if press.key == .return {
                         onEnterToEditor()
+                        return .handled
+                    }
+                    if press.key == .escape {
+                        onEscapeToSearch()
                         return .handled
                     }
                     if press.key == .rightArrow {
