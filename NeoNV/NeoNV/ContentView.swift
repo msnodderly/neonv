@@ -22,9 +22,8 @@ struct ContentView: View {
     @State private var showPreview = false
     @State private var noteToDelete: NoteFile?
     @State private var externalConflict: ExternalConflict?
-    @State private var showExternalReloadToast = false
+    @State private var externalToastMessage: String?
     @State private var selectedNoteURL: URL?
-    @State private var deletedNoteName: String?
     @FocusState private var focusedField: FocusedField?
 
     struct ExternalConflict: Identifiable {
@@ -80,16 +79,7 @@ struct ContentView: View {
                     )
                     .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
 
-                    if let name = deletedNoteName {
-                        VStack(spacing: 8) {
-                            Image(systemName: "trash")
-                                .font(.system(size: 32))
-                                .foregroundColor(.secondary)
-                            Text("\(name) was deleted externally.")
-                                .foregroundColor(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if showPreview {
+                    if showPreview {
                         MarkdownPreviewView(
                             content: editorContent,
                             fontSize: CGFloat(AppSettings.shared.fontSize),
@@ -182,8 +172,8 @@ struct ContentView: View {
             )
         }
         .overlay(alignment: .bottom) {
-            if showExternalReloadToast {
-                Text("Reloaded — file changed externally")
+            if let message = externalToastMessage {
+                Text(message)
                     .font(.system(size: 12))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
@@ -193,7 +183,7 @@ struct ContentView: View {
                     .onAppear {
                         Task {
                             try? await Task.sleep(for: .seconds(2))
-                            withAnimation { showExternalReloadToast = false }
+                            withAnimation { externalToastMessage = nil }
                         }
                     }
             }
@@ -297,7 +287,7 @@ struct ContentView: View {
                     } else {
                         editorContent = newContent
                         originalContent = newContent
-                        withAnimation { showExternalReloadToast = true }
+                        withAnimation { externalToastMessage = "Reloaded — file changed externally" }
                     }
                 }
             }
@@ -309,7 +299,7 @@ struct ContentView: View {
             isDirty = false
             selectedNoteID = nil
             selectedNoteURL = nil
-            deletedNoteName = name
+            withAnimation { externalToastMessage = "\(name) was deleted externally" }
         }
     }
 
@@ -353,7 +343,6 @@ struct ContentView: View {
     }
 
     private func loadSelectedNote(id: UUID?) {
-        deletedNoteName = nil
         guard let id = id,
               let note = noteStore.notes.first(where: { $0.id == id }) else {
             selectedNoteURL = nil
