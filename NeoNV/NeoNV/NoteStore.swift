@@ -153,6 +153,17 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         }
     }
     
+    func deleteNote(id: UUID) throws {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        let note = notes[index]
+
+        if !note.isUnsaved {
+            try FileManager.default.removeItem(at: note.url)
+        }
+
+        notes.remove(at: index)
+    }
+
     func createNewUnsavedNote() -> NoteFile? {
         guard let folderURL = selectedFolderURL else { return nil }
 
