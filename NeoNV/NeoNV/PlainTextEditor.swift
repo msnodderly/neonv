@@ -3,20 +3,21 @@ import AppKit
 
 struct PlainTextEditor: NSViewRepresentable {
     @Binding var text: String
+    var fontSize: CGFloat = 13
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
-    
+
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
         let textView = CustomTextView()
-        
+
         textView.delegate = context.coordinator
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
-        
+
         textView.isRichText = false
         textView.allowsUndo = true
-        textView.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+        textView.font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         textView.textColor = NSColor.textColor
         textView.backgroundColor = NSColor.textBackgroundColor
         textView.isEditable = true
@@ -25,33 +26,39 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.textContainerInset = NSSize(width: 8, height: 8)
-        
+
         textView.textContainer?.containerSize = NSSize(
             width: scrollView.contentSize.width,
             height: CGFloat.greatestFiniteMagnitude
         )
         textView.textContainer?.widthTracksTextView = true
-        
+
         scrollView.documentView = textView
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
         scrollView.autohidesScrollers = true
         scrollView.borderType = .noBorder
-        
+
         textView.string = text
-        
+
         return scrollView
     }
-    
+
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? CustomTextView else { return }
-        
+
         if textView.string != text {
             let selectedRanges = textView.selectedRanges
             textView.string = text
             textView.selectedRanges = selectedRanges
         }
-        
+
+        // Update font size if changed
+        let expectedFont = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        if textView.font != expectedFont {
+            textView.font = expectedFont
+        }
+
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
     }
