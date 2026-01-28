@@ -180,6 +180,14 @@ struct ContentView: View {
             return
         }
 
+        // Skip file loading for unsaved notes - file doesn't exist on disk yet
+        if unsavedNoteIDs.contains(id) {
+            originalContent = ""
+            editorContent = ""
+            isDirty = false
+            return
+        }
+
         let noteID = id
         Task {
             do {
