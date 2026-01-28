@@ -47,9 +47,9 @@ struct ContentView: View {
                 onCreateNote: createNewNote,
                 onClearSearch: clearSearch
             )
-            
+
             Divider()
-            
+
             if noteStore.selectedFolderURL == nil {
                 EmptyStateView(onSelectFolder: noteStore.selectFolder)
             } else {
@@ -65,7 +65,7 @@ struct ContentView: View {
                         onEscapeToSearch: { focusedField = .search }
                     )
                     .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
-                    
+
                     EditorView(
                         content: $editorContent,
                         focusedField: _focusedField,
@@ -77,6 +77,7 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 600, minHeight: 400)
+        .navigationTitle("neonv")
         .onAppear {
             focusedField = .search
         }

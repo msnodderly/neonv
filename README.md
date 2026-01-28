@@ -1,4 +1,4 @@
-# NeoNV
+# neonv
 
 A fast, frictionless text capture tool for macOS. Store snippets, thoughts, notes, and random text without friction. Find them instantly. Never think about saving.
 

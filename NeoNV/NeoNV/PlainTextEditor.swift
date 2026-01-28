@@ -101,6 +101,6 @@ class CustomTextView: NSTextView {
 }
 
 #Preview {
-    PlainTextEditor(text: .constant("Hello, NeoNV!\n\nThis is plain text."))
+    PlainTextEditor(text: .constant("Hello, neonv!\n\nThis is plain text."))
         .frame(width: 400, height: 300)
 }
