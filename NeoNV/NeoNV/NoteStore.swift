@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import CoreServices
 
 struct NoteFile: Identifiable, Equatable {
     let id: UUID
@@ -57,16 +58,99 @@ struct NoteFile: Identifiable, Equatable {
 }
 
 @MainActor
-class NoteStore: ObservableObject {
+class NoteStore: ObservableObject, FileWatcherDelegate {
     @Published var notes: [NoteFile] = []
     @Published var selectedFolderURL: URL?
     @Published var isLoading = false
     
     private let allowedExtensions: Set<String> = ["txt", "md", "markdown", "org", "text"]
     private let folderBookmarkKey = "selectedFolderBookmark"
+    private var fileWatcher: FileWatcher?
     
     init() {
         loadSavedFolder()
+    }
+    
+    private func startWatching() {
+        stopWatching()
+        
+        guard let folderURL = selectedFolderURL else { return }
+        
+        let watcher = FileWatcher(path: folderURL.path, debounceInterval: 0.15)
+        watcher.delegate = self
+        watcher.start()
+        fileWatcher = watcher
+    }
+    
+    private func stopWatching() {
+        fileWatcher?.stop()
+        fileWatcher = nil
+    }
+    
+    nonisolated func fileWatcher(_ watcher: FileWatcher, didObserveChanges events: [FileChangeEvent]) {
+        Task { @MainActor in
+            self.handleFileChanges(events)
+        }
+    }
+    
+    private func handleFileChanges(_ events: [FileChangeEvent]) {
+        guard let folderURL = selectedFolderURL else { return }
+        
+        for event in events {
+            switch event {
+            case .created(let url):
+                addOrUpdateNote(at: url, folderURL: folderURL)
+                
+            case .modified(let url):
+                addOrUpdateNote(at: url, folderURL: folderURL)
+                
+            case .deleted(let url):
+                notes.removeAll { $0.url == url }
+                
+            case .renamed(let oldURL, let newURL):
+                if let oldURL = oldURL {
+                    notes.removeAll { $0.url == oldURL }
+                }
+                if let newURL = newURL {
+                    addOrUpdateNote(at: newURL, folderURL: folderURL)
+                }
+            }
+        }
+        
+        notes.sort { $0.modificationDate > $1.modificationDate }
+    }
+    
+    private func addOrUpdateNote(at url: URL, folderURL: URL) {
+        let ext = url.pathExtension.lowercased()
+        guard allowedExtensions.contains(ext) else { return }
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        
+        do {
+            let resourceValues = try url.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey])
+            guard resourceValues.isRegularFile == true else { return }
+            
+            let modDate = resourceValues.contentModificationDate ?? Date()
+            let relativePath = url.path.replacingOccurrences(of: folderURL.path + "/", with: "")
+            let title = readFirstLine(from: url)
+            let contentPreview = readContentPreview(from: url)
+            
+            if let index = notes.firstIndex(where: { $0.url == url }) {
+                notes[index].modificationDate = modDate
+                notes[index].title = title
+                notes[index].contentPreview = contentPreview
+            } else {
+                let note = NoteFile(
+                    url: url,
+                    relativePath: relativePath,
+                    modificationDate: modDate,
+                    title: title,
+                    contentPreview: contentPreview
+                )
+                notes.append(note)
+            }
+        } catch {
+            return
+        }
     }
     
     func createNewUnsavedNote() -> NoteFile? {
@@ -158,6 +242,8 @@ class NoteStore: ObservableObject {
         
         discoveredNotes.sort { $0.modificationDate > $1.modificationDate }
         notes = discoveredNotes
+        
+        startWatching()
     }
     
     private func readFirstLine(from url: URL) -> String {
