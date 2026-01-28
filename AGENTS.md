@@ -675,6 +675,77 @@ private func sanitizeFileName(_ name: String) -> String {
 
 **Pattern:** Lowercase, replace spaces with hyphens, remove special chars, truncate, fallback to timestamp.
 
+### Conditional View Switching with State
+
+**Pattern:** Use `@State` boolean with `if/else` in view body to toggle between views.
+
+```swift
+@State private var showPreview = false
+
+var body: some View {
+    if showPreview {
+        MarkdownPreviewView(content: content)
+            .focused($focusedField, equals: .preview)
+    } else {
+        EditorView(content: $content)
+            .focused($focusedField, equals: .editor)
+    }
+}
+```
+
+**Important:** When toggling, also update `@FocusState` to move focus to the new view. This prevents focus from being lost to an invisible view.
+
+### Custom NSTextView for Read-Only Scrollable Content
+
+**Pattern:** For non-editable text that needs custom keyboard handling (scrolling, navigation), use `NSTextView` with `isEditable = false`.
+
+```swift
+class PreviewTextView: NSTextView {
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 126 { // Up arrow
+            // Custom scroll up
+            return
+        }
+        super.keyDown(with: event)
+    }
+}
+```
+
+**Key codes reference:**
+- 126: Up arrow
+- 125: Down arrow
+- 116: Page Up
+- 121: Page Down
+- 48: Tab
+- 53: Escape
+
+### Markdown Rendering with NSAttributedString
+
+**Pattern:** Parse markdown manually into `NSAttributedString` for native rendering without external dependencies.
+
+```swift
+let result = NSMutableAttributedString()
+
+// Headers
+if line.hasPrefix("# ") {
+    let attrs: [NSAttributedString.Key: Any] = [
+        .font: NSFont.systemFont(ofSize: fontSize + 10, weight: .bold)
+    ]
+    result.append(NSAttributedString(string: title, attributes: attrs))
+}
+```
+
+**Supported formatting (MVP):**
+- Headers (# through ######)
+- Bold (**text** or __text__)
+- Italic (*text* or _text_)
+- Inline code (`code`)
+- Code blocks (```)
+- Blockquotes (>)
+- Unordered lists (-, *, +)
+- Horizontal rules (---, ***, ___)
+- Links [text](url)
+
 ---
 
 ## Philosophy

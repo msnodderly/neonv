@@ -48,6 +48,11 @@ struct NeoNVApp: App {
                     NotificationCenter.default.post(name: .focusSearch, object: nil)
                 }
                 .keyboardShortcut("l", modifiers: .command)
+
+                Button("Toggle Preview") {
+                    NotificationCenter.default.post(name: .togglePreview, object: nil)
+                }
+                .keyboardShortcut("p", modifiers: .command)
             }
         }
 
@@ -60,4 +65,5 @@ struct NeoNVApp: App {
 extension Notification.Name {
     static let focusSearch = Notification.Name("focusSearch")
     static let createNewNote = Notification.Name("createNewNote")
+    static let togglePreview = Notification.Name("togglePreview")
 }
