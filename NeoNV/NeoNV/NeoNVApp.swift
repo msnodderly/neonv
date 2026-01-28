@@ -54,8 +54,6 @@ struct NeoNVApp: App {
                 }
                 .keyboardShortcut("p", modifiers: .command)
             }
-
-            CommandGroup(replacing: .printItem) { }
         }
 
         Settings {
