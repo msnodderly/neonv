@@ -2,6 +2,8 @@
 
 This document describes the issue grooming and project management process. Use this as a reference when performing PM duties or grooming the backlog.
 
+Break down tasks into items suitable for execution by parallel coding agents.
+
 ## Issue Tracking System
 
 This project uses **bd (beads)** for issue tracking. 
