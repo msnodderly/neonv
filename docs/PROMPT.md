@@ -23,10 +23,17 @@ Do not start additional tasks after completing your assigned work.
 4. **Create worktree**: Use `bd worktree` to create an isolated working directory
    ```bash
    bd worktree create <feature-name> --branch task/<id>-short-description
+
+   # IMPORTANT: Commit the .gitignore change before leaving main
+   git add .gitignore && git commit -m "chore: Update .gitignore for <feature-name> worktree"
+   git push
+
    cd <feature-name>
    ```
 
    **Why worktrees?** Multiple agents can work in parallel on different tasks. Each agent gets an isolated working directory without branch-switching conflicts. Using `bd worktree` (instead of `git worktree`) automatically configures beads to share the database across all worktrees.
+
+   **Why commit .gitignore?** `bd worktree create` adds the worktree directory to `.gitignore`. If you don't commit this before switching to the worktree, main is left dirty and `git pull` will fail later.
 
 ---
 

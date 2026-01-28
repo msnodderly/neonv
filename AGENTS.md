@@ -85,8 +85,15 @@ Multiple agents can work simultaneously on different tasks. Each agent must use 
 
 ```bash
 bd worktree create <name> --branch task/<id>-short-description
+
+# IMPORTANT: Commit the .gitignore change before leaving main
+git add .gitignore && git commit -m "chore: Update .gitignore for <name> worktree"
+git push
+
 cd <name>
 ```
+
+**Why commit .gitignore?** `bd worktree create` adds the worktree directory to `.gitignore` (to prevent accidentally committing worktree contents). If you don't commit this change before switching to the worktree, main will be left with a dirty working directory, causing `git pull` to fail later.
 
 Examples:
 ```bash
