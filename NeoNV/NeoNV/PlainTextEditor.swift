@@ -106,7 +106,10 @@ struct PlainTextEditor: NSViewRepresentable {
         func showFindBar() {
             guard let textView = textView else { return }
             textView.window?.makeFirstResponder(textView)
-            textView.performFindPanelAction(NSTextFinder.Action.showFindInterface)
+            // Defer to next run loop so first responder is fully established
+            DispatchQueue.main.async {
+                textView.performFindPanelAction(NSTextFinder.Action.showFindInterface)
+            }
         }
     }
 }
