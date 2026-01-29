@@ -231,31 +231,26 @@ struct ContentView: View {
                 Text("Are you sure you want to delete \"\(note.displayTitle)\"? This action cannot be undone.")
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .focusSearch)) { _ in
-            focusSearch()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .createNewNote)) { _ in
-            createNewNoteFromShortcut()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .togglePreview)) { _ in
-            togglePreview()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .findInNote)) { _ in
-            guard selectedNoteID != nil else { return }
-            if showPreview { showPreview = false }
-            focusedField = .editor
-            showFindBar = true
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .deleteNote)) { _ in
-            guard focusedField == .noteList else { return }
-            if let id = selectedNoteID,
-               let note = noteStore.notes.first(where: { $0.id == id }) {
-                noteToDelete = note
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .showKeyboardShortcuts)) { _ in
-            showKeyboardShortcuts = true
-        }
+        .modifier(NotificationHandlers(
+            onFocusSearch: focusSearch,
+            onCreateNewNote: createNewNoteFromShortcut,
+            onTogglePreview: togglePreview,
+            onFindInNote: {
+                guard selectedNoteID != nil else { return }
+                if showPreview { showPreview = false }
+                focusedField = .editor
+                showFindBar = true
+            },
+            onDeleteNote: {
+                guard focusedField == .noteList else { return }
+                if let id = selectedNoteID,
+                   let note = noteStore.notes.first(where: { $0.id == id }) {
+                    noteToDelete = note
+                }
+            },
+            onShowKeyboardShortcuts: { showKeyboardShortcuts = true },
+            onOpenInExternalEditor: openInExternalEditor
+        ))
         .sheet(isPresented: $showKeyboardShortcuts) {
             KeyboardShortcutsView()
         }
@@ -330,6 +325,30 @@ struct ContentView: View {
     private func switchToEditor() {
         showPreview = false
         focusedField = .editor
+    }
+
+    private func openInExternalEditor() {
+        guard let url = selectedNoteURL else { return }
+
+        let settings = AppSettings.shared
+        if let editorPath = settings.externalEditorPath {
+            let editorURL = URL(fileURLWithPath: editorPath)
+            let config = NSWorkspace.OpenConfiguration()
+            NSWorkspace.shared.open([url], withApplicationAt: editorURL, configuration: config) { _, error in
+                if let error = error {
+                    DispatchQueue.main.async {
+                        let alert = NSAlert()
+                        alert.messageText = "Failed to Open External Editor"
+                        alert.informativeText = error.localizedDescription
+                        alert.alertStyle = .warning
+                        alert.addButton(withTitle: "OK")
+                        alert.runModal()
+                    }
+                }
+            }
+        } else {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     private func handleExternalChange(_ change: ExternalChangeEvent) {
@@ -873,6 +892,41 @@ struct EditorView: View {
                 }
             }
         }
+    }
+}
+
+struct NotificationHandlers: ViewModifier {
+    let onFocusSearch: () -> Void
+    let onCreateNewNote: () -> Void
+    let onTogglePreview: () -> Void
+    let onFindInNote: () -> Void
+    let onDeleteNote: () -> Void
+    let onShowKeyboardShortcuts: () -> Void
+    let onOpenInExternalEditor: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .onReceive(NotificationCenter.default.publisher(for: .focusSearch)) { _ in
+                onFocusSearch()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .createNewNote)) { _ in
+                onCreateNewNote()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .togglePreview)) { _ in
+                onTogglePreview()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .findInNote)) { _ in
+                onFindInNote()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .deleteNote)) { _ in
+                onDeleteNote()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .showKeyboardShortcuts)) { _ in
+                onShowKeyboardShortcuts()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .openInExternalEditor)) { _ in
+                onOpenInExternalEditor()
+            }
     }
 }
 

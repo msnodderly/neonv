@@ -24,6 +24,7 @@ class AppSettings: ObservableObject {
         static let defaultExtension = "defaultFileExtension"
         static let fontSize = "editorFontSize"
         static let globalHotkey = "globalHotkey"
+        static let externalEditorPath = "externalEditorPath"
     }
 
     @Published var defaultExtension: FileExtension {
@@ -44,6 +45,12 @@ class AppSettings: ObservableObject {
         }
     }
 
+    @Published var externalEditorPath: String? {
+        didSet {
+            UserDefaults.standard.set(externalEditorPath, forKey: Keys.externalEditorPath)
+        }
+    }
+
     private init() {
         // Load default extension
         if let storedExtension = UserDefaults.standard.string(forKey: Keys.defaultExtension),
@@ -59,11 +66,22 @@ class AppSettings: ObservableObject {
 
         // Load global hotkey setting
         self.globalHotkeyEnabled = UserDefaults.standard.bool(forKey: Keys.globalHotkey)
+
+        // Load external editor path
+        self.externalEditorPath = UserDefaults.standard.string(forKey: Keys.externalEditorPath)
     }
 
     func resetToDefaults() {
         defaultExtension = .markdown
         fontSize = 13.0
         globalHotkeyEnabled = false
+        externalEditorPath = nil
+    }
+
+    var externalEditorDisplayName: String {
+        guard let path = externalEditorPath else {
+            return "Default (System)"
+        }
+        return URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
     }
 }

@@ -22,6 +22,7 @@ struct KeyboardShortcutsView: View {
             shortcuts: [
                 Shortcut(key: "⌘N", description: "Create new note"),
                 Shortcut(key: "⌘P", description: "Toggle markdown preview"),
+                Shortcut(key: "⌘G", description: "Open in external editor"),
                 Shortcut(key: "Delete", description: "Delete selected note"),
                 Shortcut(key: "⌘,", description: "Open settings")
             ]

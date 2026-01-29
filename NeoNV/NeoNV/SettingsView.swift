@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @ObservedObject private var settings = AppSettings.shared
@@ -27,6 +28,7 @@ struct SettingsView: View {
 struct GeneralSettingsTab: View {
     @ObservedObject private var settings = AppSettings.shared
     @ObservedObject var noteStore: NoteStore
+    @State private var showEditorPicker = false
 
     var body: some View {
         Form {
@@ -91,9 +93,49 @@ struct GeneralSettingsTab: View {
                         .foregroundColor(.secondary)
                 }
             }
+
+            Divider()
+
+            Section {
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("External Editor")
+                            .font(.headline)
+                        Text(settings.externalEditorDisplayName)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    if settings.externalEditorPath != nil {
+                        Button("Clear") {
+                            settings.externalEditorPath = nil
+                        }
+                    }
+
+                    Button("Choose...") {
+                        showEditorPicker = true
+                    }
+                }
+                .padding(.vertical, 4)
+
+                Text("Open notes in this app with ⌘G")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
         }
         .formStyle(.grouped)
         .padding()
+        .fileImporter(
+            isPresented: $showEditorPicker,
+            allowedContentTypes: [.application],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let urls) = result, let url = urls.first {
+                settings.externalEditorPath = url.path
+            }
+        }
     }
 }
 
