@@ -97,14 +97,7 @@ struct ContentView: View {
                         )
                         .frame(minWidth: 300)
                     } else if showPreview {
-                        MarkdownPreviewView(
-                            content: editorContent,
-                            fontSize: CGFloat(AppSettings.shared.fontSize),
-                            onShiftTab: { focusedField = .noteList },
-                            onTypeToEdit: { switchToEditor() }
-                        )
-                        .focused($focusedField, equals: .preview)
-                        .frame(minWidth: 300)
+                        previewPane
                     } else {
                         EditorView(
                             content: $editorContent,
@@ -258,6 +251,29 @@ struct ContentView: View {
                let note = noteStore.notes.first(where: { $0.id == id }) {
                 noteToDelete = note
             }
+        }
+    }
+
+    @ViewBuilder
+    private var previewPane: some View {
+        if selectedNoteURL?.pathExtension.lowercased() == "org" {
+            OrgPreviewView(
+                content: editorContent,
+                fontSize: CGFloat(AppSettings.shared.fontSize),
+                onShiftTab: { focusedField = .noteList },
+                onTypeToEdit: { switchToEditor() }
+            )
+            .focused($focusedField, equals: .preview)
+            .frame(minWidth: 300)
+        } else {
+            MarkdownPreviewView(
+                content: editorContent,
+                fontSize: CGFloat(AppSettings.shared.fontSize),
+                onShiftTab: { focusedField = .noteList },
+                onTypeToEdit: { switchToEditor() }
+            )
+            .focused($focusedField, equals: .preview)
+            .frame(minWidth: 300)
         }
     }
 

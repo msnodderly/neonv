@@ -16,6 +16,7 @@
 		A01234560000000000000007 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01234560000000000000018 /* SettingsView.swift */; };
 		A01234560000000000000008 /* MarkdownPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01234560000000000000019 /* MarkdownPreviewView.swift */; };
 		A0123456000000000000000A /* FileWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0123456000000000000001A /* FileWatcher.swift */; };
+		A0123456000000000000000B /* OrgPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0123456000000000000001B /* OrgPreviewView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +31,7 @@
 		A01234560000000000000018 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		A01234560000000000000019 /* MarkdownPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownPreviewView.swift; sourceTree = "<group>"; };
 		A0123456000000000000001A /* FileWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileWatcher.swift; sourceTree = "<group>"; };
+		A0123456000000000000001B /* OrgPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrgPreviewView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,6 +60,7 @@
 				A01234560000000000000012 /* ContentView.swift */,
 				A01234560000000000000015 /* PlainTextEditor.swift */,
 				A01234560000000000000019 /* MarkdownPreviewView.swift */,
+				A0123456000000000000001B /* OrgPreviewView.swift */,
 				A01234560000000000000016 /* NoteStore.swift */,
 				A01234560000000000000017 /* AppSettings.swift */,
 				A01234560000000000000018 /* SettingsView.swift */,
@@ -149,6 +152,7 @@
 				A01234560000000000000002 /* ContentView.swift in Sources */,
 				A01234560000000000000004 /* PlainTextEditor.swift in Sources */,
 				A01234560000000000000008 /* MarkdownPreviewView.swift in Sources */,
+				A0123456000000000000000B /* OrgPreviewView.swift in Sources */,
 				A01234560000000000000005 /* NoteStore.swift in Sources */,
 				A01234560000000000000006 /* AppSettings.swift in Sources */,
 				A01234560000000000000007 /* SettingsView.swift in Sources */,
