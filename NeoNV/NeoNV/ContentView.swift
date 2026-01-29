@@ -79,7 +79,13 @@ struct ContentView: View {
                     )
                     .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
 
-                    if showPreview {
+                    if filteredNotes.isEmpty {
+                        ContentEmptyStateView(
+                            hasNotes: !noteStore.notes.isEmpty,
+                            searchText: searchText
+                        )
+                        .frame(minWidth: 300)
+                    } else if showPreview {
                         MarkdownPreviewView(
                             content: editorContent,
                             fontSize: CGFloat(AppSettings.shared.fontSize),
@@ -607,6 +613,36 @@ struct ContentView: View {
     }
 }
 
+struct ContentEmptyStateView: View {
+    var hasNotes: Bool
+    var searchText: String
+
+    var body: some View {
+        VStack(spacing: 12) {
+            if !hasNotes {
+                Image(systemName: "note.text")
+                    .font(.system(size: 36))
+                    .foregroundColor(.secondary)
+                Text("No notes yet")
+                    .font(.headline)
+                Text("Start typing to create one.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            } else {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 36))
+                    .foregroundColor(.secondary)
+                Text("No matches")
+                    .font(.headline)
+                Text("Press Enter to create \"\(searchText)\"")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
 struct EmptyStateView: View {
     var onSelectFolder: () -> Void
     
@@ -619,7 +655,7 @@ struct EmptyStateView: View {
             Text("No folder selected")
                 .font(.headline)
             
-            Text("Select a folder containing your notes")
+            Text("Select a folder to get started")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             
