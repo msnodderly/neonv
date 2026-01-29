@@ -56,6 +56,7 @@ struct ContentView: View {
                 focusedField: _focusedField,
                 matchCount: filteredNotes.count,
                 onNavigateToList: navigateToList,
+                onNavigateToEditor: { focusedField = .editor },
                 onCreateNote: createNewNote,
                 onClearSearch: clearSearch
             )
@@ -671,6 +672,7 @@ struct SearchBar: View {
     @FocusState var focusedField: FocusedField?
     var matchCount: Int
     var onNavigateToList: () -> Void
+    var onNavigateToEditor: () -> Void
     var onCreateNote: () -> Void
     var onClearSearch: () -> Void
 
@@ -694,7 +696,9 @@ struct SearchBar: View {
                     return .handled
                 }
                 .onKeyPress(.return) {
-                    if matchCount > 0 {
+                    if matchCount == 1 {
+                        onNavigateToEditor()
+                    } else if matchCount > 1 {
                         onNavigateToList()
                     } else if !text.isEmpty {
                         onCreateNote()
