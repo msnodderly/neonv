@@ -27,6 +27,10 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.isHorizontallyResizable = false
         textView.textContainerInset = NSSize(width: 8, height: 8)
 
+        // Enable Find Bar (Cmd-F)
+        textView.usesFindBar = true
+        textView.isIncrementalSearchingEnabled = true
+
         textView.textContainer?.containerSize = NSSize(
             width: scrollView.contentSize.width,
             height: CGFloat.greatestFiniteMagnitude
@@ -40,6 +44,9 @@ struct PlainTextEditor: NSViewRepresentable {
         scrollView.borderType = .noBorder
 
         textView.string = text
+
+        // Store reference for find bar activation
+        context.coordinator.textView = textView
 
         return scrollView
     }
@@ -69,14 +76,37 @@ struct PlainTextEditor: NSViewRepresentable {
     
     class Coordinator: NSObject, NSTextViewDelegate {
         var text: Binding<String>
-        
+        weak var textView: CustomTextView?
+        private var findBarObserver: NSObjectProtocol?
+
         init(text: Binding<String>) {
             self.text = text
+            super.init()
+
+            findBarObserver = NotificationCenter.default.addObserver(
+                forName: .showFindBar,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                self?.showFindBar()
+            }
         }
-        
+
+        deinit {
+            if let observer = findBarObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
+        }
+
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             text.wrappedValue = textView.string
+        }
+
+        func showFindBar() {
+            guard let textView = textView else { return }
+            textView.window?.makeFirstResponder(textView)
+            textView.performFindPanelAction(NSTextFinder.Action.showFindInterface)
         }
     }
 }
