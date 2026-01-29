@@ -196,7 +196,7 @@ struct ContentView: View {
                     }
             }
         }
-        .disabled(saveError != nil)
+        .disabled(saveError != nil || externalConflict != nil)
         .alert("Delete Note", isPresented: Binding(
             get: { noteToDelete != nil },
             set: { if !$0 { noteToDelete = nil } }
@@ -291,6 +291,7 @@ struct ContentView: View {
                 guard let newContent = try? await loadFileAsync(url: change.url) else { return }
                 await MainActor.run {
                     if isDirty {
+                        saveTask?.cancel()
                         externalConflict = ExternalConflict(url: change.url, externalContent: newContent)
                     } else {
                         editorContent = newContent
@@ -483,6 +484,7 @@ struct ContentView: View {
     }
     
     private func performSave() async {
+        guard externalConflict == nil else { return }
         guard let id = selectedNoteID,
               let note = noteStore.notes.first(where: { $0.id == id }) else {
             return
