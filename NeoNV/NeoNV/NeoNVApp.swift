@@ -60,6 +60,13 @@ struct NeoNVApp: App {
                     NotificationCenter.default.post(name: .findInNote, object: nil)
                 }
                 .keyboardShortcut("f", modifiers: .command)
+
+                Divider()
+
+                Button("Keyboard Shortcuts") {
+                    NotificationCenter.default.post(name: .showKeyboardShortcuts, object: nil)
+                }
+                .keyboardShortcut("k", modifiers: .command)
             }
 
             CommandGroup(replacing: .printItem) { }
@@ -84,4 +91,5 @@ extension Notification.Name {
     static let togglePreview = Notification.Name("togglePreview")
     static let deleteNote = Notification.Name("deleteNote")
     static let findInNote = Notification.Name("findInNote")
+    static let showKeyboardShortcuts = Notification.Name("showKeyboardShortcuts")
 }

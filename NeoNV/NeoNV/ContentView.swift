@@ -27,6 +27,7 @@ struct ContentView: View {
     @State private var externalToastMessage: String?
     @State private var selectedNoteURL: URL?
     @State private var showFindBar = false
+    @State private var showKeyboardShortcuts = false
     @FocusState private var focusedField: FocusedField?
 
     struct ExternalConflict: Identifiable {
@@ -251,6 +252,12 @@ struct ContentView: View {
                let note = noteStore.notes.first(where: { $0.id == id }) {
                 noteToDelete = note
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showKeyboardShortcuts)) { _ in
+            showKeyboardShortcuts = true
+        }
+        .sheet(isPresented: $showKeyboardShortcuts) {
+            KeyboardShortcutsView()
         }
     }
 
