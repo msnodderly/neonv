@@ -96,3 +96,7 @@ write-conflict/
 fix-no-note-selected/
 # bd worktree
 perf-optimization/
+# bd worktree
+performance-optimization/
+# bd worktree
+find-in-note/
