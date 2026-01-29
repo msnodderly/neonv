@@ -19,6 +19,8 @@ struct ContentView: View {
     @State private var saveTask: Task<Void, Never>?
     @State private var saveError: SaveError?
     @State private var unsavedNoteIDs: Set<UUID> = []
+    @State private var debouncedSearchText = ""
+    @State private var searchDebounceTask: Task<Void, Never>?
     @State private var showPreview = false
     @State private var noteToDelete: NoteFile?
     @State private var externalConflict: ExternalConflict?
@@ -40,11 +42,17 @@ struct ContentView: View {
     }
 
     private var filteredNotes: [NoteFile] {
-        let baseNotes = searchText.isEmpty ? noteStore.notes : noteStore.notes.filter { $0.matches(query: searchText) }
-        
+        let query = debouncedSearchText
+        let baseNotes = query.isEmpty ? noteStore.notes : noteStore.notes.filter { $0.matches(query: query) }
+
+        if unsavedNoteIDs.isEmpty {
+            return baseNotes
+        }
+
         return baseNotes.map { note in
+            guard unsavedNoteIDs.contains(note.id) else { return note }
             var updatedNote = note
-            updatedNote.isUnsaved = unsavedNoteIDs.contains(note.id)
+            updatedNote.isUnsaved = true
             return updatedNote
         }
     }
@@ -142,7 +150,20 @@ struct ContentView: View {
             scheduleAutoSave()
         }
         .onChange(of: searchText) { _, newText in
-            autoSelectTopMatch()
+            if newText.isEmpty {
+                // Immediate update when clearing search
+                searchDebounceTask?.cancel()
+                debouncedSearchText = ""
+                autoSelectTopMatch()
+            } else {
+                searchDebounceTask?.cancel()
+                searchDebounceTask = Task {
+                    try? await Task.sleep(for: .milliseconds(50))
+                    guard !Task.isCancelled else { return }
+                    debouncedSearchText = newText
+                    autoSelectTopMatch()
+                }
+            }
         }
         .onChange(of: noteStore.lastExternalChange) { _, change in
             if let change = change {
