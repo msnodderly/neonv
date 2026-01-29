@@ -36,12 +36,6 @@ struct KeyboardShortcutsView: View {
                 Shortcut(key: "↑ / ↓", description: "Scroll preview line by line"),
                 Shortcut(key: "Type any key", description: "Switch preview to editor")
             ]
-        ),
-        ShortcutCategory(
-            title: "Global",
-            shortcuts: [
-                Shortcut(key: "Ctrl + Space", description: "Summon app (when enabled)")
-            ]
         )
     ]
     

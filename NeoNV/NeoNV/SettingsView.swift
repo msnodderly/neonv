@@ -77,26 +77,6 @@ struct GeneralSettingsTab: View {
             Divider()
 
             Section {
-                Toggle("Enable Global Hotkey", isOn: $settings.globalHotkeyEnabled)
-
-                if settings.globalHotkeyEnabled {
-                    HStack {
-                        Text("Summon NeoNV:")
-                        Spacer()
-                        Text("Ctrl + Space")
-                            .font(.system(.body, design: .monospaced))
-                            .foregroundColor(.secondary)
-                    }
-
-                    Text("Global hotkey requires Accessibility permissions")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-
-            Divider()
-
-            Section {
                 HStack {
                     VStack(alignment: .leading) {
                         Text("External Editor")
