@@ -341,6 +341,34 @@ Don't suppress beeps — they reveal user expectations.
 }
 ```
 
+### NSTextView Find Bar (NSTextFinder)
+
+`NSTextView.usesFindBar = true` enables the native macOS find bar. Key gotchas:
+
+- **`performTextFinderAction` does not focus the search field.** After showing the find bar, you must manually find the `NSSearchField` in `scrollView.findBarView` and call `window?.makeFirstResponder()` on it:
+  ```swift
+  // Recursively find NSSearchField in the find bar view hierarchy
+  static func focusSearchField(in view: NSView) {
+      for subview in view.subviews {
+          if let searchField = subview as? NSSearchField {
+              searchField.window?.makeFirstResponder(searchField)
+              return
+          }
+          focusSearchField(in: subview)
+      }
+  }
+  ```
+  Use `DispatchQueue.main.asyncAfter(deadline: .now() + 0.1)` to let the find bar render first.
+
+- **`super.keyDown(with:)` does NOT dismiss the find bar** when Escape is pressed in the text view. You must programmatically hide it:
+  ```swift
+  let menuItem = NSMenuItem()
+  menuItem.tag = Int(NSTextFinder.Action.hideFindInterface.rawValue)
+  performTextFinderAction(menuItem)
+  ```
+
+- **Cmd+F should focus the search field even if the find bar is already visible.** Don't gate the focus logic on `!isFindBarVisible` — the user may have navigated away and returned.
+
 ### TextEditor Intercepts Keys Before SwiftUI
 
 `TextEditor` wraps `NSTextView`, which intercepts keys (Shift-Tab, Escape) at AppKit level before `.onKeyPress` sees them.

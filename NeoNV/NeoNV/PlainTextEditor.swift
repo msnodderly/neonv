@@ -4,6 +4,7 @@ import AppKit
 struct PlainTextEditor: NSViewRepresentable {
     @Binding var text: String
     var fontSize: CGFloat = 13
+    var showFindBar: Bool = false
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
 
@@ -26,6 +27,8 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.textContainerInset = NSSize(width: 8, height: 8)
+        textView.usesFindBar = true
+        textView.isIncrementalSearchingEnabled = true
 
         textView.textContainer?.containerSize = NSSize(
             width: scrollView.contentSize.width,
@@ -61,8 +64,33 @@ struct PlainTextEditor: NSViewRepresentable {
 
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
+
+        if showFindBar {
+            if !scrollView.isFindBarVisible {
+                // Show the find bar
+                let menuItem = NSMenuItem()
+                menuItem.tag = Int(NSTextFinder.Action.showFindInterface.rawValue)
+                textView.performTextFinderAction(menuItem)
+            }
+            // Focus the find bar's search field (whether just opened or already visible)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if let findBarContainer = scrollView.findBarView {
+                    PlainTextEditor.focusSearchField(in: findBarContainer)
+                }
+            }
+        }
     }
     
+    private static func focusSearchField(in view: NSView) {
+        for subview in view.subviews {
+            if let searchField = subview as? NSSearchField {
+                searchField.window?.makeFirstResponder(searchField)
+                return
+            }
+            focusSearchField(in: subview)
+        }
+    }
+
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text)
     }
@@ -92,6 +120,13 @@ class CustomTextView: NSTextView {
         }
         
         if event.keyCode == 53 {
+            // If the find bar is visible, dismiss it
+            if let scrollView = enclosingScrollView, scrollView.isFindBarVisible {
+                let menuItem = NSMenuItem()
+                menuItem.tag = Int(NSTextFinder.Action.hideFindInterface.rawValue)
+                performTextFinderAction(menuItem)
+                return
+            }
             onEscape?()
             return
         }
