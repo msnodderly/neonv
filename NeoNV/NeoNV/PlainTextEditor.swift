@@ -100,10 +100,18 @@ class CustomTextView: NSTextView {
     }
     
     override func paste(_ sender: Any?) {
+        pasteAsPlainText(sender)
+    }
+
+    override func pasteAsPlainText(_ sender: Any?) {
         let pasteboard = NSPasteboard.general
         if let string = pasteboard.string(forType: .string) {
             insertText(string, replacementRange: selectedRange())
         }
+    }
+
+    override func pasteAsRichText(_ sender: Any?) {
+        pasteAsPlainText(sender)
     }
 }
 
