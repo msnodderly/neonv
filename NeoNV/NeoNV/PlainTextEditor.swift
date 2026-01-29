@@ -106,10 +106,29 @@ struct PlainTextEditor: NSViewRepresentable {
         func showFindBar() {
             guard let textView = textView else { return }
             textView.window?.makeFirstResponder(textView)
-            // Defer to next run loop so first responder is fully established
             DispatchQueue.main.async {
                 textView.performFindPanelAction(NSTextFinder.Action.showFindInterface)
+                // The find bar is inside the enclosing scroll view; find its search field and focus it
+                DispatchQueue.main.async {
+                    guard let scrollView = textView.enclosingScrollView else { return }
+                    if let searchField = Self.findSearchField(in: scrollView) {
+                        textView.window?.makeFirstResponder(searchField)
+                    }
+                }
             }
+        }
+
+        /// Recursively find the NSSearchField (or NSTextField) inside the find bar view hierarchy.
+        private static func findSearchField(in view: NSView) -> NSView? {
+            for subview in view.subviews {
+                if subview is NSSearchField {
+                    return subview
+                }
+                if let found = findSearchField(in: subview) {
+                    return found
+                }
+            }
+            return nil
         }
     }
 }
@@ -117,18 +136,29 @@ struct PlainTextEditor: NSViewRepresentable {
 class CustomTextView: NSTextView {
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
-    
+
+    /// Whether the find bar is currently visible.
+    var isFindBarVisible: Bool {
+        guard let scrollView = enclosingScrollView else { return false }
+        return scrollView.isFindBarVisible
+    }
+
     override func keyDown(with event: NSEvent) {
         if event.keyCode == 48 && event.modifierFlags.contains(.shift) {
             onShiftTab?()
             return
         }
-        
+
         if event.keyCode == 53 {
+            if isFindBarVisible {
+                // Dismiss the find bar with Esc
+                performFindPanelAction(NSTextFinder.Action.hideFindInterface)
+                return
+            }
             onEscape?()
             return
         }
-        
+
         super.keyDown(with: event)
     }
     
