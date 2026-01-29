@@ -4,6 +4,7 @@ import AppKit
 struct PlainTextEditor: NSViewRepresentable {
     @Binding var text: String
     var fontSize: CGFloat = 13
+    var showFindBar: Bool = false
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
 
@@ -26,6 +27,8 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.textContainerInset = NSSize(width: 8, height: 8)
+        textView.usesFindBar = true
+        textView.isIncrementalSearchingEnabled = true
 
         textView.textContainer?.containerSize = NSSize(
             width: scrollView.contentSize.width,
@@ -61,6 +64,13 @@ struct PlainTextEditor: NSViewRepresentable {
 
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
+
+        if showFindBar && !(scrollView.isFindBarVisible) {
+            // Create a menu item with the showFindPanel tag to trigger the find bar
+            let menuItem = NSMenuItem()
+            menuItem.tag = Int(NSTextFinder.Action.showFindInterface.rawValue)
+            textView.performTextFinderAction(menuItem)
+        }
     }
     
     func makeCoordinator() -> Coordinator {
@@ -92,6 +102,11 @@ class CustomTextView: NSTextView {
         }
         
         if event.keyCode == 53 {
+            // If the find bar is visible, let NSTextView handle Escape to dismiss it
+            if let scrollView = enclosingScrollView, scrollView.isFindBarVisible {
+                super.keyDown(with: event)
+                return
+            }
             onEscape?()
             return
         }

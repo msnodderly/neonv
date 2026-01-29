@@ -26,6 +26,7 @@ struct ContentView: View {
     @State private var externalConflict: ExternalConflict?
     @State private var externalToastMessage: String?
     @State private var selectedNoteURL: URL?
+    @State private var showFindBar = false
     @FocusState private var focusedField: FocusedField?
 
     struct ExternalConflict: Identifiable {
@@ -107,6 +108,7 @@ struct ContentView: View {
                     } else {
                         EditorView(
                             content: $editorContent,
+                            showFindBar: $showFindBar,
                             focusedField: _focusedField,
                             onShiftTab: { focusedField = .noteList },
                             onEscape: { focusedField = .noteList }
@@ -243,6 +245,12 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .togglePreview)) { _ in
             togglePreview()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .findInNote)) { _ in
+            guard selectedNoteID != nil else { return }
+            if showPreview { showPreview = false }
+            focusedField = .editor
+            showFindBar = true
         }
         .onReceive(NotificationCenter.default.publisher(for: .deleteNote)) { _ in
             guard focusedField == .noteList else { return }
@@ -819,6 +827,7 @@ struct NoteListView: View {
 
 struct EditorView: View {
     @Binding var content: String
+    @Binding var showFindBar: Bool
     @FocusState var focusedField: FocusedField?
     @ObservedObject private var settings = AppSettings.shared
     var onShiftTab: (() -> Void)?
@@ -828,10 +837,19 @@ struct EditorView: View {
         PlainTextEditor(
             text: $content,
             fontSize: CGFloat(settings.fontSize),
+            showFindBar: showFindBar,
             onShiftTab: onShiftTab,
             onEscape: onEscape
         )
         .focused($focusedField, equals: .editor)
+        .onChange(of: showFindBar) { _, newValue in
+            if newValue {
+                // Reset after triggering so it can be triggered again
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    showFindBar = false
+                }
+            }
+        }
     }
 }
 
