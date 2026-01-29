@@ -61,6 +61,11 @@ struct NeoNVApp: App {
                 }
                 .keyboardShortcut("f", modifiers: .command)
 
+                Button("Open in External Editor") {
+                    NotificationCenter.default.post(name: .openInExternalEditor, object: nil)
+                }
+                .keyboardShortcut("g", modifiers: .command)
+
                 Divider()
 
                 Button("Keyboard Shortcuts") {
@@ -92,4 +97,5 @@ extension Notification.Name {
     static let deleteNote = Notification.Name("deleteNote")
     static let findInNote = Notification.Name("findInNote")
     static let showKeyboardShortcuts = Notification.Name("showKeyboardShortcuts")
+    static let openInExternalEditor = Notification.Name("openInExternalEditor")
 }
