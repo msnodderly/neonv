@@ -65,14 +65,32 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
 
-        if showFindBar && !(scrollView.isFindBarVisible) {
-            // Create a menu item with the showFindPanel tag to trigger the find bar
-            let menuItem = NSMenuItem()
-            menuItem.tag = Int(NSTextFinder.Action.showFindInterface.rawValue)
-            textView.performTextFinderAction(menuItem)
+        if showFindBar {
+            if !scrollView.isFindBarVisible {
+                // Show the find bar
+                let menuItem = NSMenuItem()
+                menuItem.tag = Int(NSTextFinder.Action.showFindInterface.rawValue)
+                textView.performTextFinderAction(menuItem)
+            }
+            // Focus the find bar's search field (whether just opened or already visible)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if let findBarContainer = scrollView.findBarView {
+                    PlainTextEditor.focusSearchField(in: findBarContainer)
+                }
+            }
         }
     }
     
+    private static func focusSearchField(in view: NSView) {
+        for subview in view.subviews {
+            if let searchField = subview as? NSSearchField {
+                searchField.window?.makeFirstResponder(searchField)
+                return
+            }
+            focusSearchField(in: subview)
+        }
+    }
+
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text)
     }
@@ -102,9 +120,11 @@ class CustomTextView: NSTextView {
         }
         
         if event.keyCode == 53 {
-            // If the find bar is visible, let NSTextView handle Escape to dismiss it
+            // If the find bar is visible, dismiss it
             if let scrollView = enclosingScrollView, scrollView.isFindBarVisible {
-                super.keyDown(with: event)
+                let menuItem = NSMenuItem()
+                menuItem.tag = Int(NSTextFinder.Action.hideFindInterface.rawValue)
+                performTextFinderAction(menuItem)
                 return
             }
             onEscape?()
