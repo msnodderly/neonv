@@ -75,6 +75,7 @@ struct ContentView: View {
                         onShiftTabToSearch: { focusedField = .search },
                         onEnterToEditor: { focusedField = .editor },
                         onEscapeToSearch: { focusedField = .search },
+                        onUpArrowToSearch: { focusedField = .search },
                         onDeleteNote: { note in noteToDelete = note }
                     )
                     .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
@@ -727,6 +728,7 @@ struct NoteListView: View {
     var onShiftTabToSearch: () -> Void
     var onEnterToEditor: () -> Void
     var onEscapeToSearch: () -> Void
+    var onUpArrowToSearch: () -> Void
     var onDeleteNote: ((NoteFile) -> Void)?
 
     var body: some View {
@@ -774,6 +776,12 @@ struct NoteListView: View {
                     if press.key == .rightArrow {
                         onTabToEditor()
                         return .handled
+                    }
+                    if press.key == .upArrow {
+                        if let firstNote = notes.first, selectedNoteID == firstNote.id {
+                            onUpArrowToSearch()
+                            return .handled
+                        }
                     }
                     return .ignored
                 }
