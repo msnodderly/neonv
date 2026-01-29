@@ -10,7 +10,12 @@ struct NoteFile: Identifiable, Equatable {
     var title: String
     var contentPreview: String
     var isUnsaved: Bool = false
-    
+
+    /// Pre-computed lowercased strings for fast search matching
+    private(set) var searchTitle: String = ""
+    private(set) var searchPath: String = ""
+    private(set) var searchPreview: String = ""
+
     init(url: URL, relativePath: String, modificationDate: Date, title: String, contentPreview: String = "", isUnsaved: Bool = false) {
         self.id = UUID()
         self.url = url
@@ -19,13 +24,24 @@ struct NoteFile: Identifiable, Equatable {
         self.title = title
         self.contentPreview = contentPreview
         self.isUnsaved = isUnsaved
+        self.searchTitle = title.lowercased()
+        self.searchPath = relativePath.lowercased()
+        self.searchPreview = contentPreview.lowercased()
     }
-    
+
     func matches(query: String) -> Bool {
         let lowercasedQuery = query.lowercased()
-        return title.lowercased().contains(lowercasedQuery) ||
-               relativePath.lowercased().contains(lowercasedQuery) ||
-               contentPreview.lowercased().contains(lowercasedQuery)
+        return searchTitle.contains(lowercasedQuery) ||
+               searchPath.contains(lowercasedQuery) ||
+               searchPreview.contains(lowercasedQuery)
+    }
+
+    mutating func updateContent(title: String, contentPreview: String, modificationDate: Date) {
+        self.title = title
+        self.contentPreview = contentPreview
+        self.modificationDate = modificationDate
+        self.searchTitle = title.lowercased()
+        self.searchPreview = contentPreview.lowercased()
     }
     
     var displayTitle: String {
@@ -180,9 +196,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             let contentPreview = readContentPreview(from: url)
             
             if let index = notes.firstIndex(where: { $0.url == url }) {
-                notes[index].modificationDate = modDate
-                notes[index].title = title
-                notes[index].contentPreview = contentPreview
+                notes[index].updateContent(title: title, contentPreview: contentPreview, modificationDate: modDate)
             } else {
                 let note = NoteFile(
                     url: url,
@@ -254,34 +268,47 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             notes = []
             return
         }
-        
+
         isLoading = true
-        defer { isLoading = false }
-        
-        var discoveredNotes: [NoteFile] = []
+
+        let extensions = allowedExtensions
+        let discoveredNotes: [NoteFile] = await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let result = NoteStore.enumerateNotes(in: folderURL, allowedExtensions: extensions)
+                continuation.resume(returning: result)
+            }
+        }
+
+        notes = discoveredNotes
+        isLoading = false
+        startWatching()
+    }
+
+    /// Enumerates files and reads metadata off the main thread
+    private static func enumerateNotes(in folderURL: URL, allowedExtensions: Set<String>) -> [NoteFile] {
         let fileManager = FileManager.default
-        
         guard let enumerator = fileManager.enumerator(
             at: folderURL,
             includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey],
             options: [.skipsHiddenFiles, .skipsPackageDescendants]
-        ) else {
-            notes = []
-            return
-        }
-        
+        ) else { return [] }
+
+        let folderPath = folderURL.path + "/"
+        var result: [NoteFile] = []
+        result.reserveCapacity(1024)
+
         for case let fileURL as URL in enumerator {
             let ext = fileURL.pathExtension.lowercased()
             guard allowedExtensions.contains(ext) else { continue }
-            
+
             do {
                 let resourceValues = try fileURL.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey])
                 guard resourceValues.isRegularFile == true else { continue }
-                
+
                 let modDate = resourceValues.contentModificationDate ?? Date.distantPast
-                let relativePath = fileURL.path.replacingOccurrences(of: folderURL.path + "/", with: "")
-                let title = readFirstLine(from: fileURL)
-                let contentPreview = readContentPreview(from: fileURL)
+                let relativePath = fileURL.path.replacingOccurrences(of: folderPath, with: "")
+                let title = readFirstLineStatic(from: fileURL)
+                let contentPreview = readContentPreviewStatic(from: fileURL)
 
                 let note = NoteFile(
                     url: fileURL,
@@ -290,16 +317,30 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
                     title: title,
                     contentPreview: contentPreview
                 )
-                discoveredNotes.append(note)
+                result.append(note)
             } catch {
                 continue
             }
         }
-        
-        discoveredNotes.sort { $0.modificationDate > $1.modificationDate }
-        notes = discoveredNotes
-        
-        startWatching()
+
+        result.sort { $0.modificationDate > $1.modificationDate }
+        return result
+    }
+
+    private static func readFirstLineStatic(from url: URL) -> String {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
+        defer { try? handle.close() }
+        guard let data = try? handle.read(upToCount: 256) else { return "" }
+        guard let content = String(data: data, encoding: .utf8) else { return "" }
+        return (content.components(separatedBy: .newlines).first ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func readContentPreviewStatic(from url: URL, maxBytes: Int = 2048) -> String {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
+        defer { try? handle.close() }
+        guard let data = try? handle.read(upToCount: maxBytes) else { return "" }
+        guard let content = String(data: data, encoding: .utf8) else { return "" }
+        return content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
     private func readFirstLine(from url: URL) -> String {
