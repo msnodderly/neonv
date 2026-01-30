@@ -884,41 +884,39 @@ struct ExpandableSearchDivider: View {
     @GestureState private var dragOffset: CGFloat = 0
 
     var body: some View {
-        VStack(spacing: 0) {
-            Rectangle()
-                .fill(isHovering ? Color.accentColor.opacity(0.5) : Color.accentColor.opacity(0.3))
-                .frame(height: isHovering ? 6 : 3)
-                .contentShape(Rectangle().inset(by: -4))
-                .onHover { hovering in
-                    isHovering = hovering
-                    if hovering {
-                        NSCursor.resizeUpDown.push()
-                    } else {
-                        NSCursor.pop()
-                    }
+        Rectangle()
+            .fill(isHovering ? Color.accentColor.opacity(0.3) : Color(NSColor.separatorColor))
+            .frame(height: isHovering ? 4 : 1)
+            .contentShape(Rectangle().inset(by: -4))
+            .onHover { hovering in
+                isHovering = hovering
+                if hovering {
+                    NSCursor.resizeUpDown.push()
+                } else {
+                    NSCursor.pop()
                 }
-                .gesture(
-                    DragGesture(minimumDistance: 1)
-                        .updating($dragOffset) { value, state, _ in
-                            state = value.translation.height
-                        }
-                        .onEnded { value in
-                            if value.translation.height > 10 {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    isSearchHidden = false
-                                }
-                                onExpand()
+            }
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .updating($dragOffset) { value, state, _ in
+                        state = value.translation.height
+                    }
+                    .onEnded { value in
+                        if value.translation.height > 10 {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isSearchHidden = false
                             }
+                            onExpand()
                         }
-                )
-                .onTapGesture(count: 2) {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isSearchHidden = false
                     }
-                    onExpand()
+            )
+            .onTapGesture(count: 2) {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isSearchHidden = false
                 }
-                .help("Drag down or double-click to show search field (⌘L)")
-        }
+                onExpand()
+            }
+            .help("Drag down or double-click to show search field (⌘L)")
     }
 }
 
