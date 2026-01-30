@@ -27,7 +27,7 @@ struct ContentView: View {
     @State private var externalToastMessage: String?
     @State private var selectedNoteURL: URL?
     @State private var showFindBar = false
-    @State private var showKeyboardShortcuts = false
+    @State private var showHelp = false
     @FocusState private var focusedField: FocusedField?
 
     struct ExternalConflict: Identifiable {
@@ -271,12 +271,12 @@ struct ContentView: View {
                 }
             },
             onShowInFinder: showInFinder,
-            onShowKeyboardShortcuts: { showKeyboardShortcuts = true },
+            onShowHelp: { showHelp = true },
             onOpenInExternalEditor: openInExternalEditor,
             onToggleSearchField: toggleSearchField
         ))
-        .sheet(isPresented: $showKeyboardShortcuts) {
-            KeyboardShortcutsView()
+        .sheet(isPresented: $showHelp) {
+            HelpView()
         }
     }
 
@@ -1069,7 +1069,7 @@ struct NotificationHandlers: ViewModifier {
     let onFindInNote: () -> Void
     let onDeleteNote: () -> Void
     let onShowInFinder: () -> Void
-    let onShowKeyboardShortcuts: () -> Void
+    let onShowHelp: () -> Void
     let onOpenInExternalEditor: () -> Void
     let onToggleSearchField: () -> Void
 
@@ -1093,8 +1093,8 @@ struct NotificationHandlers: ViewModifier {
             .onReceive(NotificationCenter.default.publisher(for: .showInFinder)) { _ in
                 onShowInFinder()
             }
-            .onReceive(NotificationCenter.default.publisher(for: .showKeyboardShortcuts)) { _ in
-                onShowKeyboardShortcuts()
+            .onReceive(NotificationCenter.default.publisher(for: .showHelp)) { _ in
+                onShowHelp()
             }
             .onReceive(NotificationCenter.default.publisher(for: .openInExternalEditor)) { _ in
                 onOpenInExternalEditor()

@@ -101,3 +101,7 @@ perf-strategy/
 cmdp-focus/
 # bd worktree
 help-window/
+# bd worktree
+hide-search/
+# bd worktree
+cli-folder/
