@@ -99,7 +99,48 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
     private var fileWatcher: FileWatcher?
     
     init() {
-        loadSavedFolder()
+        if let cliPath = Self.parseCommandLineFolder() {
+            setFolder(from: cliPath)
+        } else {
+            loadSavedFolder()
+        }
+    }
+
+    private static func parseCommandLineFolder() -> String? {
+        let args = ProcessInfo.processInfo.arguments
+        guard args.count > 1 else { return nil }
+        let firstArg = args[1]
+        if firstArg.hasPrefix("-") { return nil }
+        return firstArg
+    }
+
+    func setFolder(from path: String) {
+        let expandedPath = (path as NSString).expandingTildeInPath
+        let url = URL(fileURLWithPath: expandedPath)
+
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
+              isDirectory.boolValue else {
+            Task { @MainActor in
+                self.showInvalidPathAlert(path: path)
+            }
+            return
+        }
+
+        saveFolder(url)
+        selectedFolderURL = url
+        Task {
+            await discoverFiles()
+        }
+    }
+
+    private func showInvalidPathAlert(path: String) {
+        let alert = NSAlert()
+        alert.messageText = "Invalid Folder Path"
+        alert.informativeText = "The path \"\(path)\" is not a valid folder.\n\nPlease provide a path to an existing directory."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
     
     private func startWatching() {
