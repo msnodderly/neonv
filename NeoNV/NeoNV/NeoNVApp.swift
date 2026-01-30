@@ -70,16 +70,15 @@ struct NeoNVApp: App {
                     NotificationCenter.default.post(name: .showInFinder, object: nil)
                 }
                 .keyboardShortcut("r", modifiers: .command)
-
-                Divider()
-
-                Button("Help") {
-                    NotificationCenter.default.post(name: .showHelp, object: nil)
-                }
-                .keyboardShortcut("k", modifiers: .command)
             }
 
             CommandGroup(replacing: .printItem) { }
+
+            CommandGroup(replacing: .help) {
+                Button("NeoNV Help") {
+                    NotificationCenter.default.post(name: .showHelp, object: nil)
+                }
+            }
 
             CommandGroup(after: .pasteboard) {
                 Button("Delete Note") {
