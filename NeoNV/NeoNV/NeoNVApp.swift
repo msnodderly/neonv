@@ -49,6 +49,11 @@ struct NeoNVApp: App {
                 }
                 .keyboardShortcut("l", modifiers: .command)
 
+                Button("Toggle Search Field") {
+                    NotificationCenter.default.post(name: .toggleSearchField, object: nil)
+                }
+                .keyboardShortcut("l", modifiers: [.command, .shift])
+
                 Button("Toggle Preview") {
                     NotificationCenter.default.post(name: .togglePreview, object: nil)
                 }
@@ -104,4 +109,5 @@ extension Notification.Name {
     static let showInFinder = Notification.Name("showInFinder")
     static let showKeyboardShortcuts = Notification.Name("showKeyboardShortcuts")
     static let openInExternalEditor = Notification.Name("openInExternalEditor")
+    static let toggleSearchField = Notification.Name("toggleSearchField")
 }
