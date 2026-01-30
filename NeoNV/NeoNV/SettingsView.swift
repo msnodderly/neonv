@@ -153,6 +153,16 @@ struct EditorSettingsTab: View {
             Divider()
 
             Section {
+                Toggle("Highlight Search Terms", isOn: $settings.searchHighlightingEnabled)
+
+                Text("Highlight matching search terms in the note list and editor")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Divider()
+
+            Section {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Preview")
                         .font(.headline)

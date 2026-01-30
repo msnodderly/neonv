@@ -24,6 +24,7 @@ class AppSettings: ObservableObject {
         static let defaultExtension = "defaultFileExtension"
         static let fontSize = "editorFontSize"
         static let externalEditorPath = "externalEditorPath"
+        static let searchHighlightingEnabled = "searchHighlightingEnabled"
     }
 
     @Published var defaultExtension: FileExtension {
@@ -44,6 +45,12 @@ class AppSettings: ObservableObject {
         }
     }
 
+    @Published var searchHighlightingEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(searchHighlightingEnabled, forKey: Keys.searchHighlightingEnabled)
+        }
+    }
+
     private init() {
         // Load default extension
         if let storedExtension = UserDefaults.standard.string(forKey: Keys.defaultExtension),
@@ -59,12 +66,20 @@ class AppSettings: ObservableObject {
 
         // Load external editor path
         self.externalEditorPath = UserDefaults.standard.string(forKey: Keys.externalEditorPath)
+
+        // Load search highlighting preference (default: enabled)
+        if UserDefaults.standard.object(forKey: Keys.searchHighlightingEnabled) != nil {
+            self.searchHighlightingEnabled = UserDefaults.standard.bool(forKey: Keys.searchHighlightingEnabled)
+        } else {
+            self.searchHighlightingEnabled = true
+        }
     }
 
     func resetToDefaults() {
         defaultExtension = .markdown
         fontSize = 13.0
         externalEditorPath = nil
+        searchHighlightingEnabled = true
     }
 
     var externalEditorDisplayName: String {

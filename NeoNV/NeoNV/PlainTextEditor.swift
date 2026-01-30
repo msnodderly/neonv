@@ -5,6 +5,7 @@ struct PlainTextEditor: NSViewRepresentable {
     @Binding var text: String
     var fontSize: CGFloat = 13
     var showFindBar: Bool = false
+    var searchTerms: [String] = []
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
 
@@ -65,18 +66,48 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
 
+        applySearchHighlighting(to: textView)
+
         if showFindBar {
             if !scrollView.isFindBarVisible {
-                // Show the find bar
                 let menuItem = NSMenuItem()
                 menuItem.tag = Int(NSTextFinder.Action.showFindInterface.rawValue)
                 textView.performTextFinderAction(menuItem)
             }
-            // Focus the find bar's search field (whether just opened or already visible)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 if let findBarContainer = scrollView.findBarView {
                     PlainTextEditor.focusSearchField(in: findBarContainer)
                 }
+            }
+        }
+    }
+
+    private func applySearchHighlighting(to textView: NSTextView) {
+        guard let textStorage = textView.textStorage else { return }
+        let fullRange = NSRange(location: 0, length: textStorage.length)
+
+        textStorage.removeAttribute(.backgroundColor, range: fullRange)
+
+        guard !searchTerms.isEmpty else { return }
+
+        let text = textView.string
+        let nsText = text as NSString
+        let highlightColor = NSColor.systemYellow.withAlphaComponent(0.4)
+
+        for term in searchTerms where !term.isEmpty {
+            var searchRange = NSRange(location: 0, length: nsText.length)
+            while searchRange.location < nsText.length {
+                let foundRange = nsText.range(
+                    of: term,
+                    options: .caseInsensitive,
+                    range: searchRange
+                )
+                if foundRange.location == NSNotFound {
+                    break
+                }
+                textStorage.addAttribute(.backgroundColor, value: highlightColor, range: foundRange)
+                searchRange.location = foundRange.location + foundRange.length
+                searchRange.length = nsText.length - searchRange.location
             }
         }
     }

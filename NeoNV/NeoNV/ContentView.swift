@@ -82,6 +82,7 @@ struct ContentView: View {
                         selectedNoteID: $selectedNoteID,
                         focusedField: _focusedField,
                         isLoading: noteStore.isLoading,
+                        searchText: debouncedSearchText,
                         onTabToEditor: { focusedField = .editor },
                         onShiftTabToSearch: { focusedField = .search },
                         onEnterToEditor: { focusedField = .editor },
@@ -104,6 +105,7 @@ struct ContentView: View {
                             content: $editorContent,
                             showFindBar: $showFindBar,
                             focusedField: _focusedField,
+                            searchText: debouncedSearchText,
                             onShiftTab: { focusedField = .noteList },
                             onEscape: { focusedField = .noteList }
                         )
@@ -801,12 +803,20 @@ struct NoteListView: View {
     @Binding var selectedNoteID: UUID?
     @FocusState var focusedField: FocusedField?
     var isLoading: Bool
+    var searchText: String
     var onTabToEditor: () -> Void
     var onShiftTabToSearch: () -> Void
     var onEnterToEditor: () -> Void
     var onEscapeToSearch: () -> Void
     var onUpArrowToSearch: () -> Void
     var onDeleteNote: ((NoteFile) -> Void)?
+
+    @ObservedObject private var settings = AppSettings.shared
+
+    private var searchTerms: [String] {
+        guard settings.searchHighlightingEnabled, !searchText.isEmpty else { return [] }
+        return [searchText]
+    }
 
     var body: some View {
         Group {
@@ -820,13 +830,27 @@ struct NoteListView: View {
             } else {
                 List(notes, selection: $selectedNoteID) { note in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(note.displayTitle)
-                            .font(.system(size: 13, weight: .medium))
-                            .lineLimit(1)
-                        Text(note.displayPath)
-                            .font(.system(size: 11))
-                            .italic(note.isUnsaved)
-                            .foregroundColor(note.isUnsaved ? .orange : .secondary)
+                        HighlightedText(
+                            note.displayTitle,
+                            highlighting: searchTerms,
+                            font: .system(size: 13, weight: .medium),
+                            color: .primary
+                        )
+                        .lineLimit(1)
+
+                        if note.isUnsaved {
+                            Text(note.displayPath)
+                                .font(.system(size: 11))
+                                .italic()
+                                .foregroundColor(.orange)
+                        } else {
+                            HighlightedText(
+                                note.displayPath,
+                                highlighting: searchTerms,
+                                font: .system(size: 11),
+                                color: .secondary
+                            )
+                        }
                     }
                     .tag(note.id)
                 }
@@ -872,21 +896,27 @@ struct EditorView: View {
     @Binding var showFindBar: Bool
     @FocusState var focusedField: FocusedField?
     @ObservedObject private var settings = AppSettings.shared
+    var searchText: String
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
+
+    private var searchTerms: [String] {
+        guard settings.searchHighlightingEnabled, !searchText.isEmpty else { return [] }
+        return [searchText]
+    }
 
     var body: some View {
         PlainTextEditor(
             text: $content,
             fontSize: CGFloat(settings.fontSize),
             showFindBar: showFindBar,
+            searchTerms: searchTerms,
             onShiftTab: onShiftTab,
             onEscape: onEscape
         )
         .focused($focusedField, equals: .editor)
         .onChange(of: showFindBar) { _, newValue in
             if newValue {
-                // Reset after triggering so it can be triggered again
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     showFindBar = false
                 }
