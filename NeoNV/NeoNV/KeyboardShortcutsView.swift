@@ -7,7 +7,7 @@ struct KeyboardShortcutsView: View {
         ShortcutCategory(
             title: "Navigation",
             shortcuts: [
-                Shortcut(key: "⌘K", description: "Show keyboard shortcuts"),
+                Shortcut(key: "⌘K", description: "Show help"),
                 Shortcut(key: "⌘L", description: "Focus search bar"),
                 Shortcut(key: "Tab / ↓", description: "Move to next pane"),
                 Shortcut(key: "Shift + Tab", description: "Move to previous pane"),
