@@ -88,7 +88,10 @@ struct ContentView: View {
                         onEnterToEditor: { focusedField = .editor },
                         onEscapeToSearch: { focusedField = .search },
                         onUpArrowToSearch: { focusedField = .search },
-                        onDeleteNote: { note in noteToDelete = note }
+                        onDeleteNote: { note in noteToDelete = note },
+                        onShowInFinder: { note in
+                            NSWorkspace.shared.activateFileViewerSelecting([note.url])
+                        }
                     )
                     .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
 
@@ -250,6 +253,7 @@ struct ContentView: View {
                     noteToDelete = note
                 }
             },
+            onShowInFinder: showInFinder,
             onShowKeyboardShortcuts: { showKeyboardShortcuts = true },
             onOpenInExternalEditor: openInExternalEditor
         ))
@@ -351,6 +355,11 @@ struct ContentView: View {
         } else {
             NSWorkspace.shared.open(url)
         }
+    }
+
+    private func showInFinder() {
+        guard let url = selectedNoteURL else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
     private func handleExternalChange(_ change: ExternalChangeEvent) {
@@ -810,6 +819,7 @@ struct NoteListView: View {
     var onEscapeToSearch: () -> Void
     var onUpArrowToSearch: () -> Void
     var onDeleteNote: ((NoteFile) -> Void)?
+    var onShowInFinder: ((NoteFile) -> Void)?
 
     @ObservedObject private var settings = AppSettings.shared
 
@@ -853,6 +863,18 @@ struct NoteListView: View {
                         }
                     }
                     .tag(note.id)
+                    .contextMenu {
+                        if let onShowInFinder = onShowInFinder {
+                            Button("Show in Finder") {
+                                onShowInFinder(note)
+                            }
+                        }
+                        if let onDeleteNote = onDeleteNote {
+                            Button("Delete", role: .destructive) {
+                                onDeleteNote(note)
+                            }
+                        }
+                    }
                 }
                 .listStyle(.sidebar)
                 .focusable()
@@ -931,6 +953,7 @@ struct NotificationHandlers: ViewModifier {
     let onTogglePreview: () -> Void
     let onFindInNote: () -> Void
     let onDeleteNote: () -> Void
+    let onShowInFinder: () -> Void
     let onShowKeyboardShortcuts: () -> Void
     let onOpenInExternalEditor: () -> Void
 
@@ -950,6 +973,9 @@ struct NotificationHandlers: ViewModifier {
             }
             .onReceive(NotificationCenter.default.publisher(for: .deleteNote)) { _ in
                 onDeleteNote()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .showInFinder)) { _ in
+                onShowInFinder()
             }
             .onReceive(NotificationCenter.default.publisher(for: .showKeyboardShortcuts)) { _ in
                 onShowKeyboardShortcuts()
