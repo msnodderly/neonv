@@ -67,9 +67,14 @@ struct NoteFile: Identifiable, Equatable {
     var displayPath: String {
         if isUnsaved {
             return "[unsaved]"
-        } else {
-            return relativePath
         }
+        // For files at root level (no directory component), return empty string
+        // For nested files, return the relative path
+        let directoryPath = (relativePath as NSString).deletingLastPathComponent
+        if directoryPath.isEmpty {
+            return ""
+        }
+        return relativePath
     }
 }
 

@@ -843,7 +843,7 @@ struct NoteListView: View {
                                 .font(.system(size: 11))
                                 .italic()
                                 .foregroundColor(.orange)
-                        } else {
+                        } else if !note.displayPath.isEmpty {
                             HighlightedText(
                                 note.displayPath,
                                 highlighting: searchTerms,
