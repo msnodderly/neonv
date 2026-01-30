@@ -317,10 +317,14 @@ struct ContentView: View {
 
     private func togglePreview() {
         showPreview.toggle()
-        if showPreview {
-            focusedField = .preview
-        } else {
-            focusedField = .editor
+        // Only switch focus if currently in editor or preview pane
+        // If focused on list or search, keep focus there
+        if focusedField == .editor || focusedField == .preview {
+            if showPreview {
+                focusedField = .preview
+            } else {
+                focusedField = .editor
+            }
         }
     }
 
