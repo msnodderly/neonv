@@ -84,35 +84,18 @@ delete-note/
 search-within-note/
 neonv-eta/
 empty-state/
-# bd worktree
 paste-plain-text/
-# bd worktree
 enter-to-edit/
-# bd worktree
 up-arrow-nav/
-# bd worktree
 write-conflict/
-# bd worktree
 fix-no-note-selected/
-# bd worktree
 perf-optimization/
-# bd worktree
 performance-optimization/
-# bd worktree
 find-in-note/
-# bd worktree
 org-preview/
-# bd worktree
 open-external-editor/
-# bd worktree
 edge-case-docs/
-# bd worktree
 search-term-highlighting/
-# bd worktree
-nested-folder-path/
-# bd worktree
 neonv-l63/
-# bd worktree
 perf-strategy/
-# bd worktree
 cmdp-focus/
