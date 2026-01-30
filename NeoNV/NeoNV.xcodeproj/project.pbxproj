@@ -19,6 +19,7 @@
 		A0123456000000000000000B /* OrgPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0123456000000000000001B /* OrgPreviewView.swift */; };
 		A0123456000000000000000C /* KeyboardShortcutsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0123456000000000000001C /* KeyboardShortcutsView.swift */; };
 		A0123456000000000000000D /* HighlightedText.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0123456000000000000001D /* HighlightedText.swift */; };
+		A0123456000000000000000E /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0123456000000000000001E /* HelpView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +37,7 @@
 		A0123456000000000000001B /* OrgPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrgPreviewView.swift; sourceTree = "<group>"; };
 		A0123456000000000000001C /* KeyboardShortcutsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcutsView.swift; sourceTree = "<group>"; };
 		A0123456000000000000001D /* HighlightedText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighlightedText.swift; sourceTree = "<group>"; };
+		A0123456000000000000001E /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -71,6 +73,7 @@
 				A0123456000000000000001A /* FileWatcher.swift */,
 				A0123456000000000000001C /* KeyboardShortcutsView.swift */,
 				A0123456000000000000001D /* HighlightedText.swift */,
+				A0123456000000000000001E /* HelpView.swift */,
 				A01234560000000000000013 /* Assets.xcassets */,
 				A01234560000000000000014 /* NeoNV.entitlements */,
 			);
@@ -165,6 +168,7 @@
 				A0123456000000000000000A /* FileWatcher.swift in Sources */,
 				A0123456000000000000000C /* KeyboardShortcutsView.swift in Sources */,
 				A0123456000000000000000D /* HighlightedText.swift in Sources */,
+				A0123456000000000000000E /* HelpView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
