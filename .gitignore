@@ -108,3 +108,5 @@ open-external-editor/
 edge-case-docs/
 # bd worktree
 search-term-highlighting/
+# bd worktree
+nested-folder-path/
