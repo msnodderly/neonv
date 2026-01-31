@@ -55,7 +55,7 @@ final class FileWatcher {
         
         stream = FSEventStreamCreate(
             nil,
-            { (streamRef, clientCallbackInfo, numEvents, eventPaths, eventFlags, eventIds) in
+            { (_, clientCallbackInfo, numEvents, eventPaths, eventFlags, _) in
                 guard let clientCallbackInfo = clientCallbackInfo else { return }
                 let watcher = Unmanaged<FileWatcher>.fromOpaque(clientCallbackInfo).takeUnretainedValue()
                 
