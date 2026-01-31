@@ -122,3 +122,5 @@ release/
 .build-release/
 # bd worktree
 github-ci/
+# bd worktree
+horizontal-layout/
