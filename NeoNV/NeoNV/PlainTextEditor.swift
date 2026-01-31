@@ -8,7 +8,6 @@ struct PlainTextEditor: NSViewRepresentable {
     var searchTerms: [String] = []
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
-    var onToggleDone: (() -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -17,7 +16,6 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.delegate = context.coordinator
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
-        textView.onToggleDone = onToggleDone
 
         textView.isRichText = false
         textView.allowsUndo = true
@@ -67,7 +65,6 @@ struct PlainTextEditor: NSViewRepresentable {
 
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
-        textView.onToggleDone = onToggleDone
 
         applySearchHighlighting(to: textView)
         applyDoneStrikethrough(to: textView)
@@ -183,50 +180,10 @@ struct PlainTextEditor: NSViewRepresentable {
 class CustomTextView: NSTextView {
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
-    var onToggleDone: (() -> Void)?
-    private var toggleDoneObserver: Any?
-
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
-        setupNotifications()
-    }
-
-    override init(frame frameRect: NSRect, textContainer container: NSTextContainer?) {
-        super.init(frame: frameRect, textContainer: container)
-        setupNotifications()
-    }
-
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        setupNotifications()
-    }
-
-    private func setupNotifications() {
-        toggleDoneObserver = NotificationCenter.default.addObserver(
-            forName: .toggleDone,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            guard let self, self.window?.firstResponder == self else { return }
-            self.toggleDoneOnCurrentLine()
-        }
-    }
-
-    deinit {
-        if let observer = toggleDoneObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
-    }
 
     override func keyDown(with event: NSEvent) {
         if event.keyCode == 48 && event.modifierFlags.contains(.shift) {
             onShiftTab?()
-            return
-        }
-
-        // Cmd+D: toggle @done on current line
-        if event.keyCode == 2 && event.modifierFlags.contains(.command) {
-            toggleDoneOnCurrentLine()
             return
         }
 
@@ -243,41 +200,6 @@ class CustomTextView: NSTextView {
         }
         
         super.keyDown(with: event)
-    }
-    
-    func toggleDoneOnCurrentLine() {
-        let nsText = string as NSString
-        let cursorLocation = selectedRange().location
-        guard cursorLocation <= nsText.length else { return }
-
-        var lineStart = 0
-        var lineEnd = 0
-        var contentsEnd = 0
-        nsText.getLineStart(&lineStart, end: &lineEnd, contentsEnd: &contentsEnd, for: NSRange(location: cursorLocation, length: 0))
-
-        let lineRange = NSRange(location: lineStart, length: contentsEnd - lineStart)
-        let lineContent = nsText.substring(with: lineRange)
-
-        let doneTagPattern = try! NSRegularExpression(pattern: "\\s*@done(\\(.*?\\))?\\s*$")
-        let lineNS = lineContent as NSString
-        let matchRange = NSRange(location: 0, length: lineNS.length)
-
-        if let match = doneTagPattern.firstMatch(in: lineContent, range: matchRange) {
-            // Remove @done tag (and any preceding whitespace)
-            let newLine = lineNS.replacingCharacters(in: match.range, with: "")
-            if shouldChangeText(in: lineRange, replacementString: newLine) {
-                replaceCharacters(in: lineRange, with: newLine)
-                didChangeText()
-            }
-        } else {
-            // Add @done tag
-            let trimmedEnd = lineContent.hasSuffix(" ") ? "" : " "
-            let newLine = lineContent + trimmedEnd + "@done"
-            if shouldChangeText(in: lineRange, replacementString: newLine) {
-                replaceCharacters(in: lineRange, with: newLine)
-                didChangeText()
-            }
-        }
     }
 
     override func paste(_ sender: Any?) {
