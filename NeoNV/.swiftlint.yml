@@ -1,0 +1,38 @@
+# SwiftLint configuration for NeoNV
+
+included:
+  - NeoNV
+
+# Relax rules to accommodate existing codebase
+line_length:
+  warning: 160
+  error: 250
+  ignores_urls: true
+  ignores_comments: true
+
+type_body_length:
+  warning: 500
+  error: 800
+
+function_body_length:
+  warning: 100
+  error: 250
+
+file_length:
+  warning: 800
+  error: 1200
+
+cyclomatic_complexity:
+  warning: 15
+  error: 35
+
+# Disable rules that are too noisy for this project
+disabled_rules:
+  - todo
+  - trailing_whitespace
+  - function_parameter_count
+  - identifier_name
+
+opt_in_rules:
+  - empty_count
+  - closure_spacing
