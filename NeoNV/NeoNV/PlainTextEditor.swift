@@ -1,6 +1,67 @@
 import SwiftUI
 import AppKit
 
+// Wiki-link types
+struct WikiLink: Equatable {
+    let range: NSRange
+    let title: String
+    let isComplete: Bool  // Has closing ]]
+    var matchedNote: NoteFile?
+}
+
+struct WikiLinkParser {
+    static func parseWikiLinks(in text: String, notes: [NoteFile]) -> [WikiLink] {
+        var links: [WikiLink] = []
+        let nsText = text as NSString
+        
+        var searchStart = 0
+        while searchStart < nsText.length {
+            let openBracketRange = nsText.range(of: "[[", range: NSRange(location: searchStart, length: nsText.length - searchStart))
+            guard openBracketRange.location != NSNotFound else { break }
+            
+            let closeBracketRange = nsText.range(of: "]]", range: NSRange(location: openBracketRange.location + 2, length: nsText.length - openBracketRange.location - 2))
+            
+            let endRange: NSRange
+            let isComplete: Bool
+            
+            if closeBracketRange.location != NSNotFound {
+                endRange = closeBracketRange
+                isComplete = true
+            } else {
+                // Incomplete link - go to end of text or next [[
+                let nextOpenRange = nsText.range(of: "[[", range: NSRange(location: openBracketRange.location + 2, length: nsText.length - openBracketRange.location - 2))
+                if nextOpenRange.location != NSNotFound {
+                    endRange = NSRange(location: nextOpenRange.location, length: 0)
+                } else {
+                    endRange = NSRange(location: nsText.length, length: 0)
+                }
+                isComplete = false
+            }
+            
+            let linkRange = NSRange(location: openBracketRange.location, length: endRange.location - openBracketRange.location + (isComplete ? 2 : 0))
+            let titleRange = NSRange(location: openBracketRange.location + 2, length: linkRange.length - 4)
+            let title = titleRange.length > 0 ? nsText.substring(with: titleRange) : ""
+            
+            // Find matching note
+            let matchedNote = notes.first { note in
+                title.lowercased() == note.displayTitle.lowercased() ||
+                title.lowercased() == note.title.lowercased()
+            }
+            
+            links.append(WikiLink(
+                range: linkRange,
+                title: title,
+                isComplete: isComplete,
+                matchedNote: matchedNote
+            ))
+            
+            searchStart = isComplete ? endRange.location + 2 : openBracketRange.location + 2
+        }
+        
+        return links
+    }
+}
+
 struct PlainTextEditor: NSViewRepresentable {
     @Binding var text: String
     var fontSize: CGFloat = 13
@@ -8,6 +69,9 @@ struct PlainTextEditor: NSViewRepresentable {
     var searchTerms: [String] = []
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
+    var availableNotes: [NoteFile] = []
+    var onWikiLinkClick: ((WikiLink) -> Void)?
+    var onWikiLinkCreateNote: ((String) -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -16,6 +80,9 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.delegate = context.coordinator
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
+        textView.onWikiLinkClick = onWikiLinkClick
+        textView.onWikiLinkCreateNote = onWikiLinkCreateNote
+        textView.availableNotes = availableNotes
 
         textView.isRichText = false
         textView.allowsUndo = true
@@ -65,9 +132,13 @@ struct PlainTextEditor: NSViewRepresentable {
 
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
+        textView.onWikiLinkClick = onWikiLinkClick
+        textView.onWikiLinkCreateNote = onWikiLinkCreateNote
+        textView.availableNotes = availableNotes
 
         applySearchHighlighting(to: textView)
         applyDoneStrikethrough(to: textView)
+        textView.updateWikiLinkStyling()
 
         if showFindBar {
             if !scrollView.isFindBarVisible {
@@ -161,14 +232,16 @@ struct PlainTextEditor: NSViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text)
+        Coordinator(text: $text, availableNotes: availableNotes)
     }
     
     class Coordinator: NSObject, NSTextViewDelegate {
         var text: Binding<String>
+        var availableNotes: [NoteFile]
         
-        init(text: Binding<String>) {
+        init(text: Binding<String>, availableNotes: [NoteFile]) {
             self.text = text
+            self.availableNotes = availableNotes
         }
         
         func textDidChange(_ notification: Notification) {
@@ -181,6 +254,75 @@ struct PlainTextEditor: NSViewRepresentable {
 class CustomTextView: NSTextView {
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
+    var onWikiLinkClick: ((WikiLink) -> Void)?
+    var onWikiLinkCreateNote: ((String) -> Void)?
+    var availableNotes: [NoteFile] = []
+    var wikiLinks: [WikiLink] = []
+    
+    override func mouseDown(with event: NSEvent) {
+        let clickPoint = convert(event.locationInWindow, from: nil)
+        let clickedRange = characterIndexForInsertion(at: clickPoint)
+        
+        // Check if click is on a wiki link
+        for link in wikiLinks {
+            if clickedRange >= link.range.location && clickedRange < link.range.location + link.range.length {
+                handleWikiLinkClick(link: link, event: event)
+                return
+            }
+        }
+        
+        super.mouseDown(with: event)
+    }
+    
+    private func handleWikiLinkClick(link: WikiLink, event: NSEvent) {
+        if event.modifierFlags.contains(.command) || link.matchedNote == nil {
+            // Cmd+click or link to non-existent note - create or navigate
+            if let matchedNote = link.matchedNote {
+                onWikiLinkClick?(link)
+            } else {
+                onWikiLinkCreateNote?(link.title)
+            }
+        } else {
+            // Regular click - navigate to existing note
+            onWikiLinkClick?(link)
+        }
+    }
+    
+    override func keyUp(with event: NSEvent) {
+        super.keyUp(with: event)
+        
+        // Update wiki link styling after typing
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+            self.updateWikiLinkStyling()
+        }
+    }
+    
+    func updateWikiLinkStyling() {
+        wikiLinks = WikiLinkParser.parseWikiLinks(in: self.string, notes: availableNotes)
+        
+        guard let textStorage = self.textStorage else { return }
+        let fullRange = NSRange(location: 0, length: textStorage.length)
+        
+        // Reset text color to default first
+        textStorage.addAttribute(.foregroundColor, value: NSColor.textColor, range: fullRange)
+        textStorage.removeAttribute(.underlineStyle, range: fullRange)
+        textStorage.removeAttribute(.backgroundColor, range: fullRange)
+        
+        // Apply wiki-link styling
+        for link in wikiLinks {
+            guard link.range.location + link.range.length <= textStorage.length else { continue }
+            
+            if link.matchedNote != nil {
+                textStorage.addAttribute(.foregroundColor, value: NSColor.linkColor, range: link.range)
+                textStorage.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: link.range)
+            } else if link.isComplete {
+                textStorage.addAttribute(.foregroundColor, value: NSColor.systemOrange, range: link.range)
+                textStorage.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: link.range)
+            } else {
+                textStorage.addAttribute(.backgroundColor, value: NSColor.systemOrange.withAlphaComponent(0.2), range: link.range)
+            }
+        }
+    }
 
     override func keyDown(with event: NSEvent) {
         if event.keyCode == 48 && event.modifierFlags.contains(.shift) {

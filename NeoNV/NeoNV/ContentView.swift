@@ -122,7 +122,10 @@ struct ContentView: View {
                             focusedField: _focusedField,
                             searchText: debouncedSearchText,
                             onShiftTab: { focusedField = .noteList },
-                            onEscape: { focusedField = .noteList }
+                            onEscape: { focusedField = .noteList },
+                            availableNotes: noteStore.notes,
+                            onWikiLinkClick: handleWikiLinkClick,
+                            onWikiLinkCreateNote: handleWikiLinkCreateNote
                         )
                         .frame(minWidth: 300)
                     }
@@ -730,6 +733,46 @@ struct ContentView: View {
     private func showInFinder(error: SaveError) {
         NSWorkspace.shared.selectFile(error.fileURL.path, inFileViewerRootedAtPath: error.fileURL.deletingLastPathComponent().path)
     }
+    
+    private func handleWikiLinkClick(link: WikiLink) {
+        guard let matchedNote = link.matchedNote else { return }
+        selectedNoteID = matchedNote.id
+    }
+    
+    private func handleWikiLinkCreateNote(title: String) {
+        guard noteStore.selectedFolderURL != nil else { return }
+        
+        let fileName = sanitizeFileName(title)
+        let ext = AppSettings.shared.defaultExtension.rawValue
+        let fileURL = noteStore.selectedFolderURL!.appendingPathComponent(fileName + ".\(ext)")
+        
+        let initialContent = "# \(title)\n\n"
+        
+        Task {
+            do {
+                noteStore.markAsSavedLocally(fileURL)
+                try await atomicWrite(content: initialContent, to: fileURL)
+                
+                await noteStore.discoverFiles()
+                
+                await MainActor.run {
+                    if let newNote = noteStore.notes.first(where: { $0.url == fileURL }) {
+                        selectedNoteID = newNote.id
+                        focusedField = .editor
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    let alert = NSAlert()
+                    alert.messageText = "Failed to Create Wiki-Linked Note"
+                    alert.informativeText = "Could not create note \"\(title)\": \(error.localizedDescription)"
+                    alert.alertStyle = .warning
+                    alert.addButton(withTitle: "OK")
+                    alert.runModal()
+                }
+            }
+        }
+    }
 }
 
 struct ContentEmptyStateView: View {
@@ -1034,6 +1077,9 @@ struct EditorView: View {
     var searchText: String
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
+    var availableNotes: [NoteFile] = []
+    var onWikiLinkClick: ((WikiLink) -> Void)?
+    var onWikiLinkCreateNote: ((String) -> Void)?
 
     private var searchTerms: [String] {
         guard settings.searchHighlightingEnabled, !searchText.isEmpty else { return [] }
@@ -1047,7 +1093,10 @@ struct EditorView: View {
             showFindBar: showFindBar,
             searchTerms: searchTerms,
             onShiftTab: onShiftTab,
-            onEscape: onEscape
+            onEscape: onEscape,
+            availableNotes: availableNotes,
+            onWikiLinkClick: onWikiLinkClick,
+            onWikiLinkCreateNote: onWikiLinkCreateNote
         )
         .focused($focusedField, equals: .editor)
         .onChange(of: showFindBar) { _, newValue in
