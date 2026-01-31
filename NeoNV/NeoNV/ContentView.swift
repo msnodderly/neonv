@@ -424,6 +424,9 @@ struct ContentView: View {
         withAnimation(.easeInOut(duration: 0.2)) {
             settings.layoutMode = settings.layoutMode == .vertical ? .horizontal : .vertical
         }
+        if !settings.isFileListHidden {
+            focusedField = .noteList
+        }
     }
 
     private func switchToEditor() {
