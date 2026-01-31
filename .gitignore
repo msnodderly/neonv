@@ -114,3 +114,5 @@ remove-cmd-d/
 wiki-links/
 # bd worktree
 swiftlint/
+# bd worktree
+build-release/
