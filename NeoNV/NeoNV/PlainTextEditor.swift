@@ -139,7 +139,8 @@ struct PlainTextEditor: NSViewRepresentable {
             let lineRange = NSRange(location: lineStart, length: contentsEnd - lineStart)
             let lineContent = nsText.substring(with: lineRange)
 
-            if lineContent.contains("@done") {
+            let isDone = lineContent.contains("@done") || lineContent.hasPrefix("- [x] ") || lineContent.hasPrefix("- [X] ")
+            if isDone {
                 textStorage.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: lineRange)
                 textStorage.addAttribute(.strikethroughColor, value: doneColor, range: lineRange)
                 textStorage.addAttribute(.foregroundColor, value: doneColor, range: lineRange)

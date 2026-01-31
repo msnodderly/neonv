@@ -152,8 +152,9 @@ struct OrgPreviewView: NSViewRepresentable {
                 .foregroundColor: textColor
             ]
 
-            // @done strikethrough
-            if line.contains("@done") {
+            // @done or completed checkbox strikethrough
+            let isDone = line.contains("@done") || line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ")
+            if isDone {
                 baseAttrs[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
                 baseAttrs[.strikethroughColor] = secondaryColor
                 baseAttrs[.foregroundColor] = secondaryColor

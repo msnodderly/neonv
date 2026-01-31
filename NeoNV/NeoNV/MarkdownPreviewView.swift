@@ -134,9 +134,9 @@ struct MarkdownPreviewView: NSViewRepresentable {
                 attrs[.foregroundColor] = secondaryColor
             }
 
-            // Check for @done tag — apply strikethrough and dim
-            let hasDoneTag = processedLine.contains("@done")
-            if hasDoneTag {
+            // Check for @done tag or completed checkbox — apply strikethrough and dim
+            let isDone = processedLine.contains("@done") || line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ")
+            if isDone {
                 attrs[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
                 attrs[.strikethroughColor] = secondaryColor
                 attrs[.foregroundColor] = secondaryColor
