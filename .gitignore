@@ -132,3 +132,5 @@ horizontal-compact/
 search-highlight-fix/
 # bd worktree
 cmdl-nohighlight/
+# bd worktree
+swiftlint-trivial/
