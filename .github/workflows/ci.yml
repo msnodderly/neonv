@@ -1,0 +1,145 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    name: Build
+    runs-on: macos-14
+    outputs:
+      dmg_path: ${{ steps.build.outputs.dmg_path }}
+      zip_path: ${{ steps.build.outputs.zip_path }}
+      version: ${{ steps.build.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build (PR verification)
+        if: github.event_name == 'pull_request'
+        run: |
+          xcodebuild -scheme NeoNV \
+            -project NeoNV/NeoNV.xcodeproj \
+            -destination 'platform=macOS' \
+            -configuration Release \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Build Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        id: build
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          ./scripts/build-release.sh -v "$VERSION" -o ./artifacts
+          
+          echo "dmg_path=./artifacts/NeoNV-${VERSION}-macos-universal.dmg" >> $GITHUB_OUTPUT
+          echo "zip_path=./artifacts/NeoNV-${VERSION}-macos-universal.zip" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Upload artifacts
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: ./artifacts/*
+          retention-days: 7
+
+  sign:
+    name: Sign & Notarize
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: macos-14
+    steps:
+      - name: Check for signing secrets
+        id: check-secrets
+        run: |
+          if [ -n "${{ secrets.APPLE_DEVELOPER_ID_APPLICATION }}" ] && \
+             [ -n "${{ secrets.APPLE_DEVELOPER_ID_PASSWORD }}" ] && \
+             [ -n "${{ secrets.APPLE_TEAM_ID }}" ]; then
+            echo "has_secrets=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_secrets=false" >> $GITHUB_OUTPUT
+            echo "::notice::Signing secrets not configured. Skipping notarization."
+          fi
+
+      - name: Download artifacts
+        if: steps.check-secrets.outputs.has_secrets == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: ./artifacts
+
+      - name: Sign and Notarize
+        if: steps.check-secrets.outputs.has_secrets == 'true'
+        run: |
+          echo "::notice::Signing and notarization would happen here."
+          echo "TODO: Import certificate, sign .app, notarize with notarytool, staple, re-create DMG"
+
+  release:
+    name: Create Release
+    needs: [build, sign]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: ./artifacts
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "Generating notes from $PREVIOUS_TAG to HEAD"
+            NOTES=$(git log --pretty=format:"- %s (%h)" "$PREVIOUS_TAG"..HEAD)
+          else
+            echo "No previous tag found, using recent commits"
+            NOTES=$(git log --pretty=format:"- %s (%h)" -20)
+          fi
+          
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: NeoNV v${{ needs.build.outputs.version }}
+          body: |
+            ## What's Changed
+            
+            ${{ steps.notes.outputs.notes }}
+            
+            ## Installation
+            
+            Download the DMG, open it, and drag NeoNV to your Applications folder.
+            
+            **Note:** This is an unsigned build. You may need to right-click and select "Open" the first time.
+          files: |
+            ./artifacts/*.dmg
+            ./artifacts/*.zip
+          draft: false
+          prerelease: ${{ contains(github.ref, '-') }}
