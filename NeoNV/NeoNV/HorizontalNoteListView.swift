@@ -21,6 +21,27 @@ struct HorizontalNoteListView: View {
         return [searchText]
     }
 
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .short
+        f.timeStyle = .short
+        return f
+    }()
+
+    private static let relativeDateFormatter: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .abbreviated
+        return f
+    }()
+
+    private func formattedDate(_ date: Date) -> String {
+        let now = Date()
+        if Calendar.current.isDateInToday(date) {
+            return Self.relativeDateFormatter.localizedString(for: date, relativeTo: now)
+        }
+        return Self.dateFormatter.string(from: date)
+    }
+
     var body: some View {
         Group {
             if isLoading {
@@ -32,26 +53,26 @@ struct HorizontalNoteListView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(notes, selection: $selectedNoteID) { note in
-                    HStack(alignment: .top, spacing: 12) {
-                        VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 1) {
                             HighlightedText(
                                 note.displayTitle,
                                 highlighting: searchTerms,
-                                font: .system(size: 13, weight: .medium),
+                                font: .system(size: 12, weight: .medium),
                                 color: .primary
                             )
                             .lineLimit(1)
 
                             if note.isUnsaved {
                                 Text(note.displayPath)
-                                    .font(.system(size: 11))
+                                    .font(.system(size: 10))
                                     .italic()
                                     .foregroundColor(.orange)
                             } else {
                                 HighlightedText(
                                     note.displayPath,
                                     highlighting: searchTerms,
-                                    font: .system(size: 11),
+                                    font: .system(size: 10),
                                     color: .secondary
                                 )
                             }
@@ -60,11 +81,16 @@ struct HorizontalNoteListView: View {
 
                         if !note.contentPreview.isEmpty {
                             Text(note.contentPreview)
-                                .font(.system(size: 12))
+                                .font(.system(size: 11))
                                 .foregroundColor(.secondary)
-                                .lineLimit(3)
+                                .lineLimit(1)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
+
+                        Text(formattedDate(note.modificationDate))
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                            .frame(width: 80, alignment: .trailing)
                     }
                     .tag(note.id)
                     .contextMenu {
