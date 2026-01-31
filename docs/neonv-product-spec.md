@@ -1,4 +1,4 @@
-# Alt NV: Product Specification
+# neonv: Product Specification
 
 ## Vision
 
@@ -742,9 +742,6 @@ The user should never close the app wondering "did that save?"
 ---
 
 ## Open Questions
-
-1. **Naming:** "NeoNV" / neonv is provisional. Better ideas?
-   - Candidates: _________
 
 ---
 

@@ -1,6 +1,6 @@
-# NeoNV Edge Cases and Limitations
+# neonv Edge Cases and Limitations
 
-This document covers edge cases, error handling scenarios, and known limitations discovered during NeoNV development and daily use.
+This document covers edge cases, error handling scenarios, and known limitations discovered during neonv development and daily use.
 
 ---
 
@@ -66,7 +66,7 @@ This document covers edge cases, error handling scenarios, and known limitations
 
 **Recommendations:**
 - For files > 10 MB, use a dedicated text editor
-- NeoNV is optimized for quick notes, not log files
+- neonv is optimized for quick notes, not log files
 
 ### Memory Pressure
 
@@ -156,7 +156,7 @@ The app recognizes these extensions (case-insensitive):
 
 **Sync Conflicts:**
 - iCloud may create `filename (conflicted copy).md`
-- NeoNV will show both files in the list
+- neonv will show both files in the list
 - No automatic conflict resolution
 
 ---
@@ -174,7 +174,7 @@ When the same file is edited on two devices before sync completes:
 ### Dropbox
 
 - Creates `filename (conflicted copy 2026-01-29).md`
-- Appears as a separate note in NeoNV
+- Appears as a separate note in neonv
 
 ### iCloud
 
@@ -198,19 +198,19 @@ When the same file is edited on two devices before sync completes:
 
 ### File Open in Multiple Apps
 
-**Scenario:** Same file open in NeoNV and another editor (VS Code, Vim, etc.)
+**Scenario:** Same file open in neonv and another editor (VS Code, Vim, etc.)
 
 **Behavior:**
-- NeoNV detects external changes via FSEvents
-- If NeoNV has unsaved changes: Shows conflict dialog ("Keep Mine" / "Use External")
-- If NeoNV has no unsaved changes: Auto-reloads with toast notification
+- neonv detects external changes via FSEvents
+- If neonv has unsaved changes: Shows conflict dialog ("Keep Mine" / "Use External")
+- If neonv has no unsaved changes: Auto-reloads with toast notification
 
 ### Atomic Save Detection
 
 **How it works:**
 - Many editors (Vim, VS Code) use atomic saves (write temp, rename)
 - FSEvents may report as "create" instead of "modify"
-- NeoNV handles both events identically for tracked files
+- neonv handles both events identically for tracked files
 
 ### Lock Files
 
@@ -279,7 +279,7 @@ If distributed via Mac App Store with sandbox:
 ## Known Limitations
 
 ### No File Locking
-NeoNV does not lock files. Multiple apps can edit simultaneously, risking conflicts.
+neonv does not lock files. Multiple apps can edit simultaneously, risking conflicts.
 
 ### No Version History
 Auto-save overwrites the file directly. Use Time Machine or git for versioning.
@@ -309,14 +309,14 @@ To verify edge case handling:
 
 ### Test Large File
 1. Create a 20MB text file externally
-2. Open folder containing it in NeoNV
+2. Open folder containing it in neonv
 3. Select the file; verify it loads (with delay)
 4. Edit and save; verify save completes
 
 ### Test External Modification
-1. Select a note in NeoNV
+1. Select a note in neonv
 2. Edit same file in another app
-3. Verify NeoNV shows toast or conflict dialog
+3. Verify neonv shows toast or conflict dialog
 
 ### Test Network Volume
 1. Select a folder on a network share

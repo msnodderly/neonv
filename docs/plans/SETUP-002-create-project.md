@@ -1,7 +1,7 @@
 # Plan: SETUP-002 - Create Xcode Project
 
 ## Objective
-Initialize the project structure for "Alt NV", a native macOS application using SwiftUI.
+Initialize the project structure for "neonv", a native macOS application using SwiftUI.
 
 ## Current Environment Status
 - **OS**: macOS 15.0 (Sequoia) - Compatible with macOS 14.0 target.

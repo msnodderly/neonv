@@ -1,4 +1,4 @@
-# Alt NV: Implementation Issues
+# neonv: Implementation Issues
 
 This document breaks down the product spec into discrete, actionable issues suitable for GitHub Issues or similar task tracking. Each issue is scoped to be completable in a single work session (1-4 hours) where possible.
 
@@ -988,23 +988,6 @@ Create and submit Homebrew Cask formula.
 - [ ] `brew install --cask ./alt-nv.rb` works
 - [ ] PR submitted to homebrew-cask (or personal tap)
 - [ ] Formula approved and merged
-
-**Formula template:**
-```ruby
-cask "alt-nv" do
-  version "1.0.0"
-  sha256 "..."
-
-  url "https://github.com/user/alt-nv/releases/download/v#{version}/neonv-#{version}.dmg"
-  name "Alt NV"
-  desc "Fast, frictionless text capture for macOS"
-  homepage "https://github.com/user/alt-nv"
-
-  app "Alt NV.app"
-end
-```
-
----
 
 ---
 
