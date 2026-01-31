@@ -424,9 +424,12 @@ struct ContentView: View {
         withAnimation(.easeInOut(duration: 0.2)) {
             settings.layoutMode = settings.layoutMode == .vertical ? .horizontal : .vertical
         }
-        if !settings.isFileListHidden {
-            focusedField = .noteList
+        // Focus search after layout switch — the list/editor views are being
+        // torn down and rebuilt so they can't reliably accept focus immediately.
+        if settings.isSearchFieldHidden {
+            settings.isSearchFieldHidden = false
         }
+        focusedField = .search
     }
 
     private func switchToEditor() {
