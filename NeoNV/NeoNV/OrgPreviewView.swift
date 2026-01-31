@@ -385,7 +385,7 @@ struct OrgPreviewView: NSViewRepresentable {
                 let inner = String(match.dropFirst().dropLast())
                 strikeAttrs[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
                 return NSAttributedString(string: inner, attributes: strikeAttrs)
-            }),
+            })
         ]
 
         while !remaining.isEmpty {
