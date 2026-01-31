@@ -14,7 +14,7 @@ A fast, frictionless text capture tool for macOS. Inspired by [Notational Veloci
 - Vertical and horizontal layout options (⌘⇧J to toggle)
 - Keyboard shortcuts panel (⌘K)
 - Basic Markdown and Org mode preview (⌘P)
-- TaskPaper-style @done strikethrough
+- TaskPaper-style `@done` strikethrough
 - Open file in external editor (⌘G)
 
 
