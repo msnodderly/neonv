@@ -53,6 +53,30 @@ struct MarkdownPreviewView: NSViewRepresentable {
         textView.textStorage?.setAttributedString(attributedString)
     }
 
+    private struct HeaderStyle {
+        let prefix: String
+        let sizeOffset: CGFloat
+        let weight: NSFont.Weight
+    }
+
+    private static let headerStyles: [HeaderStyle] = [
+        HeaderStyle(prefix: "######", sizeOffset: 1, weight: .semibold),
+        HeaderStyle(prefix: "#####", sizeOffset: 2, weight: .semibold),
+        HeaderStyle(prefix: "####", sizeOffset: 3, weight: .semibold),
+        HeaderStyle(prefix: "###", sizeOffset: 4, weight: .semibold),
+        HeaderStyle(prefix: "##", sizeOffset: 6, weight: .bold),
+        HeaderStyle(prefix: "#", sizeOffset: 10, weight: .bold)
+    ]
+
+    private func parseHeader(line: String, fontSize: CGFloat) -> (text: String, font: NSFont)? {
+        for style in Self.headerStyles where line.hasPrefix(style.prefix) {
+            let text = String(line.dropFirst(style.prefix.count)).trimmingCharacters(in: .whitespaces)
+            let font = NSFont.systemFont(ofSize: fontSize + style.sizeOffset, weight: style.weight)
+            return (text, font)
+        }
+        return nil
+    }
+
     private func parseMarkdown(content: String, fontSize: CGFloat) -> NSAttributedString {
         let result = NSMutableAttributedString()
         let lines = content.components(separatedBy: "\n")
@@ -71,7 +95,6 @@ struct MarkdownPreviewView: NSViewRepresentable {
         for (index, line) in lines.enumerated() {
             if line.hasPrefix("```") {
                 if inCodeBlock {
-                    // End code block
                     let codeAttrs: [NSAttributedString.Key: Any] = [
                         .font: monoFont,
                         .foregroundColor: textColor,
@@ -81,7 +104,6 @@ struct MarkdownPreviewView: NSViewRepresentable {
                     codeBlockContent = ""
                     inCodeBlock = false
                 } else {
-                    // Start code block
                     inCodeBlock = true
                 }
                 continue
@@ -98,38 +120,15 @@ struct MarkdownPreviewView: NSViewRepresentable {
                 .foregroundColor: textColor
             ]
 
-            // Headers
-            if line.hasPrefix("######") {
-                processedLine = String(line.dropFirst(6)).trimmingCharacters(in: .whitespaces)
-                attrs[.font] = NSFont.systemFont(ofSize: fontSize + 1, weight: .semibold)
-            } else if line.hasPrefix("#####") {
-                processedLine = String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces)
-                attrs[.font] = NSFont.systemFont(ofSize: fontSize + 2, weight: .semibold)
-            } else if line.hasPrefix("####") {
-                processedLine = String(line.dropFirst(4)).trimmingCharacters(in: .whitespaces)
-                attrs[.font] = NSFont.systemFont(ofSize: fontSize + 3, weight: .semibold)
-            } else if line.hasPrefix("###") {
-                processedLine = String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces)
-                attrs[.font] = NSFont.systemFont(ofSize: fontSize + 4, weight: .semibold)
-            } else if line.hasPrefix("##") {
-                processedLine = String(line.dropFirst(2)).trimmingCharacters(in: .whitespaces)
-                attrs[.font] = NSFont.systemFont(ofSize: fontSize + 6, weight: .bold)
-            } else if line.hasPrefix("#") {
-                processedLine = String(line.dropFirst(1)).trimmingCharacters(in: .whitespaces)
-                attrs[.font] = NSFont.systemFont(ofSize: fontSize + 10, weight: .bold)
-            }
-            // Blockquotes
-            else if line.hasPrefix(">") {
-                processedLine = String(line.dropFirst(1)).trimmingCharacters(in: .whitespaces)
+            if let header = parseHeader(line: line, fontSize: fontSize) {
+                processedLine = header.text
+                attrs[.font] = header.font
+            } else if line.hasPrefix(">") {
+                processedLine = "  │ " + String(line.dropFirst(1)).trimmingCharacters(in: .whitespaces)
                 attrs[.foregroundColor] = secondaryColor
-                processedLine = "  │ " + processedLine
-            }
-            // Unordered lists
-            else if line.hasPrefix("- ") || line.hasPrefix("* ") || line.hasPrefix("+ ") {
+            } else if line.hasPrefix("- ") || line.hasPrefix("* ") || line.hasPrefix("+ ") {
                 processedLine = "  • " + String(line.dropFirst(2))
-            }
-            // Horizontal rules
-            else if line == "---" || line == "***" || line == "___" {
+            } else if line == "---" || line == "***" || line == "___" {
                 processedLine = "────────────────────────────────────────"
                 attrs[.foregroundColor] = secondaryColor
             }
