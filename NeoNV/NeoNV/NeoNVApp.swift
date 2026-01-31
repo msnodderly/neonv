@@ -81,6 +81,32 @@ struct NeoNVApp: App {
 
             CommandGroup(replacing: .printItem) { }
 
+            CommandGroup(before: .windowSize) {
+                Button("New Tab") {
+                    NotificationCenter.default.post(name: .newTab, object: nil)
+                }
+                .keyboardShortcut("t", modifiers: .command)
+
+                Button("Close Tab") {
+                    NotificationCenter.default.post(name: .closeTab, object: nil)
+                }
+                .keyboardShortcut("w", modifiers: .command)
+
+                Divider()
+
+                Button("Show Next Tab") {
+                    NotificationCenter.default.post(name: .nextTab, object: nil)
+                }
+                .keyboardShortcut(.tab, modifiers: .control)
+
+                Button("Show Previous Tab") {
+                    NotificationCenter.default.post(name: .previousTab, object: nil)
+                }
+                .keyboardShortcut(.tab, modifiers: [.control, .shift])
+
+                Divider()
+            }
+
             CommandGroup(replacing: .help) {
                 Button("NeoNV Help") {
                     NotificationCenter.default.post(name: .showHelp, object: nil)
@@ -111,4 +137,8 @@ extension Notification.Name {
     static let showHelp = Notification.Name("showHelp")
     static let openInExternalEditor = Notification.Name("openInExternalEditor")
     static let toggleSearchField = Notification.Name("toggleSearchField")
+    static let newTab = Notification.Name("newTab")
+    static let nextTab = Notification.Name("nextTab")
+    static let previousTab = Notification.Name("previousTab")
+    static let closeTab = Notification.Name("closeTab")
 }

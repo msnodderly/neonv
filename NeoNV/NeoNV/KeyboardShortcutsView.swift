@@ -28,6 +28,15 @@ struct KeyboardShortcutsView: View {
             ]
         ),
         ShortcutCategory(
+            title: "Tabs",
+            shortcuts: [
+                Shortcut(key: "⌘T", description: "New tab"),
+                Shortcut(key: "⌘W", description: "Close tab"),
+                Shortcut(key: "⌃Tab", description: "Next tab"),
+                Shortcut(key: "⌃⇧Tab", description: "Previous tab"),
+            ]
+        ),
+        ShortcutCategory(
             title: "Editor & Preview",
             shortcuts: [
                 Shortcut(key: "Shift + Tab", description: "Return to note list"),

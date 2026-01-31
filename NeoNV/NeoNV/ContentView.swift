@@ -7,6 +7,26 @@ enum FocusedField: Hashable {
     case preview
 }
 
+struct EditorTab: Identifiable, Equatable {
+    let id: UUID
+    var noteID: UUID?
+    var noteURL: URL?
+    var content: String
+    var originalContent: String
+    var isDirty: Bool
+    var title: String
+
+    init(noteID: UUID? = nil, noteURL: URL? = nil, content: String = "", originalContent: String = "", isDirty: Bool = false, title: String = "Untitled") {
+        self.id = UUID()
+        self.noteID = noteID
+        self.noteURL = noteURL
+        self.content = content
+        self.originalContent = originalContent
+        self.isDirty = isDirty
+        self.title = title
+    }
+}
+
 struct ContentView: View {
     @ObservedObject var noteStore: NoteStore
     @State private var searchText = ""
@@ -29,6 +49,10 @@ struct ContentView: View {
     @State private var showFindBar = false
     @State private var showHelp = false
     @FocusState private var focusedField: FocusedField?
+
+    // Tab state
+    @State private var tabs: [EditorTab] = []
+    @State private var activeTabID: UUID?
 
     struct ExternalConflict: Identifiable {
         let id = UUID()
@@ -107,24 +131,35 @@ struct ContentView: View {
                     )
                     .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
 
-                    if filteredNotes.isEmpty {
-                        ContentEmptyStateView(
-                            hasNotes: !noteStore.notes.isEmpty,
-                            searchText: searchText
-                        )
-                        .frame(minWidth: 300)
-                    } else if showPreview {
-                        previewPane
-                    } else {
-                        EditorView(
-                            content: $editorContent,
-                            showFindBar: $showFindBar,
-                            focusedField: _focusedField,
-                            searchText: debouncedSearchText,
-                            onShiftTab: { focusedField = .noteList },
-                            onEscape: { focusedField = .noteList }
-                        )
-                        .frame(minWidth: 300)
+                    VStack(spacing: 0) {
+                        if tabs.count > 1 {
+                            TabBarView(
+                                tabs: tabs,
+                                activeTabID: activeTabID,
+                                onSelectTab: switchToTab,
+                                onCloseTab: closeTab
+                            )
+                        }
+
+                        if filteredNotes.isEmpty {
+                            ContentEmptyStateView(
+                                hasNotes: !noteStore.notes.isEmpty,
+                                searchText: searchText
+                            )
+                            .frame(minWidth: 300)
+                        } else if showPreview {
+                            previewPane
+                        } else {
+                            EditorView(
+                                content: $editorContent,
+                                showFindBar: $showFindBar,
+                                focusedField: _focusedField,
+                                searchText: debouncedSearchText,
+                                onShiftTab: { focusedField = .noteList },
+                                onEscape: { focusedField = .noteList }
+                            )
+                            .frame(minWidth: 300)
+                        }
                     }
                 }
             }
@@ -133,6 +168,7 @@ struct ContentView: View {
         .navigationTitle("neonv")
         .onAppear {
             focusedField = .search
+            ensureTabExists()
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {
@@ -273,7 +309,11 @@ struct ContentView: View {
             onShowInFinder: showInFinder,
             onShowHelp: { showHelp = true },
             onOpenInExternalEditor: openInExternalEditor,
-            onToggleSearchField: toggleSearchField
+            onToggleSearchField: toggleSearchField,
+            onNewTab: createNewTab,
+            onNextTab: selectNextTab,
+            onPreviousTab: selectPreviousTab,
+            onCloseTab: { closeTab(id: activeTabID) }
         ))
         .sheet(isPresented: $showHelp) {
             HelpView()
@@ -477,6 +517,14 @@ struct ContentView: View {
         }
         selectedNoteURL = note.url
 
+        // Update active tab with new note info
+        if let activeID = activeTabID,
+           let index = tabs.firstIndex(where: { $0.id == activeID }) {
+            tabs[index].noteID = id
+            tabs[index].noteURL = note.url
+            tabs[index].title = note.displayTitle
+        }
+
         // Skip file loading for unsaved notes - file doesn't exist on disk yet
         if unsavedNoteIDs.contains(id) {
             originalContent = ""
@@ -589,6 +637,12 @@ struct ContentView: View {
         isDirty = true
         unsavedNoteIDs.insert(selectedID)
         AppDelegate.shared.hasUnsavedChanges = true
+        // Sync dirty state to active tab
+        if let activeID = activeTabID,
+           let tabIndex = tabs.firstIndex(where: { $0.id == activeID }) {
+            tabs[tabIndex].isDirty = true
+            tabs[tabIndex].content = editorContent
+        }
 
         saveTask?.cancel()
         saveTask = Task {
@@ -616,6 +670,13 @@ struct ContentView: View {
                 unsavedNoteIDs.remove(id)
                 saveError = nil
                 AppDelegate.shared.hasUnsavedChanges = false
+                // Sync tab state
+                if let activeID = activeTabID,
+                   let tabIndex = tabs.firstIndex(where: { $0.id == activeID }) {
+                    tabs[tabIndex].isDirty = false
+                    tabs[tabIndex].content = content
+                    tabs[tabIndex].originalContent = content
+                }
             }
         } catch {
             await MainActor.run {
@@ -729,6 +790,121 @@ struct ContentView: View {
 
     private func showInFinder(error: SaveError) {
         NSWorkspace.shared.selectFile(error.fileURL.path, inFileViewerRootedAtPath: error.fileURL.deletingLastPathComponent().path)
+    }
+
+    // MARK: - Tab Management
+
+    private func ensureTabExists() {
+        if tabs.isEmpty {
+            let tab = EditorTab()
+            tabs = [tab]
+            activeTabID = tab.id
+        }
+    }
+
+    private func saveCurrentTabState() {
+        guard let activeID = activeTabID,
+              let index = tabs.firstIndex(where: { $0.id == activeID }) else { return }
+        tabs[index].noteID = selectedNoteID
+        tabs[index].noteURL = selectedNoteURL
+        tabs[index].content = editorContent
+        tabs[index].originalContent = originalContent
+        tabs[index].isDirty = isDirty
+        if let noteID = selectedNoteID,
+           let note = noteStore.notes.first(where: { $0.id == noteID }) {
+            tabs[index].title = note.displayTitle
+        }
+    }
+
+    private func restoreTabState(_ tab: EditorTab) {
+        // Cancel pending save for previous tab
+        saveTask?.cancel()
+
+        selectedNoteID = tab.noteID
+        selectedNoteURL = tab.noteURL
+        editorContent = tab.content
+        originalContent = tab.originalContent
+        isDirty = tab.isDirty
+    }
+
+    private func createNewTab() {
+        guard noteStore.selectedFolderURL != nil else { return }
+        saveCurrentTabState()
+
+        if let newNote = noteStore.createNewUnsavedNote() {
+            unsavedNoteIDs.insert(newNote.id)
+            let tab = EditorTab(noteID: newNote.id, noteURL: newNote.url, title: "Untitled")
+            tabs.append(tab)
+            activeTabID = tab.id
+            selectedNoteID = newNote.id
+            selectedNoteURL = newNote.url
+            originalContent = ""
+            editorContent = ""
+            isDirty = false
+            focusedField = .editor
+        }
+    }
+
+    private func switchToTab(id: UUID) {
+        guard id != activeTabID else { return }
+        saveCurrentTabState()
+        activeTabID = id
+        if let tab = tabs.first(where: { $0.id == id }) {
+            restoreTabState(tab)
+        }
+    }
+
+    private func closeTab(id: UUID?) {
+        guard let id = id, tabs.count > 1,
+              let index = tabs.firstIndex(where: { $0.id == id }) else { return }
+
+        let wasActive = (id == activeTabID)
+        tabs.remove(at: index)
+
+        if wasActive {
+            let newIndex = min(index, tabs.count - 1)
+            let newTab = tabs[newIndex]
+            activeTabID = newTab.id
+            restoreTabState(newTab)
+        }
+    }
+
+    private func selectNextTab() {
+        guard tabs.count > 1,
+              let currentIndex = tabs.firstIndex(where: { $0.id == activeTabID }) else { return }
+        saveCurrentTabState()
+        let nextIndex = (currentIndex + 1) % tabs.count
+        let nextTab = tabs[nextIndex]
+        activeTabID = nextTab.id
+        restoreTabState(nextTab)
+    }
+
+    private func selectPreviousTab() {
+        guard tabs.count > 1,
+              let currentIndex = tabs.firstIndex(where: { $0.id == activeTabID }) else { return }
+        saveCurrentTabState()
+        let prevIndex = (currentIndex - 1 + tabs.count) % tabs.count
+        let prevTab = tabs[prevIndex]
+        activeTabID = prevTab.id
+        restoreTabState(prevTab)
+    }
+
+    private func openNoteInTab(_ noteID: UUID) {
+        // If note is already in a tab, switch to it
+        if let existingTab = tabs.first(where: { $0.noteID == noteID }) {
+            switchToTab(id: existingTab.id)
+            return
+        }
+        // Otherwise, update the current tab
+        ensureTabExists()
+        if let activeID = activeTabID,
+           let index = tabs.firstIndex(where: { $0.id == activeID }) {
+            tabs[index].noteID = noteID
+            if let note = noteStore.notes.first(where: { $0.id == noteID }) {
+                tabs[index].title = note.displayTitle
+                tabs[index].noteURL = note.url
+            }
+        }
     }
 }
 
@@ -1060,6 +1236,81 @@ struct EditorView: View {
     }
 }
 
+struct TabBarView: View {
+    let tabs: [EditorTab]
+    let activeTabID: UUID?
+    let onSelectTab: (UUID) -> Void
+    let onCloseTab: (UUID?) -> Void
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 0) {
+                ForEach(tabs) { tab in
+                    TabItemView(
+                        tab: tab,
+                        isActive: tab.id == activeTabID,
+                        onSelect: { onSelectTab(tab.id) },
+                        onClose: { onCloseTab(tab.id) },
+                        showClose: tabs.count > 1
+                    )
+                }
+            }
+        }
+        .frame(height: 28)
+        .background(Color(NSColor.controlBackgroundColor))
+        .overlay(alignment: .bottom) {
+            Divider()
+        }
+    }
+}
+
+struct TabItemView: View {
+    let tab: EditorTab
+    let isActive: Bool
+    let onSelect: () -> Void
+    let onClose: () -> Void
+    let showClose: Bool
+    @State private var isHovering = false
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if tab.isDirty {
+                Circle()
+                    .fill(.orange)
+                    .frame(width: 6, height: 6)
+            }
+
+            Text(tab.title)
+                .font(.system(size: 11))
+                .lineLimit(1)
+                .foregroundColor(isActive ? .primary : .secondary)
+
+            if showClose && (isHovering || isActive) {
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .frame(width: 14, height: 14)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
+        .background(isActive ? Color(NSColor.controlBackgroundColor) : Color.clear)
+        .overlay(alignment: .bottom) {
+            if isActive {
+                Rectangle()
+                    .fill(Color.accentColor)
+                    .frame(height: 2)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onSelect)
+        .onHover { isHovering = $0 }
+    }
+}
+
 struct NotificationHandlers: ViewModifier {
     let onFocusSearch: () -> Void
     let onCreateNewNote: () -> Void
@@ -1070,6 +1321,10 @@ struct NotificationHandlers: ViewModifier {
     let onShowHelp: () -> Void
     let onOpenInExternalEditor: () -> Void
     let onToggleSearchField: () -> Void
+    var onNewTab: (() -> Void)?
+    var onNextTab: (() -> Void)?
+    var onPreviousTab: (() -> Void)?
+    var onCloseTab: (() -> Void)?
 
     func body(content: Content) -> some View {
         content
@@ -1099,6 +1354,18 @@ struct NotificationHandlers: ViewModifier {
             }
             .onReceive(NotificationCenter.default.publisher(for: .toggleSearchField)) { _ in
                 onToggleSearchField()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .newTab)) { _ in
+                onNewTab?()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .nextTab)) { _ in
+                onNextTab?()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .previousTab)) { _ in
+                onPreviousTab?()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .closeTab)) { _ in
+                onCloseTab?()
             }
     }
 }
