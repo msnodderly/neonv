@@ -1111,17 +1111,12 @@ struct EditorView: View {
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
 
-    private var searchTerms: [String] {
-        guard settings.searchHighlightingEnabled, !searchText.isEmpty else { return [] }
-        return [searchText]
-    }
-
     var body: some View {
         PlainTextEditor(
             text: $content,
             fontSize: CGFloat(settings.fontSize),
             showFindBar: showFindBar,
-            searchTerms: searchTerms,
+            searchTerms: [],
             onShiftTab: onShiftTab,
             onEscape: onEscape
         )
