@@ -16,9 +16,11 @@ Do not start additional tasks after completing your assigned work.
    - `docs/neonv-product-spec.md` (product spec)
    - `AGENTS.md` (patterns, procedures, `bd` reference)
 
-2. **Pick task**: Run `bd ready` and select the SINGLE highest priority item
+2. **Pick task**: Run `bd ready` and select the SINGLE highest priority item that is NOT already `in_progress`
+   
+   **IMPORTANT:** Tasks with status `in_progress` are being worked on by another agent. Skip them to avoid conflicts.
 
-3. **Claim task**: Run `bd update <id> --status in_progress`
+3. **Claim task**: Run `bd update <id> --status in_progress` to reserve it before starting work
 
 4. **Create worktree**: Use `bd worktree` to create an isolated working directory
    ```bash
