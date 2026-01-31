@@ -89,23 +89,25 @@ struct ContentView: View {
                 EmptyStateView(onSelectFolder: noteStore.selectFolder)
             } else {
                 HSplitView {
-                    NoteListView(
-                        notes: filteredNotes,
-                        selectedNoteID: $selectedNoteID,
-                        focusedField: _focusedField,
-                        isLoading: noteStore.isLoading,
-                        searchText: debouncedSearchText,
-                        onTabToEditor: { focusedField = .editor },
-                        onShiftTabToSearch: { focusedField = .search },
-                        onEnterToEditor: { focusedField = .editor },
-                        onEscapeToSearch: { focusedField = .search },
-                        onUpArrowToSearch: { focusedField = .search },
-                        onDeleteNote: { note in noteToDelete = note },
-                        onShowInFinder: { note in
-                            NSWorkspace.shared.activateFileViewerSelecting([note.url])
-                        }
-                    )
-                    .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
+                    if !settings.isFileListHidden {
+                        NoteListView(
+                            notes: filteredNotes,
+                            selectedNoteID: $selectedNoteID,
+                            focusedField: _focusedField,
+                            isLoading: noteStore.isLoading,
+                            searchText: debouncedSearchText,
+                            onTabToEditor: { focusedField = .editor },
+                            onShiftTabToSearch: { focusedField = .search },
+                            onEnterToEditor: { focusedField = .editor },
+                            onEscapeToSearch: { focusedField = .search },
+                            onUpArrowToSearch: { focusedField = .search },
+                            onDeleteNote: { note in noteToDelete = note },
+                            onShowInFinder: { note in
+                                NSWorkspace.shared.activateFileViewerSelecting([note.url])
+                            }
+                        )
+                        .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
+                    }
 
                     if filteredNotes.isEmpty {
                         ContentEmptyStateView(
@@ -121,8 +123,8 @@ struct ContentView: View {
                             showFindBar: $showFindBar,
                             focusedField: _focusedField,
                             searchText: debouncedSearchText,
-                            onShiftTab: { focusedField = .noteList },
-                            onEscape: { focusedField = .noteList }
+                            onShiftTab: { focusedField = settings.isFileListHidden ? .search : .noteList },
+                            onEscape: { focusedField = settings.isFileListHidden ? .search : .noteList }
                         )
                         .frame(minWidth: 300)
                     }
@@ -273,7 +275,8 @@ struct ContentView: View {
             onShowInFinder: showInFinder,
             onShowHelp: { showHelp = true },
             onOpenInExternalEditor: openInExternalEditor,
-            onToggleSearchField: toggleSearchField
+            onToggleSearchField: toggleSearchField,
+            onToggleFileList: toggleFileList
         ))
         .sheet(isPresented: $showHelp) {
             HelpView()
@@ -358,6 +361,19 @@ struct ContentView: View {
             }
         } else {
             focusedField = .search
+        }
+    }
+
+    private func toggleFileList() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            settings.isFileListHidden.toggle()
+        }
+        if settings.isFileListHidden {
+            if focusedField == .noteList {
+                focusedField = .editor
+            }
+        } else {
+            focusedField = .noteList
         }
     }
 
@@ -1070,6 +1086,7 @@ struct NotificationHandlers: ViewModifier {
     let onShowHelp: () -> Void
     let onOpenInExternalEditor: () -> Void
     let onToggleSearchField: () -> Void
+    let onToggleFileList: () -> Void
 
     func body(content: Content) -> some View {
         content
@@ -1099,6 +1116,9 @@ struct NotificationHandlers: ViewModifier {
             }
             .onReceive(NotificationCenter.default.publisher(for: .toggleSearchField)) { _ in
                 onToggleSearchField()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .toggleFileList)) { _ in
+                onToggleFileList()
             }
     }
 }
