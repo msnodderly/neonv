@@ -81,6 +81,13 @@ struct NeoNVApp: App {
                     NotificationCenter.default.post(name: .togglePreview, object: nil)
                 }
                 .keyboardShortcut("p", modifiers: .command)
+
+                Divider()
+
+                Button("Toggle Layout") {
+                    NotificationCenter.default.post(name: .toggleLayout, object: nil)
+                }
+                .keyboardShortcut("j", modifiers: [.command, .shift])
             }
 
             CommandGroup(replacing: .printItem) { }
@@ -116,4 +123,5 @@ extension Notification.Name {
     static let openInExternalEditor = Notification.Name("openInExternalEditor")
     static let toggleSearchField = Notification.Name("toggleSearchField")
     static let toggleFileList = Notification.Name("toggleFileList")
+    static let toggleLayout = Notification.Name("toggleLayout")
 }

@@ -238,7 +238,8 @@ struct ContentView: View {
             onShowHelp: { showHelp = true },
             onOpenInExternalEditor: openInExternalEditor,
             onToggleSearchField: toggleSearchField,
-            onToggleFileList: toggleFileList
+            onToggleFileList: toggleFileList,
+            onToggleLayout: toggleLayout
         ))
         .sheet(isPresented: $showHelp) {
             HelpView()
@@ -416,6 +417,12 @@ struct ContentView: View {
             }
         } else {
             focusedField = .noteList
+        }
+    }
+
+    private func toggleLayout() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            settings.layoutMode = settings.layoutMode == .vertical ? .horizontal : .vertical
         }
     }
 
@@ -1129,6 +1136,7 @@ struct NotificationHandlers: ViewModifier {
     let onOpenInExternalEditor: () -> Void
     let onToggleSearchField: () -> Void
     let onToggleFileList: () -> Void
+    let onToggleLayout: () -> Void
 
     func body(content: Content) -> some View {
         content
@@ -1161,6 +1169,9 @@ struct NotificationHandlers: ViewModifier {
             }
             .onReceive(NotificationCenter.default.publisher(for: .toggleFileList)) { _ in
                 onToggleFileList()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .toggleLayout)) { _ in
+                onToggleLayout()
             }
     }
 }
