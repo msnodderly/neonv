@@ -88,7 +88,7 @@ struct ContentView: View {
             if noteStore.selectedFolderURL == nil {
                 EmptyStateView(onSelectFolder: noteStore.selectFolder)
             } else {
-                HStack(spacing: 0) {
+                HSplitView {
                     if !settings.isFileListHidden {
                         NoteListView(
                             notes: filteredNotes,
@@ -107,10 +107,6 @@ struct ContentView: View {
                             }
                         )
                         .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
-
-                        Divider()
-                    } else {
-                        FileListRevealDivider(onToggle: toggleFileList)
                     }
 
                     if filteredNotes.isEmpty {
@@ -937,42 +933,6 @@ struct ExpandableSearchDivider: View {
                 onExpand()
             }
             .help("Drag down or double-click to show search field (⌘L)")
-    }
-}
-
-struct FileListRevealDivider: View {
-    var onToggle: () -> Void
-    @State private var isHovering = false
-    @GestureState private var dragOffset: CGFloat = 0
-
-    var body: some View {
-        Rectangle()
-            .fill(isHovering ? Color.accentColor.opacity(0.3) : Color(NSColor.separatorColor))
-            .frame(width: isHovering ? 4 : 1)
-            .contentShape(Rectangle().inset(by: -4))
-            .onHover { hovering in
-                isHovering = hovering
-                if hovering {
-                    NSCursor.resizeLeftRight.push()
-                } else {
-                    NSCursor.pop()
-                }
-            }
-            .gesture(
-                DragGesture(minimumDistance: 1)
-                    .updating($dragOffset) { value, state, _ in
-                        state = value.translation.width
-                    }
-                    .onEnded { value in
-                        if value.translation.width > 10 {
-                            onToggle()
-                        }
-                    }
-            )
-            .onTapGesture(count: 2) {
-                onToggle()
-            }
-            .help("Drag right or double-click to show file list (⌘⇧F)")
     }
 }
 
