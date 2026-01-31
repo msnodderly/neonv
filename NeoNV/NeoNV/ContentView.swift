@@ -87,48 +87,10 @@ struct ContentView: View {
 
             if noteStore.selectedFolderURL == nil {
                 EmptyStateView(onSelectFolder: noteStore.selectFolder)
+            } else if settings.layoutMode == .horizontal {
+                horizontalLayout
             } else {
-                HSplitView {
-                    if !settings.isFileListHidden {
-                        NoteListView(
-                            notes: filteredNotes,
-                            selectedNoteID: $selectedNoteID,
-                            focusedField: _focusedField,
-                            isLoading: noteStore.isLoading,
-                            searchText: debouncedSearchText,
-                            onTabToEditor: { focusedField = .editor },
-                            onShiftTabToSearch: { focusedField = .search },
-                            onEnterToEditor: { focusedField = .editor },
-                            onEscapeToSearch: { focusedField = .search },
-                            onUpArrowToSearch: { focusedField = .search },
-                            onDeleteNote: { note in noteToDelete = note },
-                            onShowInFinder: { note in
-                                NSWorkspace.shared.activateFileViewerSelecting([note.url])
-                            }
-                        )
-                        .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
-                    }
-
-                    if filteredNotes.isEmpty {
-                        ContentEmptyStateView(
-                            hasNotes: !noteStore.notes.isEmpty,
-                            searchText: searchText
-                        )
-                        .frame(minWidth: 300)
-                    } else if showPreview {
-                        previewPane
-                    } else {
-                        EditorView(
-                            content: $editorContent,
-                            showFindBar: $showFindBar,
-                            focusedField: _focusedField,
-                            searchText: debouncedSearchText,
-                            onShiftTab: { focusedField = settings.isFileListHidden ? .search : .noteList },
-                            onEscape: { focusedField = settings.isFileListHidden ? .search : .noteList }
-                        )
-                        .frame(minWidth: 300)
-                    }
-                }
+                verticalLayout
             }
         }
         .frame(minWidth: 600, minHeight: 400)
@@ -302,6 +264,86 @@ struct ContentView: View {
                 onTypeToEdit: { switchToEditor() }
             )
             .focused($focusedField, equals: .preview)
+            .frame(minWidth: 300)
+        }
+    }
+
+    @ViewBuilder
+    private var verticalLayout: some View {
+        HSplitView {
+            if !settings.isFileListHidden {
+                noteListPane
+                    .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
+            }
+            editorOrPreviewPane
+        }
+    }
+
+    @ViewBuilder
+    private var horizontalLayout: some View {
+        VSplitView {
+            if !settings.isFileListHidden {
+                HorizontalNoteListView(
+                    notes: filteredNotes,
+                    selectedNoteID: $selectedNoteID,
+                    focusedField: _focusedField,
+                    isLoading: noteStore.isLoading,
+                    searchText: debouncedSearchText,
+                    onTabToEditor: { focusedField = .editor },
+                    onShiftTabToSearch: { focusedField = .search },
+                    onEnterToEditor: { focusedField = .editor },
+                    onEscapeToSearch: { focusedField = .search },
+                    onUpArrowToSearch: { focusedField = .search },
+                    onDeleteNote: { note in noteToDelete = note },
+                    onShowInFinder: { note in
+                        NSWorkspace.shared.activateFileViewerSelecting([note.url])
+                    }
+                )
+                .frame(minHeight: 80, idealHeight: 150, maxHeight: 300)
+            }
+            editorOrPreviewPane
+        }
+    }
+
+    @ViewBuilder
+    private var noteListPane: some View {
+        NoteListView(
+            notes: filteredNotes,
+            selectedNoteID: $selectedNoteID,
+            focusedField: _focusedField,
+            isLoading: noteStore.isLoading,
+            searchText: debouncedSearchText,
+            onTabToEditor: { focusedField = .editor },
+            onShiftTabToSearch: { focusedField = .search },
+            onEnterToEditor: { focusedField = .editor },
+            onEscapeToSearch: { focusedField = .search },
+            onUpArrowToSearch: { focusedField = .search },
+            onDeleteNote: { note in noteToDelete = note },
+            onShowInFinder: { note in
+                NSWorkspace.shared.activateFileViewerSelecting([note.url])
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var editorOrPreviewPane: some View {
+        if filteredNotes.isEmpty {
+            ContentEmptyStateView(
+                hasNotes: !noteStore.notes.isEmpty,
+                searchText: searchText
+            )
+            .frame(minWidth: 300)
+        } else if showPreview {
+            previewPane
+        } else {
+            EditorView(
+                content: $editorContent,
+                showFindBar: $showFindBar,
+                focusedField: _focusedField,
+                searchText: debouncedSearchText,
+                onShiftTab: { focusedField = settings.isFileListHidden ? .search : .noteList },
+                onEscape: { focusedField = settings.isFileListHidden ? .search : .noteList }
+            )
             .frame(minWidth: 300)
         }
     }

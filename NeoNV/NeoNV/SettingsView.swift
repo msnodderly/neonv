@@ -21,7 +21,7 @@ struct SettingsView: View {
                     Label("Editor", systemImage: "textformat")
                 }
         }
-        .frame(width: 450, height: 280)
+        .frame(width: 450, height: 380)
     }
 }
 
@@ -57,6 +57,21 @@ struct GeneralSettingsTab: View {
                     }
                 }
                 .padding(.vertical, 4)
+            }
+
+            Divider()
+
+            Section {
+                Picker("Layout", selection: $settings.layoutMode) {
+                    ForEach(LayoutMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                Text("Vertical shows the file list as a sidebar. Horizontal shows it as a top pane with content previews.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
 
             Divider()

@@ -2,6 +2,18 @@ import Foundation
 import SwiftUI
 import Combine
 
+enum LayoutMode: String, CaseIterable {
+    case vertical
+    case horizontal
+
+    var displayName: String {
+        switch self {
+        case .vertical: return "Vertical (sidebar)"
+        case .horizontal: return "Horizontal (top list)"
+        }
+    }
+}
+
 enum FileExtension: String, CaseIterable {
     case markdown = "md"
     case text = "txt"
@@ -27,6 +39,7 @@ class AppSettings: ObservableObject {
         static let searchHighlightingEnabled = "searchHighlightingEnabled"
         static let isSearchFieldHidden = "isSearchFieldHidden"
         static let isFileListHidden = "isFileListHidden"
+        static let layoutMode = "layoutMode"
     }
 
     @Published var defaultExtension: FileExtension {
@@ -65,6 +78,12 @@ class AppSettings: ObservableObject {
         }
     }
 
+    @Published var layoutMode: LayoutMode {
+        didSet {
+            UserDefaults.standard.set(layoutMode.rawValue, forKey: Keys.layoutMode)
+        }
+    }
+
     private init() {
         // Load default extension
         if let storedExtension = UserDefaults.standard.string(forKey: Keys.defaultExtension),
@@ -93,6 +112,14 @@ class AppSettings: ObservableObject {
 
         // Load file list visibility (default: visible)
         self.isFileListHidden = UserDefaults.standard.bool(forKey: Keys.isFileListHidden)
+
+        // Load layout mode (default: vertical)
+        if let storedLayout = UserDefaults.standard.string(forKey: Keys.layoutMode),
+           let mode = LayoutMode(rawValue: storedLayout) {
+            self.layoutMode = mode
+        } else {
+            self.layoutMode = .vertical
+        }
     }
 
     func resetToDefaults() {
@@ -102,6 +129,7 @@ class AppSettings: ObservableObject {
         searchHighlightingEnabled = true
         isSearchFieldHidden = false
         isFileListHidden = false
+        layoutMode = .vertical
     }
 
     var externalEditorDisplayName: String {
