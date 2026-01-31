@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A0HORIZONTAL002 /* HorizontalNoteListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0HORIZONTAL001 /* HorizontalNoteListView.swift */; };
 		A01234560000000000000001 /* NeoNVApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01234560000000000000011 /* NeoNVApp.swift */; };
 		A01234560000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01234560000000000000012 /* ContentView.swift */; };
 		A01234560000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A01234560000000000000013 /* Assets.xcassets */; };
@@ -23,6 +24,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A0HORIZONTAL001 /* HorizontalNoteListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HorizontalNoteListView.swift; sourceTree = "<group>"; };
 		A01234560000000000000010 /* NeoNV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NeoNV.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A01234560000000000000011 /* NeoNVApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeoNVApp.swift; sourceTree = "<group>"; };
 		A01234560000000000000012 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -64,6 +66,7 @@
 			children = (
 				A01234560000000000000011 /* NeoNVApp.swift */,
 				A01234560000000000000012 /* ContentView.swift */,
+				A0HORIZONTAL001 /* HorizontalNoteListView.swift */,
 				A01234560000000000000015 /* PlainTextEditor.swift */,
 				A01234560000000000000019 /* MarkdownPreviewView.swift */,
 				A0123456000000000000001B /* OrgPreviewView.swift */,
@@ -180,6 +183,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A0HORIZONTAL002 /* HorizontalNoteListView.swift in Sources */,
 				A01234560000000000000001 /* NeoNVApp.swift in Sources */,
 				A01234560000000000000002 /* ContentView.swift in Sources */,
 				A01234560000000000000004 /* PlainTextEditor.swift in Sources */,
