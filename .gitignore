@@ -120,3 +120,5 @@ build-release/
 # Release artifacts
 release/
 .build-release/
+# bd worktree
+github-ci/
