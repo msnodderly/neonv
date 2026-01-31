@@ -9,7 +9,7 @@ struct KeyboardShortcutsView: View {
             shortcuts: [
                 Shortcut(key: "⌘L", description: "Focus search bar"),
                 Shortcut(key: "⌘⇧L", description: "Toggle search field visibility"),
-                Shortcut(key: "⌘⇧F", description: "Toggle file list visibility"),
+                Shortcut(key: "View menu", description: "Toggle file list visibility"),
                 Shortcut(key: "Tab / ↓", description: "Move to next pane"),
                 Shortcut(key: "Shift + Tab", description: "Move to previous pane"),
                 Shortcut(key: "→", description: "Move to editor from list"),

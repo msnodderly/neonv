@@ -76,7 +76,6 @@ struct NeoNVApp: App {
                 Button("Toggle File List") {
                     NotificationCenter.default.post(name: .toggleFileList, object: nil)
                 }
-                .keyboardShortcut("f", modifiers: [.command, .shift])
 
                 Button("Toggle Preview") {
                     NotificationCenter.default.post(name: .togglePreview, object: nil)
