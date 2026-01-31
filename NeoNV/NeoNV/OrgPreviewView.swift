@@ -147,10 +147,18 @@ struct OrgPreviewView: NSViewRepresentable {
                 continue
             }
 
-            let baseAttrs: [NSAttributedString.Key: Any] = [
+            var baseAttrs: [NSAttributedString.Key: Any] = [
                 .font: baseFont,
                 .foregroundColor: textColor
             ]
+
+            // @done or completed checkbox strikethrough
+            let isDone = line.contains("@done") || line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ")
+            if isDone {
+                baseAttrs[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+                baseAttrs[.strikethroughColor] = secondaryColor
+                baseAttrs[.foregroundColor] = secondaryColor
+            }
 
             // Headers: * H1 through ******** H8
             if let headerMatch = line.range(of: "^(\\*{1,8})\\s+(.*)$", options: .regularExpression) {

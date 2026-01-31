@@ -11,7 +11,7 @@ struct PlainTextEditor: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
-        let textView = CustomTextView()
+        let textView = CustomTextView(frame: .zero)
 
         textView.delegate = context.coordinator
         textView.onShiftTab = onShiftTab
@@ -67,6 +67,7 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.onEscape = onEscape
 
         applySearchHighlighting(to: textView)
+        applyDoneStrikethrough(to: textView)
 
         if showFindBar {
             if !scrollView.isFindBarVisible {
@@ -112,6 +113,43 @@ struct PlainTextEditor: NSViewRepresentable {
         }
     }
     
+    private func applyDoneStrikethrough(to textView: NSTextView) {
+        guard let textStorage = textView.textStorage else { return }
+        let fullRange = NSRange(location: 0, length: textStorage.length)
+
+        // Remove existing strikethrough and done-line coloring
+        textStorage.removeAttribute(.strikethroughStyle, range: fullRange)
+        textStorage.removeAttribute(.strikethroughColor, range: fullRange)
+
+        // Reset foreground color to default for all text
+        let defaultColor = NSColor.textColor
+        textStorage.addAttribute(.foregroundColor, value: defaultColor, range: fullRange)
+
+        let text = textView.string
+        let nsText = text as NSString
+        let doneColor = NSColor.secondaryLabelColor
+
+        // Find lines containing @done and apply strikethrough
+        var lineStart = 0
+        while lineStart < nsText.length {
+            var lineEnd = 0
+            var contentsEnd = 0
+            nsText.getLineStart(nil, end: &lineEnd, contentsEnd: &contentsEnd, for: NSRange(location: lineStart, length: 0))
+
+            let lineRange = NSRange(location: lineStart, length: contentsEnd - lineStart)
+            let lineContent = nsText.substring(with: lineRange)
+
+            let isDone = lineContent.contains("@done") || lineContent.hasPrefix("- [x] ") || lineContent.hasPrefix("- [X] ")
+            if isDone {
+                textStorage.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: lineRange)
+                textStorage.addAttribute(.strikethroughColor, value: doneColor, range: lineRange)
+                textStorage.addAttribute(.foregroundColor, value: doneColor, range: lineRange)
+            }
+
+            lineStart = lineEnd
+        }
+    }
+
     private static func focusSearchField(in view: NSView) {
         for subview in view.subviews {
             if let searchField = subview as? NSSearchField {
@@ -143,13 +181,13 @@ struct PlainTextEditor: NSViewRepresentable {
 class CustomTextView: NSTextView {
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
-    
+
     override func keyDown(with event: NSEvent) {
         if event.keyCode == 48 && event.modifierFlags.contains(.shift) {
             onShiftTab?()
             return
         }
-        
+
         if event.keyCode == 53 {
             // If the find bar is visible, dismiss it
             if let scrollView = enclosingScrollView, scrollView.isFindBarVisible {
@@ -164,7 +202,7 @@ class CustomTextView: NSTextView {
         
         super.keyDown(with: event)
     }
-    
+
     override func paste(_ sender: Any?) {
         pasteAsPlainText(sender)
     }
