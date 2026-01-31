@@ -49,11 +49,6 @@ struct NeoNVApp: App {
                 }
                 .keyboardShortcut("l", modifiers: .command)
 
-                Button("Toggle Preview") {
-                    NotificationCenter.default.post(name: .togglePreview, object: nil)
-                }
-                .keyboardShortcut("p", modifiers: .command)
-
                 Divider()
 
                 Button("Find in Note") {
@@ -70,6 +65,18 @@ struct NeoNVApp: App {
                     NotificationCenter.default.post(name: .showInFinder, object: nil)
                 }
                 .keyboardShortcut("r", modifiers: .command)
+            }
+
+            CommandGroup(after: .toolbar) {
+                Button("Toggle Search Bar") {
+                    NotificationCenter.default.post(name: .toggleSearchField, object: nil)
+                }
+                .keyboardShortcut("l", modifiers: [.command, .shift])
+
+                Button("Toggle Preview") {
+                    NotificationCenter.default.post(name: .togglePreview, object: nil)
+                }
+                .keyboardShortcut("p", modifiers: .command)
             }
 
             CommandGroup(replacing: .printItem) { }
@@ -103,4 +110,5 @@ extension Notification.Name {
     static let showInFinder = Notification.Name("showInFinder")
     static let showHelp = Notification.Name("showHelp")
     static let openInExternalEditor = Notification.Name("openInExternalEditor")
+    static let toggleSearchField = Notification.Name("toggleSearchField")
 }

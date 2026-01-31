@@ -59,19 +59,31 @@ struct ContentView: View {
         }
     }
 
+    @ObservedObject private var settings = AppSettings.shared
+
     var body: some View {
         VStack(spacing: 0) {
-            SearchBar(
-                text: $searchText,
-                focusedField: _focusedField,
-                matchCount: filteredNotes.count,
-                onNavigateToList: navigateToList,
-                onNavigateToEditor: { focusedField = .editor },
-                onCreateNote: createNewNote,
-                onClearSearch: clearSearch
-            )
+            if !settings.isSearchFieldHidden {
+                SearchBar(
+                    text: $searchText,
+                    focusedField: _focusedField,
+                    matchCount: filteredNotes.count,
+                    onNavigateToList: navigateToList,
+                    onNavigateToEditor: { focusedField = .editor },
+                    onCreateNote: createNewNote,
+                    onClearSearch: clearSearch
+                )
 
-            Divider()
+                CollapsibleSearchDivider(
+                    isSearchHidden: $settings.isSearchFieldHidden,
+                    onHide: { focusedField = .editor }
+                )
+            } else {
+                ExpandableSearchDivider(
+                    isSearchHidden: $settings.isSearchFieldHidden,
+                    onExpand: { focusedField = .search }
+                )
+            }
 
             if noteStore.selectedFolderURL == nil {
                 EmptyStateView(onSelectFolder: noteStore.selectFolder)
@@ -237,7 +249,12 @@ struct ContentView: View {
             }
         }
         .modifier(NotificationHandlers(
-            onFocusSearch: focusSearch,
+            onFocusSearch: {
+                if settings.isSearchFieldHidden {
+                    settings.isSearchFieldHidden = false
+                }
+                focusSearch()
+            },
             onCreateNewNote: createNewNoteFromShortcut,
             onTogglePreview: togglePreview,
             onFindInNote: {
@@ -255,7 +272,8 @@ struct ContentView: View {
             },
             onShowInFinder: showInFinder,
             onShowHelp: { showHelp = true },
-            onOpenInExternalEditor: openInExternalEditor
+            onOpenInExternalEditor: openInExternalEditor,
+            onToggleSearchField: toggleSearchField
         ))
         .sheet(isPresented: $showHelp) {
             HelpView()
@@ -329,6 +347,17 @@ struct ContentView: View {
             } else {
                 focusedField = .editor
             }
+        }
+    }
+
+    private func toggleSearchField() {
+        settings.isSearchFieldHidden.toggle()
+        if settings.isSearchFieldHidden {
+            if focusedField == .search {
+                focusedField = .editor
+            }
+        } else {
+            focusedField = .search
         }
     }
 
@@ -811,6 +840,86 @@ struct SearchBar: View {
     }
 }
 
+struct CollapsibleSearchDivider: View {
+    @Binding var isSearchHidden: Bool
+    var onHide: () -> Void
+    @State private var isHovering = false
+    @GestureState private var dragOffset: CGFloat = 0
+
+    var body: some View {
+        Rectangle()
+            .fill(isHovering ? Color.accentColor.opacity(0.3) : Color(NSColor.separatorColor))
+            .frame(height: isHovering ? 4 : 1)
+            .contentShape(Rectangle().inset(by: -4))
+            .onHover { hovering in
+                isHovering = hovering
+                if hovering {
+                    NSCursor.resizeUpDown.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .updating($dragOffset) { value, state, _ in
+                        state = value.translation.height
+                    }
+                    .onEnded { value in
+                        if value.translation.height < -20 {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isSearchHidden = true
+                            }
+                            onHide()
+                        }
+                    }
+            )
+            .help("Drag up to hide search field")
+    }
+}
+
+struct ExpandableSearchDivider: View {
+    @Binding var isSearchHidden: Bool
+    var onExpand: () -> Void
+    @State private var isHovering = false
+    @GestureState private var dragOffset: CGFloat = 0
+
+    var body: some View {
+        Rectangle()
+            .fill(isHovering ? Color.accentColor.opacity(0.3) : Color(NSColor.separatorColor))
+            .frame(height: isHovering ? 4 : 1)
+            .contentShape(Rectangle().inset(by: -4))
+            .onHover { hovering in
+                isHovering = hovering
+                if hovering {
+                    NSCursor.resizeUpDown.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .updating($dragOffset) { value, state, _ in
+                        state = value.translation.height
+                    }
+                    .onEnded { value in
+                        if value.translation.height > 10 {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isSearchHidden = false
+                            }
+                            onExpand()
+                        }
+                    }
+            )
+            .onTapGesture(count: 2) {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isSearchHidden = false
+                }
+                onExpand()
+            }
+            .help("Drag down or double-click to show search field (⌘L)")
+    }
+}
+
 struct NoteListView: View {
     var notes: [NoteFile]
     @Binding var selectedNoteID: UUID?
@@ -960,6 +1069,7 @@ struct NotificationHandlers: ViewModifier {
     let onShowInFinder: () -> Void
     let onShowHelp: () -> Void
     let onOpenInExternalEditor: () -> Void
+    let onToggleSearchField: () -> Void
 
     func body(content: Content) -> some View {
         content
@@ -986,6 +1096,9 @@ struct NotificationHandlers: ViewModifier {
             }
             .onReceive(NotificationCenter.default.publisher(for: .openInExternalEditor)) { _ in
                 onOpenInExternalEditor()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .toggleSearchField)) { _ in
+                onToggleSearchField()
             }
     }
 }

@@ -25,6 +25,7 @@ class AppSettings: ObservableObject {
         static let fontSize = "editorFontSize"
         static let externalEditorPath = "externalEditorPath"
         static let searchHighlightingEnabled = "searchHighlightingEnabled"
+        static let isSearchFieldHidden = "isSearchFieldHidden"
     }
 
     @Published var defaultExtension: FileExtension {
@@ -51,6 +52,12 @@ class AppSettings: ObservableObject {
         }
     }
 
+    @Published var isSearchFieldHidden: Bool {
+        didSet {
+            UserDefaults.standard.set(isSearchFieldHidden, forKey: Keys.isSearchFieldHidden)
+        }
+    }
+
     private init() {
         // Load default extension
         if let storedExtension = UserDefaults.standard.string(forKey: Keys.defaultExtension),
@@ -73,6 +80,9 @@ class AppSettings: ObservableObject {
         } else {
             self.searchHighlightingEnabled = true
         }
+
+        // Load search field visibility (default: visible)
+        self.isSearchFieldHidden = UserDefaults.standard.bool(forKey: Keys.isSearchFieldHidden)
     }
 
     func resetToDefaults() {
@@ -80,6 +90,7 @@ class AppSettings: ObservableObject {
         fontSize = 13.0
         externalEditorPath = nil
         searchHighlightingEnabled = true
+        isSearchFieldHidden = false
     }
 
     var externalEditorDisplayName: String {
