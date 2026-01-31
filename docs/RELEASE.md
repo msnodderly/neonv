@@ -172,7 +172,7 @@ cp docs/release-notes-v0.1.0.md docs/release-notes-v0.2.0.md
 # Edit as needed, then update the GitHub release after CI creates it
 ```
 
-**Important:** Use backticks around `@done` and similar @ mentions to avoid GitHub interpreting them as user tags.
+**Important:** Use backticks around `@done` when referring to the Taskpaper-style feature to avoid GitHub interpreting as user tags.
 
 ---
 
