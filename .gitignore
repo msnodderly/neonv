@@ -116,3 +116,7 @@ wiki-links/
 swiftlint/
 # bd worktree
 build-release/
+
+# Release artifacts
+release/
+.build-release/
