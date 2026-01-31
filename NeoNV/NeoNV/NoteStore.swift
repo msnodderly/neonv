@@ -1,6 +1,16 @@
 import Foundation
 import AppKit
 import CoreServices
+import os
+
+/// Thread-safe cancellation flag for bridging structured concurrency to GCD
+private final class CancellationFlag: @unchecked Sendable {
+    private let _cancelled = OSAllocatedUnfairLock(initialState: false)
+    var isCancelled: Bool {
+        get { _cancelled.withLock { $0 } }
+        set { _cancelled.withLock { $0 = newValue } }
+    }
+}
 
 struct NoteFile: Identifiable, Equatable {
     let id: UUID
@@ -97,6 +107,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
     private let allowedExtensions: Set<String> = ["txt", "md", "markdown", "org", "text"]
     private let folderBookmarkKey = "selectedFolderBookmark"
     private var fileWatcher: FileWatcher?
+    private var discoveryTask: Task<Void, Never>?
     
     init() {
         if let cliPath = Self.parseCommandLineFolder() {
@@ -129,7 +140,8 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
 
         saveFolder(url)
         selectedFolderURL = url
-        Task {
+        discoveryTask?.cancel()
+        discoveryTask = Task {
             await discoverFiles()
         }
     }
@@ -298,7 +310,8 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         if panel.runModal() == .OK, let url = panel.url {
             saveFolder(url)
             selectedFolderURL = url
-            Task {
+            discoveryTask?.cancel()
+            discoveryTask = Task {
                 await discoverFiles()
             }
         }
@@ -311,14 +324,26 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         }
 
         isLoading = true
+        stopWatching()
 
         let extensions = allowedExtensions
-        let discoveredNotes: [NoteFile] = await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                let result = NoteStore.enumerateNotes(in: folderURL, allowedExtensions: extensions)
-                continuation.resume(returning: result)
+        let flag = CancellationFlag()
+        let discoveredNotes: [NoteFile] = await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let result = NoteStore.enumerateNotes(
+                        in: folderURL,
+                        allowedExtensions: extensions,
+                        isCancelled: { flag.isCancelled }
+                    )
+                    continuation.resume(returning: result)
+                }
             }
+        } onCancel: {
+            flag.isCancelled = true
         }
+
+        guard !Task.isCancelled else { return }
 
         notes = discoveredNotes
         isLoading = false
@@ -326,7 +351,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
     }
 
     /// Enumerates files and reads metadata off the main thread
-    private static func enumerateNotes(in folderURL: URL, allowedExtensions: Set<String>) -> [NoteFile] {
+    private static func enumerateNotes(in folderURL: URL, allowedExtensions: Set<String>, isCancelled: @Sendable () -> Bool = { false }) -> [NoteFile] {
         let fileManager = FileManager.default
         guard let enumerator = fileManager.enumerator(
             at: folderURL,
@@ -339,6 +364,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         result.reserveCapacity(1024)
 
         for case let fileURL as URL in enumerator {
+            if isCancelled() { return [] }
             let ext = fileURL.pathExtension.lowercased()
             guard allowedExtensions.contains(ext) else { continue }
 
@@ -429,7 +455,8 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             ) {
                 if url.startAccessingSecurityScopedResource() {
                     selectedFolderURL = url
-                    Task {
+                    discoveryTask?.cancel()
+                    discoveryTask = Task {
                         await discoverFiles()
                     }
                 }
@@ -437,7 +464,8 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         } else if let storedPath = UserDefaults.standard.string(forKey: "selectedNotesFolder"),
                   let url = URL(string: storedPath) {
             selectedFolderURL = url
-            Task {
+            discoveryTask?.cancel()
+            discoveryTask = Task {
                 await discoverFiles()
             }
         }
