@@ -89,6 +89,11 @@ struct NeoNVApp: App {
                 Button("NeoNV Help") {
                     NotificationCenter.default.post(name: .showHelp, object: nil)
                 }
+
+                Button("Keyboard Shortcuts") {
+                    NotificationCenter.default.post(name: .showKeyboardShortcuts, object: nil)
+                }
+                .keyboardShortcut("k", modifiers: .command)
             }
 
             CommandGroup(after: .pasteboard) {
@@ -113,6 +118,7 @@ extension Notification.Name {
     static let findInNote = Notification.Name("findInNote")
     static let showInFinder = Notification.Name("showInFinder")
     static let showHelp = Notification.Name("showHelp")
+    static let showKeyboardShortcuts = Notification.Name("showKeyboardShortcuts")
     static let openInExternalEditor = Notification.Name("openInExternalEditor")
     static let toggleSearchField = Notification.Name("toggleSearchField")
     static let toggleFileList = Notification.Name("toggleFileList")
