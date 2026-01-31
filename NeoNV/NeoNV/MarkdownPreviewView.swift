@@ -134,6 +134,14 @@ struct MarkdownPreviewView: NSViewRepresentable {
                 attrs[.foregroundColor] = secondaryColor
             }
 
+            // Check for @done tag — apply strikethrough and dim
+            let hasDoneTag = processedLine.contains("@done")
+            if hasDoneTag {
+                attrs[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+                attrs[.strikethroughColor] = secondaryColor
+                attrs[.foregroundColor] = secondaryColor
+            }
+
             // Process inline formatting
             let attributedLine = processInlineFormatting(
                 processedLine,
