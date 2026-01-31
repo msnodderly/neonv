@@ -130,3 +130,5 @@ cmd-k-shortcut/
 horizontal-compact/
 # bd worktree
 search-highlight-fix/
+# bd worktree
+cmdl-nohighlight/
