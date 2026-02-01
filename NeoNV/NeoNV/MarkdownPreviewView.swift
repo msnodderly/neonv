@@ -77,6 +77,165 @@ struct MarkdownPreviewView: NSViewRepresentable {
         return nil
     }
 
+    private enum TableAlignment {
+        case left, center, right
+    }
+
+    private struct ParsedTable {
+        var headers: [String]
+        var alignments: [TableAlignment]
+        var rows: [[String]]
+    }
+
+    private func isTableSeparatorLine(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard trimmed.hasPrefix("|") else { return false }
+        let cells = parseCells(from: trimmed)
+        return !cells.isEmpty && cells.allSatisfy { cell in
+            let c = cell.trimmingCharacters(in: .whitespaces)
+            return c.allSatisfy { $0 == "-" || $0 == ":" } && c.contains("-")
+        }
+    }
+
+    private func parseAlignments(from line: String) -> [TableAlignment] {
+        parseCells(from: line).map { cell in
+            let c = cell.trimmingCharacters(in: .whitespaces)
+            let left = c.hasPrefix(":")
+            let right = c.hasSuffix(":")
+            if left && right { return .center }
+            if right { return .right }
+            return .left
+        }
+    }
+
+    private func parseCells(from line: String) -> [String] {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        var content = trimmed
+        if content.hasPrefix("|") { content = String(content.dropFirst()) }
+        if content.hasSuffix("|") { content = String(content.dropLast()) }
+        return content.components(separatedBy: "|").map {
+            $0.trimmingCharacters(in: .whitespaces)
+        }
+    }
+
+    private func isTableLine(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        return trimmed.hasPrefix("|") && trimmed.contains("|") &&
+               trimmed.filter({ $0 == "|" }).count >= 2
+    }
+
+    private func parseTableBlock(_ tableLines: [String]) -> ParsedTable? {
+        guard tableLines.count >= 2 else { return nil }
+
+        // Check if line 1 is separator (header | separator | rows)
+        guard tableLines.count >= 2, isTableSeparatorLine(tableLines[1]) else { return nil }
+
+        let headers = parseCells(from: tableLines[0])
+        let alignments = parseAlignments(from: tableLines[1])
+        var rows: [[String]] = []
+
+        for i in 2..<tableLines.count {
+            let cells = parseCells(from: tableLines[i])
+            rows.append(cells)
+        }
+
+        return ParsedTable(headers: headers, alignments: alignments, rows: rows)
+    }
+
+    private func renderTable(
+        _ table: ParsedTable,
+        fontSize: CGFloat,
+        baseFont: NSFont,
+        boldFont: NSFont,
+        italicFont: NSFont,
+        monoFont: NSFont,
+        codeBackground: NSColor
+    ) -> NSAttributedString {
+        let result = NSMutableAttributedString()
+        let textColor = NSColor.textColor
+        let headerBg = NSColor.controlAccentColor.withAlphaComponent(0.08)
+        let borderColor = NSColor.separatorColor
+        let colCount = max(table.headers.count, table.rows.map(\.count).max() ?? 1)
+
+        let nsTable = NSTextTable()
+        nsTable.numberOfColumns = colCount
+        nsTable.setContentWidth(100, type: .percentageValueType)
+        nsTable.hidesEmptyCells = false
+
+        func makeCell(
+            text: String, row: Int, col: Int, isHeader: Bool,
+            alignment: TableAlignment
+        ) -> NSAttributedString {
+            let block = NSTextTableBlock(
+                table: nsTable,
+                startingRow: row, rowSpan: 1,
+                startingColumn: col, columnSpan: 1
+            )
+
+            for edge: NSRectEdge in [.minX, .minY, .maxX, .maxY] {
+                block.setBorderColor(borderColor, for: edge)
+                block.setWidth(0.5, type: .absoluteValueType, for: .border, edge: edge)
+                let padAmount: CGFloat = (edge == .minX || edge == .maxX) ? 6 : 3
+                block.setWidth(padAmount, type: .absoluteValueType, for: .padding, edge: edge)
+            }
+
+            block.setContentWidth(CGFloat(100 / colCount), type: .percentageValueType)
+
+            if isHeader {
+                block.backgroundColor = headerBg
+            }
+
+            let para = NSMutableParagraphStyle()
+            para.textBlocks = [block]
+            switch alignment {
+            case .left: para.alignment = .left
+            case .center: para.alignment = .center
+            case .right: para.alignment = .right
+            }
+
+            let font = isHeader ? boldFont : baseFont
+            let baseAttrs: [NSAttributedString.Key: Any] = [
+                .font: font,
+                .foregroundColor: textColor,
+                .paragraphStyle: para
+            ]
+
+            // Process inline formatting within cell
+            let formatted = processInlineFormatting(
+                text,
+                baseAttrs: baseAttrs,
+                boldFont: boldFont,
+                italicFont: italicFont,
+                monoFont: monoFont,
+                codeBackground: codeBackground
+            )
+
+            // Ensure paragraph style is applied to entire string
+            let cellStr = NSMutableAttributedString(attributedString: formatted)
+            cellStr.addAttribute(.paragraphStyle, value: para, range: NSRange(location: 0, length: cellStr.length))
+            cellStr.append(NSAttributedString(string: "\n", attributes: baseAttrs))
+            return cellStr
+        }
+
+        // Render header row
+        for col in 0..<colCount {
+            let text = col < table.headers.count ? table.headers[col] : ""
+            let alignment = col < table.alignments.count ? table.alignments[col] : .left
+            result.append(makeCell(text: text, row: 0, col: col, isHeader: true, alignment: alignment))
+        }
+
+        // Render data rows
+        for (rowIdx, row) in table.rows.enumerated() {
+            for col in 0..<colCount {
+                let text = col < row.count ? row[col] : ""
+                let alignment = col < table.alignments.count ? table.alignments[col] : .left
+                result.append(makeCell(text: text, row: rowIdx + 1, col: col, isHeader: false, alignment: alignment))
+            }
+        }
+
+        return result
+    }
+
     private func parseMarkdown(content: String, fontSize: CGFloat) -> NSAttributedString {
         let result = NSMutableAttributedString()
         let lines = content.components(separatedBy: "\n")
@@ -91,8 +250,11 @@ struct MarkdownPreviewView: NSViewRepresentable {
 
         var inCodeBlock = false
         var codeBlockContent = ""
+        var index = 0
 
-        for (index, line) in lines.enumerated() {
+        while index < lines.count {
+            let line = lines[index]
+
             if line.hasPrefix("```") {
                 if inCodeBlock {
                     let codeAttrs: [NSAttributedString.Key: Any] = [
@@ -106,12 +268,36 @@ struct MarkdownPreviewView: NSViewRepresentable {
                 } else {
                     inCodeBlock = true
                 }
+                index += 1
                 continue
             }
 
             if inCodeBlock {
                 codeBlockContent += line + "\n"
+                index += 1
                 continue
+            }
+
+            // Detect table blocks
+            if isTableLine(line) {
+                var tableLines: [String] = []
+                var tableEnd = index
+                while tableEnd < lines.count && isTableLine(lines[tableEnd]) {
+                    tableLines.append(lines[tableEnd])
+                    tableEnd += 1
+                }
+
+                if let table = parseTableBlock(tableLines) {
+                    let tableStr = renderTable(
+                        table, fontSize: fontSize,
+                        baseFont: baseFont, boldFont: boldFont,
+                        italicFont: italicFont, monoFont: monoFont,
+                        codeBackground: codeBackground
+                    )
+                    result.append(tableStr)
+                    index = tableEnd
+                    continue
+                }
             }
 
             var processedLine = line
@@ -157,6 +343,8 @@ struct MarkdownPreviewView: NSViewRepresentable {
             if index < lines.count - 1 {
                 result.append(NSAttributedString(string: "\n", attributes: attrs))
             }
+
+            index += 1
         }
 
         // Handle unclosed code block
@@ -397,6 +585,12 @@ class PreviewTextView: NSTextView {
     [Link text](https://example.com)
 
     ---
+
+    | Feature | Status | Notes |
+    |---------|:------:|------:|
+    | Tables | **Done** | Right-aligned |
+    | Lists | Done | |
+    | Code | Done | `inline` too |
 
     Regular paragraph text continues here.
     """)
