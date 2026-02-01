@@ -142,3 +142,5 @@ skip-non-text-files/
 homebrew-cask/
 # bd worktree
 version-about/
+# bd worktree
+type-to-exit/
