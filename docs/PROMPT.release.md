@@ -50,7 +50,7 @@ git log $(git tag --sort=-v:refname | head -1)..HEAD --oneline --no-merges
 | Any `feat:` | Minor | v0.2.1 → v0.3.0 |
 | Breaking changes or major rewrite | Major | v0.3.0 → v1.0.0 |
 
-Decide the new version and proceed. Do NOT ask for confirmation.
+Review the PR commits since last release and decide the new version and proceed. Do not ask for confirmation.
 
 ---
 
@@ -102,8 +102,17 @@ One-sentence summary of the release.
 
 ### Installation
 
-Download the DMG, drag NeoNV to Applications. On first launch, right-click → Open (app is unsigned).
-```
+Download the DMG and drag NeoNV to Applications.
+
+**First launch (app is unsigned):**
+1. Double-click NeoNV — macOS will block it with "NeoNV cannot be opened"
+2. Open **System Settings → Privacy & Security**
+3. Scroll down to the **Security** section
+4. Click **"Open Anyway"** next to the NeoNV message
+5. Enter your password when prompted
+
+After this one-time setup, NeoNV opens normally.
+
 
 **Guidelines:**
 - Only include sections with content (omit empty sections)
