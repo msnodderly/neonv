@@ -140,3 +140,5 @@ github-releases/
 skip-non-text-files/
 # bd worktree
 homebrew-cask/
+# bd worktree
+version-about/
