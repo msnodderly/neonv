@@ -136,3 +136,7 @@ defer-load-folder/
 audit-done-backticks/
 # bd worktree
 github-releases/
+# bd worktree
+skip-non-text-files/
+# bd worktree
+homebrew-cask/
