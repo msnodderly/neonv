@@ -204,28 +204,14 @@ fileprivate class FocusForwardingScrollView: NSScrollView {
 class CustomTextView: NSTextView {
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
-    private var isControlCPending = false
 
     override func keyDown(with event: NSEvent) {
-        // Chord: Ctrl+C, . to insert date
-        if isControlCPending {
-            isControlCPending = false
-            if event.characters == "." {
-                insertCurrentDate()
-                return
-            }
+        // Cmd+Shift+D to insert date
+        if event.modifierFlags.contains([.command, .shift]),
+           let chars = event.charactersIgnoringModifiers, chars.lowercased() == "d" {
+            insertCurrentDate()
+            return
         }
-        
-        // Start of chord: Ctrl+C
-        if event.modifierFlags.contains(.control) {
-            if let chars = event.charactersIgnoringModifiers, chars == "c" || chars == "C" {
-                isControlCPending = true
-                return
-            }
-        }
-        
-        // Reset pending state if any other key is pressed (implicit above, but safe to be explicit)
-        isControlCPending = false
 
         if event.keyCode == 48 && event.modifierFlags.contains(.shift) {
             onShiftTab?()
