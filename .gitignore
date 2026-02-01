@@ -130,3 +130,5 @@ org-title-render/
 preview-first-nonempty/
 # bd worktree
 remove-hover-flicker/
+# bd worktree
+defer-load-folder/
