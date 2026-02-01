@@ -932,22 +932,13 @@ struct SearchBar: View {
 struct CollapsibleSearchDivider: View {
     @Binding var isSearchHidden: Bool
     var onHide: () -> Void
-    @State private var isHovering = false
     @GestureState private var dragOffset: CGFloat = 0
 
     var body: some View {
         Rectangle()
-            .fill(isHovering ? Color.accentColor.opacity(0.3) : Color(NSColor.separatorColor))
-            .frame(height: isHovering ? 4 : 1)
+            .fill(Color(NSColor.separatorColor))
+            .frame(height: 1)
             .contentShape(Rectangle().inset(by: -4))
-            .onHover { hovering in
-                isHovering = hovering
-                if hovering {
-                    NSCursor.resizeUpDown.push()
-                } else {
-                    NSCursor.pop()
-                }
-            }
             .gesture(
                 DragGesture(minimumDistance: 1)
                     .updating($dragOffset) { value, state, _ in
@@ -969,22 +960,13 @@ struct CollapsibleSearchDivider: View {
 struct ExpandableSearchDivider: View {
     @Binding var isSearchHidden: Bool
     var onExpand: () -> Void
-    @State private var isHovering = false
     @GestureState private var dragOffset: CGFloat = 0
 
     var body: some View {
         Rectangle()
-            .fill(isHovering ? Color.accentColor.opacity(0.3) : Color(NSColor.separatorColor))
-            .frame(height: isHovering ? 4 : 1)
+            .fill(Color(NSColor.separatorColor))
+            .frame(height: 1)
             .contentShape(Rectangle().inset(by: -4))
-            .onHover { hovering in
-                isHovering = hovering
-                if hovering {
-                    NSCursor.resizeUpDown.push()
-                } else {
-                    NSCursor.pop()
-                }
-            }
             .gesture(
                 DragGesture(minimumDistance: 1)
                     .updating($dragOffset) { value, state, _ in
