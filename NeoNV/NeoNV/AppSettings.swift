@@ -35,6 +35,7 @@ class AppSettings: ObservableObject {
     private enum Keys {
         static let defaultExtension = "defaultFileExtension"
         static let fontSize = "editorFontSize"
+        static let fontFamily = "editorFontFamily"
         static let externalEditorPath = "externalEditorPath"
         static let searchHighlightingEnabled = "searchHighlightingEnabled"
         static let isSearchFieldHidden = "isSearchFieldHidden"
@@ -51,6 +52,13 @@ class AppSettings: ObservableObject {
     @Published var fontSize: Double {
         didSet {
             UserDefaults.standard.set(fontSize, forKey: Keys.fontSize)
+        }
+    }
+
+    /// Font family name. Empty string means system monospaced font.
+    @Published var fontFamily: String {
+        didSet {
+            UserDefaults.standard.set(fontFamily, forKey: Keys.fontFamily)
         }
     }
 
@@ -97,6 +105,9 @@ class AppSettings: ObservableObject {
         let storedFontSize = UserDefaults.standard.double(forKey: Keys.fontSize)
         self.fontSize = storedFontSize > 0 ? storedFontSize : 13.0
 
+        // Load font family (default: system monospaced)
+        self.fontFamily = UserDefaults.standard.string(forKey: Keys.fontFamily) ?? ""
+
         // Load external editor path
         self.externalEditorPath = UserDefaults.standard.string(forKey: Keys.externalEditorPath)
 
@@ -125,11 +136,20 @@ class AppSettings: ObservableObject {
     func resetToDefaults() {
         defaultExtension = .markdown
         fontSize = 13.0
+        fontFamily = ""
         externalEditorPath = nil
         searchHighlightingEnabled = true
         isSearchFieldHidden = false
         isFileListHidden = false
         layoutMode = .vertical
+    }
+
+    /// Resolves the configured font. Falls back to system monospaced if family is empty or unavailable.
+    func resolvedNSFont(size: CGFloat) -> NSFont {
+        if !fontFamily.isEmpty, let font = NSFont(name: fontFamily, size: size) {
+            return font
+        }
+        return NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
     }
 
     var externalEditorDisplayName: String {
