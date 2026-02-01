@@ -350,12 +350,20 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         startWatching()
     }
 
+    /// Directories to skip during enumeration (common junk directories)
+    private static let junkDirectories: Set<String> = [
+        ".git", "node_modules", ".build", "__pycache__", ".svn", ".hg",
+        "venv", ".venv", "target", "build", "dist", ".gradle", ".idea",
+        "vendor", "Pods", "DerivedData", ".tox", ".pytest_cache",
+        ".mypy_cache", ".ruff_cache", "__MACOSX"
+    ]
+
     /// Enumerates files and reads metadata off the main thread
     private static func enumerateNotes(in folderURL: URL, allowedExtensions: Set<String>, isCancelled: @Sendable () -> Bool = { false }) -> [NoteFile] {
         let fileManager = FileManager.default
         guard let enumerator = fileManager.enumerator(
             at: folderURL,
-            includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey],
+            includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey, .isDirectoryKey],
             options: [.skipsHiddenFiles, .skipsPackageDescendants]
         ) else { return [] }
 
@@ -365,12 +373,25 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
 
         for case let fileURL as URL in enumerator {
             if isCancelled() { return [] }
-            let ext = fileURL.pathExtension.lowercased()
-            guard allowedExtensions.contains(ext) else { continue }
 
             do {
-                let resourceValues = try fileURL.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey])
+                let resourceValues = try fileURL.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey, .isDirectoryKey])
+
+                // Skip junk directories early using skipDescendants
+                if resourceValues.isDirectory == true {
+                    let dirName = fileURL.lastPathComponent
+                    if junkDirectories.contains(dirName) {
+                        enumerator.skipDescendants()
+                    }
+                    continue
+                }
+
+                // Skip non-regular files
                 guard resourceValues.isRegularFile == true else { continue }
+
+                // Filter by extension early
+                let ext = fileURL.pathExtension.lowercased()
+                guard allowedExtensions.contains(ext) else { continue }
 
                 let modDate = resourceValues.contentModificationDate ?? Date.distantPast
                 let relativePath = fileURL.path.replacingOccurrences(of: folderPath, with: "")
