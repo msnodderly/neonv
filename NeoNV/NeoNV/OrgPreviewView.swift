@@ -5,7 +5,7 @@ struct OrgPreviewView: NSViewRepresentable {
     var content: String
     var fontSize: CGFloat = 13
     var onShiftTab: (() -> Void)?
-    var onTypeToEdit: (() -> Void)?
+    var onTypeToEdit: ((String) -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = FocusForwardingScrollView()

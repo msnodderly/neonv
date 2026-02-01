@@ -5,7 +5,7 @@ struct MarkdownPreviewView: NSViewRepresentable {
     var content: String
     var fontSize: CGFloat = 13
     var onShiftTab: (() -> Void)?
-    var onTypeToEdit: (() -> Void)?
+    var onTypeToEdit: ((String) -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = FocusForwardingScrollView()
@@ -298,7 +298,7 @@ fileprivate class FocusForwardingScrollView: NSScrollView {
 
 class PreviewTextView: NSTextView {
     var onShiftTab: (() -> Void)?
-    var onTypeToEdit: (() -> Void)?
+    var onTypeToEdit: ((String) -> Void)?
 
     override func keyDown(with event: NSEvent) {
         // Shift-Tab to return to note list
@@ -343,7 +343,7 @@ class PreviewTextView: NSTextView {
             if CharacterSet.alphanumerics.contains(firstChar) ||
                CharacterSet.punctuationCharacters.contains(firstChar) ||
                CharacterSet.symbols.contains(firstChar) {
-                onTypeToEdit?()
+                onTypeToEdit?(chars)
                 return
             }
         }

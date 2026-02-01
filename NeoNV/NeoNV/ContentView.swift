@@ -260,7 +260,7 @@ struct ContentView: View {
                 content: editorContent,
                 fontSize: CGFloat(AppSettings.shared.fontSize),
                 onShiftTab: { focusedField = .noteList },
-                onTypeToEdit: { switchToEditor() }
+                onTypeToEdit: { character in switchToEditor(withCharacter: character) }
             )
             .focused($focusedField, equals: .preview)
             .frame(minWidth: 300)
@@ -269,7 +269,7 @@ struct ContentView: View {
                 content: editorContent,
                 fontSize: CGFloat(AppSettings.shared.fontSize),
                 onShiftTab: { focusedField = .noteList },
-                onTypeToEdit: { switchToEditor() }
+                onTypeToEdit: { character in switchToEditor(withCharacter: character) }
             )
             .focused($focusedField, equals: .preview)
             .frame(minWidth: 300)
@@ -443,7 +443,14 @@ struct ContentView: View {
         focusedField = .search
     }
 
-    private func switchToEditor() {
+    private func switchToEditor(withCharacter character: String? = nil) {
+        if let char = character {
+            // Insert the character at the current cursor position
+            let position = cursorPosition
+            editorContent.insert(contentsOf: char, at: editorContent.index(editorContent.startIndex, offsetBy: min(position, editorContent.count)))
+            cursorPosition = min(position + char.count, editorContent.count)
+        }
+
         showPreview = false
         // Delay focus change to allow view swapping to complete
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
