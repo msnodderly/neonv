@@ -20,7 +20,23 @@ Inspired by [Notational Velocity](https://notational.net/)'s speed and simplicit
 - macOS 14.0 (Sonoma) or later
 - Apple Silicon or Intel Mac (universal binary)
 
-## Building
+## Installation
+
+### Homebrew (Recommended)
+
+```bash
+brew install --cask msnodderly/tap/neonv
+```
+
+This is the easiest way to install NeoNV. Homebrew handles the download and installation automatically.
+
+### Manual Download
+
+1. Download the latest DMG from [GitHub Releases](https://github.com/msnodderly/neonv/releases)
+2. Open the DMG and drag NeoNV to Applications
+3. On first launch, right-click → Open (app is unsigned)
+
+## Building from Source
 
 Open `NeoNV.xcodeproj` in Xcode 15+ and build (⌘B).
 
