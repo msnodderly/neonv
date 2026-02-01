@@ -166,7 +166,22 @@ Delete the release and tag from GitHub, then re-push the tag.
 
 CI auto-generates notes from raw commits, but **you must replace them** with a curated summary. Users don't care about worktree updates, bd syncs, or chore commits—they want to know what changed for them.
 
-**Always create custom release notes:**
+### Gathering Content
+
+Review both BD issues and commits for context:
+
+```bash
+# BD issues contain user-facing descriptions and acceptance criteria
+bd list --status closed --limit 20
+bd show <issue-id>  # Get full context for relevant issues
+
+# Commits provide implementation details
+git log v0.1.0..HEAD --oneline --no-merges
+```
+
+BD issue descriptions often contain better user-facing language than commit messages. Use the issue's "What" and "Why" to understand changes from the user's perspective.
+
+### Creating the Notes
 
 ```bash
 # 1. Create release notes file (use previous version as template)
