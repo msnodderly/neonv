@@ -128,3 +128,5 @@ remove-flicker/
 org-title-render/
 # bd worktree
 preview-first-nonempty/
+# bd worktree
+remove-hover-flicker/
