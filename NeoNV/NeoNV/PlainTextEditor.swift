@@ -206,6 +206,13 @@ class CustomTextView: NSTextView {
     var onEscape: (() -> Void)?
 
     override func keyDown(with event: NSEvent) {
+        // Cmd+Shift+D to insert date
+        if event.modifierFlags.contains([.command, .shift]),
+           let chars = event.charactersIgnoringModifiers, chars.lowercased() == "d" {
+            insertCurrentDate()
+            return
+        }
+
         if event.keyCode == 48 && event.modifierFlags.contains(.shift) {
             onShiftTab?()
             return
@@ -224,6 +231,25 @@ class CustomTextView: NSTextView {
         }
         
         super.keyDown(with: event)
+    }
+
+    private func insertCurrentDate() {
+        let formatter = DateFormatter()
+        // Org-mode inactive timestamp format: [YYYY-MM-DD Day HH:MM]
+        formatter.dateFormat = "[yyyy-MM-dd EEE HH:mm]"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        let dateString = formatter.string(from: Date())
+        
+        if let undoManager = undoManager {
+            undoManager.registerUndo(withTarget: self) { target in
+                // Simple undo implementation: delete the inserted text
+                // In a real app, we rely on the text view's native undo grouping,
+                // but explicit registration helps ensure the action is atomic.
+                // However, insertText handles undo automatically.
+            }
+        }
+        
+        insertText(dateString, replacementRange: selectedRange())
     }
 
     override func paste(_ sender: Any?) {

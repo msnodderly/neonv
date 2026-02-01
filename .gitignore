@@ -122,5 +122,7 @@ cmdl-nohighlight/
 swiftlint-trivial/
 markdown-complexity/
 preview-focus/
+preview-update/
 # bd worktree
+remove-flicker/
 org-title-render/
