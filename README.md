@@ -34,7 +34,10 @@ This is the easiest way to install NeoNV. Homebrew handles the download and inst
 
 1. Download the latest DMG from [GitHub Releases](https://github.com/msnodderly/neonv/releases)
 2. Open the DMG and drag NeoNV to Applications
-3. On first launch, right-click → Open (app is unsigned)
+3. **First launch (app is unsigned):**
+   - Double-click NeoNV — macOS will block it
+   - Open **System Settings → Privacy & Security**
+   - Scroll to **Security**, click **"Open Anyway"**
 
 ## Building from Source
 
