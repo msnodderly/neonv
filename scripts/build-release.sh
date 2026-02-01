@@ -61,6 +61,11 @@ done
 VERSION="${VERSION:-$(get_version)}"
 OUTPUT_DIR="${OUTPUT_DIR:-$PROJECT_ROOT/release}"
 
+# Resolve OUTPUT_DIR to absolute path
+if [[ ! "$OUTPUT_DIR" = /* ]]; then
+    OUTPUT_DIR="$(cd "$(dirname "$OUTPUT_DIR")" 2>/dev/null && pwd)/$(basename "$OUTPUT_DIR")" || OUTPUT_DIR="$PWD/$OUTPUT_DIR"
+fi
+
 echo "=== NeoNV Release Build ==="
 echo "Version: $VERSION"
 echo "Output:  $OUTPUT_DIR"
