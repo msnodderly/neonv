@@ -420,7 +420,15 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         defer { try? handle.close() }
         guard let data = try? handle.read(upToCount: 256) else { return "" }
         guard let content = String(data: data, encoding: .utf8) else { return "" }
-        return (content.components(separatedBy: .newlines).first ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Find first non-empty line
+        for line in content.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                return trimmed
+            }
+        }
+        return ""
     }
 
     private static func readContentPreviewStatic(from url: URL, maxBytes: Int = 2048) -> String {
@@ -438,8 +446,14 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         guard let data = try? handle.read(upToCount: 256) else { return "" }
         guard let content = String(data: data, encoding: .utf8) else { return "" }
 
-        let firstLine = content.components(separatedBy: .newlines).first ?? ""
-        return firstLine.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Find first non-empty line
+        for line in content.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                return trimmed
+            }
+        }
+        return ""
     }
 
     private func readContentPreview(from url: URL, maxBytes: Int = 2048) -> String {
