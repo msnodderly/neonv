@@ -21,7 +21,7 @@ struct SettingsView: View {
                     Label("Editor", systemImage: "textformat")
                 }
         }
-        .frame(width: 450, height: 380)
+        .frame(width: 450, height: 450)
     }
 }
 
@@ -136,28 +136,41 @@ struct GeneralSettingsTab: View {
 
 struct EditorSettingsTab: View {
     @ObservedObject private var settings = AppSettings.shared
+    @State private var availableFonts: [(name: String, displayName: String)] = []
 
     var body: some View {
         Form {
             Section {
                 VStack(alignment: .leading, spacing: 8) {
+                    Text("Font")
+                        .font(.headline)
+
+                    Picker("Family", selection: $settings.fontFamily) {
+                        Text("System Monospaced (Default)")
+                            .tag("")
+                        ForEach(availableFonts, id: \.name) { font in
+                            Text(font.displayName)
+                                .tag(font.name)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
                     HStack {
-                        Text("Font Size")
-                            .font(.headline)
+                        Text("Size")
                         Spacer()
                         Text("\(Int(settings.fontSize)) pt")
                             .foregroundColor(.secondary)
                             .monospacedDigit()
                     }
 
-                    Slider(value: $settings.fontSize, in: 9...24, step: 1)
+                    Slider(value: $settings.fontSize, in: 8...72, step: 1)
 
                     HStack {
-                        Text("9")
+                        Text("8")
                             .font(.caption)
                             .foregroundColor(.secondary)
                         Spacer()
-                        Text("24")
+                        Text("72")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -182,8 +195,8 @@ struct EditorSettingsTab: View {
                     Text("Preview")
                         .font(.headline)
 
-                    Text("The quick brown fox jumps over the lazy dog.")
-                        .font(.system(size: settings.fontSize, design: .monospaced))
+                    Text("The quick brown fox jumps over the lazy dog.\n0123456789 !@#$%^&*()")
+                        .font(Font(settings.resolvedNSFont(size: CGFloat(settings.fontSize))))
                         .padding(8)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(Color(NSColor.textBackgroundColor))
@@ -203,6 +216,19 @@ struct EditorSettingsTab: View {
         }
         .formStyle(.grouped)
         .padding()
+        .onAppear {
+            loadAvailableFonts()
+        }
+    }
+
+    private func loadAvailableFonts() {
+        let manager = NSFontManager.shared
+        let families = manager.availableFontFamilies.sorted()
+        availableFonts = families.compactMap { family in
+            // Only include fonts that can actually be instantiated
+            guard NSFont(name: family, size: 13) != nil else { return nil }
+            return (name: family, displayName: family)
+        }
     }
 }
 

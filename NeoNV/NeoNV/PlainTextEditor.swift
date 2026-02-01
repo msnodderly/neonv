@@ -5,6 +5,7 @@ struct PlainTextEditor: NSViewRepresentable {
     @Binding var text: String
     @Binding var cursorPosition: Int
     var fontSize: CGFloat = 13
+    var fontFamily: String = ""
     var showFindBar: Bool = false
     var searchTerms: [String] = []
     var onShiftTab: (() -> Void)?
@@ -20,7 +21,7 @@ struct PlainTextEditor: NSViewRepresentable {
 
         textView.isRichText = false
         textView.allowsUndo = true
-        textView.font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        textView.font = resolvedFont()
         textView.textColor = NSColor.textColor
         textView.backgroundColor = NSColor.textBackgroundColor
         textView.isEditable = true
@@ -62,8 +63,8 @@ struct PlainTextEditor: NSViewRepresentable {
             textView.selectedRanges = selectedRanges
         }
 
-        // Update font size if changed
-        let expectedFont = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        // Update font if changed
+        let expectedFont = resolvedFont()
         if textView.font != expectedFont {
             textView.font = expectedFont
         }
@@ -163,6 +164,13 @@ struct PlainTextEditor: NSViewRepresentable {
             }
             focusSearchField(in: subview)
         }
+    }
+
+    private func resolvedFont() -> NSFont {
+        if !fontFamily.isEmpty, let font = NSFont(name: fontFamily, size: fontSize) {
+            return font
+        }
+        return NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
     }
 
     func makeCoordinator() -> Coordinator {

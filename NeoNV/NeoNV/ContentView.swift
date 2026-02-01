@@ -1119,6 +1119,7 @@ struct EditorView: View {
             text: $content,
             cursorPosition: $cursorPosition,
             fontSize: CGFloat(settings.fontSize),
+            fontFamily: settings.fontFamily,
             showFindBar: showFindBar,
             searchTerms: [],
             onShiftTab: onShiftTab,
