@@ -55,7 +55,7 @@ Create the GitHub repository with appropriate initial structure.
 **Acceptance Criteria:**
 - [ ] Repository created with name TBD (pending final app name)
 - [ ] README with project description and vision statement
-- [ ] MIT or similar license file
+- [x] GPLv3 license file
 - [ ] `.gitignore` for Xcode/Swift projects
 - [ ] Initial commit
 
