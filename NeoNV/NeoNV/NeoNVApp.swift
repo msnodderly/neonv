@@ -1,9 +1,21 @@
 import SwiftUI
 import AppKit
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     static var shared = AppDelegate()
     var hasUnsavedChanges = false
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        DispatchQueue.main.async {
+            self.setupWindowDelegate()
+        }
+    }
+
+    private func setupWindowDelegate() {
+        for window in NSApplication.shared.windows where window.delegate == nil {
+            window.delegate = self
+        }
+    }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         if hasUnsavedChanges {
@@ -21,6 +33,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         return .terminateNow
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            for window in NSApplication.shared.windows {
+                window.makeKeyAndOrderFront(self)
+                return true
+            }
+        }
+        return true
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        let visibleWindows = NSApplication.shared.windows.filter { $0.isVisible && !$0.isMiniaturized }
+        if visibleWindows.count <= 1 {
+            NSApplication.shared.hide(nil)
+            return false
+        }
+        return true
     }
 }
 
