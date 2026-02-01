@@ -1026,7 +1026,7 @@ Implement wiki-style linking between notes using `[[double brackets]]`.
 
 ---
 
-### PLUG-002: TaskPaper-style Strikethrough (@done)
+### PLUG-002: TaskPaper-style Strikethrough (`@done`)
 
 **Type:** Feature
 **Priority:** P2
