@@ -194,14 +194,14 @@ fileprivate class FocusForwardingScrollView: NSScrollView {
 
 ### View Swapping Focus Timing
 
-When toggling between views (e.g., Editor vs. Preview) and changing focus in the same action, use `DispatchQueue.main.async` to allow the view hierarchy to update before applying focus:
+When toggling between views (e.g., Editor vs. Preview) and changing focus in the same action, use `DispatchQueue.main.asyncAfter` with a small delay to allow SwiftUI time to create and attach the new view before it can accept focus:
 
 ```swift
 private func togglePreview() {
     showPreview.toggle()
     if focusedField == .editor || focusedField == .preview {
         let target: FocusedField = showPreview ? .preview : .editor
-        DispatchQueue.main.async {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             focusedField = target
         }
     }
