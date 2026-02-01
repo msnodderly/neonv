@@ -126,3 +126,5 @@ preview-update/
 # bd worktree
 remove-flicker/
 org-title-render/
+# bd worktree
+preview-first-nonempty/
