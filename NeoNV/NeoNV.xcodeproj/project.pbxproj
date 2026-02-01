@@ -21,6 +21,12 @@
 		A0123456000000000000000C /* KeyboardShortcutsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0123456000000000000001C /* KeyboardShortcutsView.swift */; };
 		A0123456000000000000000D /* HighlightedText.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0123456000000000000001D /* HighlightedText.swift */; };
 		A0123456000000000000000E /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0123456000000000000001E /* HelpView.swift */; };
+		A0EXTRACT001B /* SearchBarViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0EXTRACT001F /* SearchBarViews.swift */; };
+		A0EXTRACT002B /* NoteListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0EXTRACT002F /* NoteListView.swift */; };
+		A0EXTRACT003B /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0EXTRACT003F /* EditorView.swift */; };
+		A0EXTRACT004B /* NotificationHandlers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0EXTRACT004F /* NotificationHandlers.swift */; };
+		A0EXTRACT005B /* EmptyStateViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0EXTRACT005F /* EmptyStateViews.swift */; };
+		A0EXTRACT006B /* ContentView+Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0EXTRACT006F /* ContentView+Actions.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +46,12 @@
 		A0123456000000000000001C /* KeyboardShortcutsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcutsView.swift; sourceTree = "<group>"; };
 		A0123456000000000000001D /* HighlightedText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighlightedText.swift; sourceTree = "<group>"; };
 		A0123456000000000000001E /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
+		A0EXTRACT001F /* SearchBarViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchBarViews.swift; sourceTree = "<group>"; };
+		A0EXTRACT002F /* NoteListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteListView.swift; sourceTree = "<group>"; };
+		A0EXTRACT003F /* EditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorView.swift; sourceTree = "<group>"; };
+		A0EXTRACT004F /* NotificationHandlers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationHandlers.swift; sourceTree = "<group>"; };
+		A0EXTRACT005F /* EmptyStateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateViews.swift; sourceTree = "<group>"; };
+		A0EXTRACT006F /* ContentView+Actions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentView+Actions.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -77,6 +89,12 @@
 				A0123456000000000000001C /* KeyboardShortcutsView.swift */,
 				A0123456000000000000001D /* HighlightedText.swift */,
 				A0123456000000000000001E /* HelpView.swift */,
+				A0EXTRACT001F /* SearchBarViews.swift */,
+				A0EXTRACT002F /* NoteListView.swift */,
+				A0EXTRACT003F /* EditorView.swift */,
+				A0EXTRACT004F /* NotificationHandlers.swift */,
+				A0EXTRACT005F /* EmptyStateViews.swift */,
+				A0EXTRACT006F /* ContentView+Actions.swift */,
 				A01234560000000000000013 /* Assets.xcassets */,
 				A01234560000000000000014 /* NeoNV.entitlements */,
 			);
@@ -196,6 +214,12 @@
 				A0123456000000000000000C /* KeyboardShortcutsView.swift in Sources */,
 				A0123456000000000000000D /* HighlightedText.swift in Sources */,
 				A0123456000000000000000E /* HelpView.swift in Sources */,
+				A0EXTRACT001B /* SearchBarViews.swift in Sources */,
+				A0EXTRACT002B /* NoteListView.swift in Sources */,
+				A0EXTRACT003B /* EditorView.swift in Sources */,
+				A0EXTRACT004B /* NotificationHandlers.swift in Sources */,
+				A0EXTRACT005B /* EmptyStateViews.swift in Sources */,
+				A0EXTRACT006B /* ContentView+Actions.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
