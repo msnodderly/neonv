@@ -8,7 +8,7 @@ struct MarkdownPreviewView: NSViewRepresentable {
     var onTypeToEdit: (() -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSScrollView()
+        let scrollView = FocusForwardingScrollView()
         let textView = PreviewTextView()
 
         textView.isEditable = false
@@ -283,6 +283,16 @@ extension NSFont {
             weight: 5,
             size: self.pointSize
         ) ?? self
+    }
+}
+
+fileprivate class FocusForwardingScrollView: NSScrollView {
+    override var acceptsFirstResponder: Bool { true }
+    override func becomeFirstResponder() -> Bool {
+        if let docView = documentView {
+            return window?.makeFirstResponder(docView) ?? false
+        }
+        return super.becomeFirstResponder()
     }
 }
 

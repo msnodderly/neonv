@@ -3,6 +3,7 @@ import AppKit
 
 struct PlainTextEditor: NSViewRepresentable {
     @Binding var text: String
+    @Binding var cursorPosition: Int
     var fontSize: CGFloat = 13
     var showFindBar: Bool = false
     var searchTerms: [String] = []
@@ -10,7 +11,7 @@ struct PlainTextEditor: NSViewRepresentable {
     var onEscape: (() -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSScrollView()
+        let scrollView = FocusForwardingScrollView()
         let textView = CustomTextView(frame: .zero)
 
         textView.delegate = context.coordinator
@@ -44,6 +45,10 @@ struct PlainTextEditor: NSViewRepresentable {
         scrollView.borderType = .noBorder
 
         textView.string = text
+
+        // Restore cursor position (clamped to valid range)
+        let safePosition = min(cursorPosition, text.count)
+        textView.setSelectedRange(NSRange(location: safePosition, length: 0))
 
         return scrollView
     }
@@ -161,20 +166,38 @@ struct PlainTextEditor: NSViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text)
+        Coordinator(text: $text, cursorPosition: $cursorPosition)
     }
-    
+
     class Coordinator: NSObject, NSTextViewDelegate {
         var text: Binding<String>
-        
-        init(text: Binding<String>) {
+        var cursorPosition: Binding<Int>
+
+        init(text: Binding<String>, cursorPosition: Binding<Int>) {
             self.text = text
+            self.cursorPosition = cursorPosition
         }
-        
+
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             text.wrappedValue = textView.string
+            cursorPosition.wrappedValue = textView.selectedRange().location
         }
+
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            cursorPosition.wrappedValue = textView.selectedRange().location
+        }
+    }
+}
+
+fileprivate class FocusForwardingScrollView: NSScrollView {
+    override var acceptsFirstResponder: Bool { true }
+    override func becomeFirstResponder() -> Bool {
+        if let docView = documentView {
+            return window?.makeFirstResponder(docView) ?? false
+        }
+        return super.becomeFirstResponder()
     }
 }
 
@@ -220,6 +243,6 @@ class CustomTextView: NSTextView {
 }
 
 #Preview {
-    PlainTextEditor(text: .constant("Hello, neonv!\n\nThis is plain text."))
+    PlainTextEditor(text: .constant("Hello, neonv!\n\nThis is plain text."), cursorPosition: .constant(0))
         .frame(width: 400, height: 300)
 }

@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import SwiftUI
 
 enum FocusedField: Hashable {
@@ -28,6 +29,7 @@ struct ContentView: View {
     @State private var selectedNoteURL: URL?
     @State private var showFindBar = false
     @State private var showHelp = false
+    @State private var cursorPosition = 0
     @State private var showKeyboardShortcuts = false
     @FocusState private var focusedField: FocusedField?
 
@@ -345,6 +347,7 @@ struct ContentView: View {
             EditorView(
                 content: $editorContent,
                 showFindBar: $showFindBar,
+                cursorPosition: $cursorPosition,
                 focusedField: _focusedField,
                 searchText: debouncedSearchText,
                 onShiftTab: { focusedField = settings.isFileListHidden ? .search : .noteList },
@@ -389,14 +392,17 @@ struct ContentView: View {
     }
 
     private func togglePreview() {
+        let wasFocusedInEditorOrPreview = (focusedField == .editor || focusedField == .preview)
         showPreview.toggle()
-        // Only switch focus if currently in editor or preview pane
-        // If focused on list or search, keep focus there
-        if focusedField == .editor || focusedField == .preview {
-            if showPreview {
-                focusedField = .preview
-            } else {
-                focusedField = .editor
+
+        if wasFocusedInEditorOrPreview {
+            // Delay focus change to allow view swapping to complete.
+            // When we swap between editor and preview, the view being focused is
+            // removed and a new one is added. SwiftUI needs time to create and
+            // attach the new view before it can accept focus.
+            let target: FocusedField = showPreview ? .preview : .editor
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                focusedField = target
             }
         }
     }
@@ -439,7 +445,10 @@ struct ContentView: View {
 
     private func switchToEditor() {
         showPreview = false
-        focusedField = .editor
+        // Delay focus change to allow view swapping to complete
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            focusedField = .editor
+        }
     }
 
     private func openInExternalEditor() {
@@ -548,6 +557,7 @@ struct ContentView: View {
             selectedNoteURL = nil
             originalContent = ""
             editorContent = ""
+            cursorPosition = 0
             isDirty = false
             return
         }
@@ -557,6 +567,7 @@ struct ContentView: View {
         if unsavedNoteIDs.contains(id) {
             originalContent = ""
             editorContent = ""
+            cursorPosition = 0
             isDirty = false
             return
         }
@@ -568,6 +579,7 @@ struct ContentView: View {
                 await MainActor.run {
                     originalContent = content
                     editorContent = content
+                    cursorPosition = 0
                     isDirty = false
                     unsavedNoteIDs.remove(noteID)
                 }
@@ -576,6 +588,7 @@ struct ContentView: View {
                 await MainActor.run {
                     originalContent = errorContent
                     editorContent = errorContent
+                    cursorPosition = 0
                     isDirty = false
                     unsavedNoteIDs.remove(noteID)
                 }
@@ -1105,6 +1118,7 @@ struct NoteListView: View {
 struct EditorView: View {
     @Binding var content: String
     @Binding var showFindBar: Bool
+    @Binding var cursorPosition: Int
     @FocusState var focusedField: FocusedField?
     @ObservedObject private var settings = AppSettings.shared
     var searchText: String
@@ -1114,6 +1128,7 @@ struct EditorView: View {
     var body: some View {
         PlainTextEditor(
             text: $content,
+            cursorPosition: $cursorPosition,
             fontSize: CGFloat(settings.fontSize),
             showFindBar: showFindBar,
             searchTerms: [],
