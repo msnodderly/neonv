@@ -82,12 +82,37 @@ struct OrgPreviewView: NSViewRepresentable {
             "CANCELLED": .systemRed
         ]
 
+        // Pre-scan for #+TITLE: to hoist it to the top
+        if let titleLine = lines.first(where: { $0.trimmingCharacters(in: .whitespaces).uppercased().hasPrefix("#+TITLE:") }) {
+            let trimmedTitleLine = titleLine.trimmingCharacters(in: .whitespaces)
+            // "#+TITLE:" is 8 characters. Valid for #+TITLE:, #+title:, etc.
+            let titleContent = String(trimmedTitleLine.dropFirst(8)).trimmingCharacters(in: .whitespaces)
+            
+            if !titleContent.isEmpty {
+                let titleSize = fontSize + 10 // Same as H1 (level 1)
+                let titleWeight: NSFont.Weight = .bold
+                let titleAttrs: [NSAttributedString.Key: Any] = [
+                    .font: NSFont.systemFont(ofSize: titleSize, weight: titleWeight),
+                    .foregroundColor: textColor
+                ]
+                
+                result.append(NSAttributedString(string: titleContent, attributes: titleAttrs))
+                // Add double newline to separate title from content
+                result.append(NSAttributedString(string: "\n\n", attributes: [.font: baseFont]))
+            }
+        }
+
         var blockState = BlockState.none
         var blockContent = ""
 
         for (index, line) in lines.enumerated() {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             let upperTrimmed = trimmed.uppercased()
+
+            // Skip #+TITLE: lines as they are hoisted to the top
+            if upperTrimmed.hasPrefix("#+TITLE:") {
+                continue
+            }
 
             // Block begin/end
             if upperTrimmed.hasPrefix("#+BEGIN_QUOTE") {
@@ -443,6 +468,8 @@ fileprivate class FocusForwardingScrollView: NSScrollView {
 
 #Preview {
     OrgPreviewView(content: """
+    #+TITLE: My Org Document
+    
     * Header 1
     ** Header 2 TODO Fix this
     *** Header 3
