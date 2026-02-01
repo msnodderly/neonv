@@ -76,11 +76,23 @@ struct HelpView: View {
         .background(Color(NSColor.windowBackgroundColor))
     }
     
+    private var appVersion: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return "v\(version) (\(build))"
+    }
+
     private var appOverviewSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("About NeoNV")
-                .font(.headline)
-                .padding(.horizontal, 20)
+            HStack {
+                Text("About NeoNV")
+                    .font(.headline)
+                Spacer()
+                Text(appVersion)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 20)
             
             VStack(alignment: .leading, spacing: 12) {
                 FeatureRow(
