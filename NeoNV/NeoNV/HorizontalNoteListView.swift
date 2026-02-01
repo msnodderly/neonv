@@ -53,45 +53,33 @@ struct HorizontalNoteListView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(notes, selection: $selectedNoteID) { note in
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 1) {
-                            HighlightedText(
-                                note.displayTitle,
-                                highlighting: searchTerms,
-                                font: .system(size: 12, weight: .medium),
-                                color: .primary
-                            )
-                            .lineLimit(1)
-
-                            if note.isUnsaved {
-                                Text(note.displayPath)
-                                    .font(.system(size: 10))
-                                    .italic()
-                                    .foregroundColor(.orange)
-                            } else {
-                                HighlightedText(
-                                    note.displayPath,
-                                    highlighting: searchTerms,
-                                    font: .system(size: 10),
-                                    color: .secondary
-                                )
-                            }
-                        }
+                    HStack(alignment: .top, spacing: 12) {
+                        HighlightedText(
+                            note.url.lastPathComponent,
+                            highlighting: searchTerms,
+                            font: .system(size: 12, weight: .medium),
+                            color: .primary
+                        )
+                        .lineLimit(1)
                         .frame(width: 180, alignment: .leading)
 
                         if !note.contentPreview.isEmpty {
                             Text(note.contentPreview)
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
-                                .lineLimit(1)
+                                .lineLimit(2)
                                 .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            Spacer()
+                                .frame(maxWidth: .infinity)
                         }
 
                         Text(formattedDate(note.modificationDate))
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
-                            .frame(width: 80, alignment: .trailing)
+                            .frame(width: 120, alignment: .trailing)
                     }
+                    .padding(.vertical, 4)
                     .tag(note.id)
                     .contextMenu {
                         if let onShowInFinder = onShowInFinder {
