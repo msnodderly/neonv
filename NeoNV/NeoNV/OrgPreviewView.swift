@@ -8,7 +8,7 @@ struct OrgPreviewView: NSViewRepresentable {
     var onTypeToEdit: (() -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSScrollView()
+        let scrollView = FocusForwardingScrollView()
         let textView = PreviewTextView()
 
         textView.isEditable = false
@@ -428,6 +428,16 @@ struct OrgPreviewView: NSViewRepresentable {
     private func monoFontForSize(_ attrs: [NSAttributedString.Key: Any]) -> NSFont {
         let size = (attrs[.font] as? NSFont)?.pointSize ?? 12
         return NSFont.monospacedSystemFont(ofSize: size - 1, weight: .regular)
+    }
+}
+
+fileprivate class FocusForwardingScrollView: NSScrollView {
+    override var acceptsFirstResponder: Bool { true }
+    override func becomeFirstResponder() -> Bool {
+        if let docView = documentView {
+            return window?.makeFirstResponder(docView) ?? false
+        }
+        return super.becomeFirstResponder()
     }
 }
 

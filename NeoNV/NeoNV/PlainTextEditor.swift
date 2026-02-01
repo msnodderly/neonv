@@ -10,7 +10,7 @@ struct PlainTextEditor: NSViewRepresentable {
     var onEscape: (() -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSScrollView()
+        let scrollView = FocusForwardingScrollView()
         let textView = CustomTextView(frame: .zero)
 
         textView.delegate = context.coordinator
@@ -175,6 +175,16 @@ struct PlainTextEditor: NSViewRepresentable {
             guard let textView = notification.object as? NSTextView else { return }
             text.wrappedValue = textView.string
         }
+    }
+}
+
+fileprivate class FocusForwardingScrollView: NSScrollView {
+    override var acceptsFirstResponder: Bool { true }
+    override func becomeFirstResponder() -> Bool {
+        if let docView = documentView {
+            return window?.makeFirstResponder(docView) ?? false
+        }
+        return super.becomeFirstResponder()
     }
 }
 

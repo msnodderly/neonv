@@ -389,14 +389,17 @@ struct ContentView: View {
     }
 
     private func togglePreview() {
+        let wasFocusedInEditorOrPreview = (focusedField == .editor || focusedField == .preview)
         showPreview.toggle()
-        // Only switch focus if currently in editor or preview pane
-        // If focused on list or search, keep focus there
-        if focusedField == .editor || focusedField == .preview {
-            if showPreview {
-                focusedField = .preview
-            } else {
-                focusedField = .editor
+
+        if wasFocusedInEditorOrPreview {
+            // Delay focus change until next run loop to allow view swapping to complete.
+            // When we swap between editor and preview, the view being focused is
+            // removed and a new one is added. SwiftUI needs a moment to catch up
+            // before it can successfully apply focus to the new view.
+            let target: FocusedField = showPreview ? .preview : .editor
+            DispatchQueue.main.async {
+                focusedField = target
             }
         }
     }
@@ -439,7 +442,10 @@ struct ContentView: View {
 
     private func switchToEditor() {
         showPreview = false
-        focusedField = .editor
+        // Delay focus change until next run loop to allow view swapping to complete
+        DispatchQueue.main.async {
+            focusedField = .editor
+        }
     }
 
     private func openInExternalEditor() {

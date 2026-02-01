@@ -176,6 +176,38 @@ TextField("Search", text: $searchText)
     .focused($focusedField, equals: .search)
 ```
 
+### NSViewRepresentable Focus Forwarding
+
+When wrapping an `NSTextView` in an `NSScrollView` within an `NSViewRepresentable`, SwiftUI's `.focused()` modifier targets the `NSScrollView`. To ensure the `NSTextView` becomes the first responder, use a focus-forwarding subclass:
+
+```swift
+fileprivate class FocusForwardingScrollView: NSScrollView {
+    override var acceptsFirstResponder: Bool { true }
+    override func becomeFirstResponder() -> Bool {
+        if let docView = documentView {
+            return window?.makeFirstResponder(docView) ?? false
+        }
+        return super.becomeFirstResponder()
+    }
+}
+```
+
+### View Swapping Focus Timing
+
+When toggling between views (e.g., Editor vs. Preview) and changing focus in the same action, use `DispatchQueue.main.async` to allow the view hierarchy to update before applying focus:
+
+```swift
+private func togglePreview() {
+    showPreview.toggle()
+    if focusedField == .editor || focusedField == .preview {
+        let target: FocusedField = showPreview ? .preview : .editor
+        DispatchQueue.main.async {
+            focusedField = target
+        }
+    }
+}
+```
+
 ### Custom Keyboard Navigation
 
 ```swift
