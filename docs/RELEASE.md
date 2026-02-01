@@ -168,7 +168,7 @@ For major releases, create a custom release notes file:
 
 ```bash
 # Create release notes file (use v0.1.0 as template)
-cp docs/release-notes-v0.1.0.md docs/release-notes-v0.2.0.md
+cp docs/release-notes/v0.1.0.md docs/release-notes/v0.2.0.md
 # Edit as needed, then update the GitHub release after CI creates it
 ```
 
