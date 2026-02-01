@@ -98,6 +98,9 @@ struct ContentView: View {
         }
         .frame(minWidth: 600, minHeight: 400)
         .navigationTitle("neonv")
+        .task {
+            await noteStore.loadSavedFolderAsync()
+        }
         .onAppear {
             focusedField = .search
         }

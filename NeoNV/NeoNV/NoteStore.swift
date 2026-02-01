@@ -110,6 +110,11 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
     private var discoveryTask: Task<Void, Never>?
     
     init() {
+        // Initialization is now deferred - ContentView calls loadSavedFolderAsync() in .task {}
+    }
+
+    /// Loads the saved folder or command-line folder asynchronously
+    func loadSavedFolderAsync() async {
         if let cliPath = Self.parseCommandLineFolder() {
             setFolder(from: cliPath)
         } else {
