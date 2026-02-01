@@ -47,3 +47,7 @@ Open `NeoNV.xcodeproj` in Xcode 15+ and build (⌘B).
 xcodebuild -scheme NeoNV -configuration Release
 ```
 
+## License
+
+NeoNV is free software licensed under the [GNU General Public License v3.0](LICENSE).
+
