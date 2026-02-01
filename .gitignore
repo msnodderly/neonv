@@ -102,41 +102,23 @@ cmdp-focus/
 help-window/
 hide-search/
 cli-folder/
-# bd worktree
 tab-shortcuts/
-# bd worktree
 hide-file-list/
-# bd worktree
 taskpaper-done/
-# bd worktree
 remove-cmd-d/
-# bd worktree
 wiki-links/
-# bd worktree
 swiftlint/
-# bd worktree
 build-release/
 
 # Release artifacts
 release/
 .build-release/
-# bd worktree
 github-ci/
-# bd worktree
 horizontal-layout/
-# bd worktree
 cmd-k-shortcut/
-# bd worktree
 horizontal-compact/
-# bd worktree
 search-highlight-fix/
-# bd worktree
 cmdl-nohighlight/
-# bd worktree
 swiftlint-trivial/
-# bd worktree
 markdown-complexity/
-# bd worktree
 preview-focus/
-# bd worktree
-fix-horizontal-layout/
