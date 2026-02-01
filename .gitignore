@@ -136,3 +136,5 @@ cmdl-nohighlight/
 swiftlint-trivial/
 # bd worktree
 markdown-complexity/
+# bd worktree
+preview-focus/
