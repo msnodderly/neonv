@@ -138,3 +138,5 @@ swiftlint-trivial/
 markdown-complexity/
 # bd worktree
 preview-focus/
+# bd worktree
+fix-horizontal-layout/
