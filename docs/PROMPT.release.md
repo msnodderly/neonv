@@ -40,6 +40,9 @@ Get the current version and analyze changes:
 ```bash
 git tag --sort=-v:refname | head -1  # Current version
 git log $(git tag --sort=-v:refname | head -1)..HEAD --oneline --no-merges
+
+# Also review closed BD issues for richer context
+bd list --status closed --limit 20
 ```
 
 **Version rules (semantic versioning):**
@@ -80,6 +83,18 @@ Must complete successfully before proceeding.
 ---
 
 ## Step 6: Create Release Notes
+
+**Gather context from BD issues and commits:**
+
+```bash
+# Review closed issues for user-facing descriptions
+bd list --status closed --limit 20
+
+# For each relevant issue, get full context
+bd show <issue-id>
+```
+
+BD issues contain richer context than commit messages—use the issue title and description to understand what changed from the user's perspective. Commits provide additional implementation details.
 
 Create `docs/release-notes/v<VERSION>.md` using this template:
 
