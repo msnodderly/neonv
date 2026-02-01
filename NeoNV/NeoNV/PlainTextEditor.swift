@@ -204,8 +204,29 @@ fileprivate class FocusForwardingScrollView: NSScrollView {
 class CustomTextView: NSTextView {
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
+    private var isControlCPending = false
 
     override func keyDown(with event: NSEvent) {
+        // Chord: Ctrl+C, . to insert date
+        if isControlCPending {
+            isControlCPending = false
+            if event.characters == "." {
+                insertCurrentDate()
+                return
+            }
+        }
+        
+        // Start of chord: Ctrl+C
+        if event.modifierFlags.contains(.control) {
+            if let chars = event.charactersIgnoringModifiers, chars == "c" || chars == "C" {
+                isControlCPending = true
+                return
+            }
+        }
+        
+        // Reset pending state if any other key is pressed (implicit above, but safe to be explicit)
+        isControlCPending = false
+
         if event.keyCode == 48 && event.modifierFlags.contains(.shift) {
             onShiftTab?()
             return
@@ -224,6 +245,25 @@ class CustomTextView: NSTextView {
         }
         
         super.keyDown(with: event)
+    }
+
+    private func insertCurrentDate() {
+        let formatter = DateFormatter()
+        // Org-mode inactive timestamp format: [YYYY-MM-DD Day HH:MM]
+        formatter.dateFormat = "[yyyy-MM-dd EEE HH:mm]"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        let dateString = formatter.string(from: Date())
+        
+        if let undoManager = undoManager {
+            undoManager.registerUndo(withTarget: self) { target in
+                // Simple undo implementation: delete the inserted text
+                // In a real app, we rely on the text view's native undo grouping,
+                // but explicit registration helps ensure the action is atomic.
+                // However, insertText handles undo automatically.
+            }
+        }
+        
+        insertText(dateString, replacementRange: selectedRange())
     }
 
     override func paste(_ sender: Any?) {
