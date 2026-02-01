@@ -164,15 +164,29 @@ Delete the release and tag from GitHub, then re-push the tag.
 
 ## Writing Release Notes
 
-For major releases, create a custom release notes file:
+CI auto-generates notes from raw commits, but **you must replace them** with a curated summary. Users don't care about worktree updates, bd syncs, or chore commits—they want to know what changed for them.
+
+**Always create custom release notes:**
 
 ```bash
-# Create release notes file (use v0.1.0 as template)
+# 1. Create release notes file (use previous version as template)
 cp docs/release-notes/v0.1.0.md docs/release-notes/v0.2.0.md
-# Edit as needed, then update the GitHub release after CI creates it
+
+# 2. Edit to summarize meaningful changes:
+#    - New features (what users can now do)
+#    - Bug fixes (what problems are solved)
+#    - Breaking changes (what users need to update)
+#    - Internal improvements (brief, optional)
+
+# 3. Update the GitHub release after CI creates it
+gh release edit v0.2.0 --notes-file docs/release-notes/v0.2.0.md
 ```
 
-**Important:** Use backticks around `@done` when referring to the Taskpaper-style feature to avoid GitHub interpreting as user tags.
+**Guidelines:**
+- Group changes by category (Features, Fixes, Internal)
+- Write from the user's perspective, not the developer's
+- Omit chore commits, syncs, and worktree housekeeping
+- Use backticks around `@done` to avoid GitHub interpreting as user mentions
 
 ---
 
