@@ -159,8 +159,13 @@ struct OrgPreviewView: NSViewRepresentable {
                 continue
             }
 
-            // Comments: lines starting with "# " or "#+" (non-block directives)
-            if trimmed.hasPrefix("# ") || (trimmed.hasPrefix("#+") && !trimmed.uppercased().hasPrefix("#+BEGIN") && !trimmed.uppercased().hasPrefix("#+END")) {
+            // Skip metadata lines (#+KEY:) - they're not rendered in preview
+            if trimmed.hasPrefix("#+") && !trimmed.uppercased().hasPrefix("#+BEGIN") && !trimmed.uppercased().hasPrefix("#+END") {
+                continue
+            }
+            
+            // Comments: lines starting with "# "
+            if trimmed.hasPrefix("# ") {
                 let commentAttrs: [NSAttributedString.Key: Any] = [
                     .font: baseFont,
                     .foregroundColor: secondaryColor

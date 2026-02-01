@@ -1045,6 +1045,13 @@ struct NoteListView: View {
                                 color: .secondary
                             )
                         }
+                        
+                        if !note.contentPreview.isEmpty {
+                            Text(note.contentPreview.replacingOccurrences(of: "\n", with: " "))
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                                .lineLimit(2)
+                        }
                     }
                     .tag(note.id)
                     .contextMenu {

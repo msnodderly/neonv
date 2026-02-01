@@ -418,13 +418,32 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
     private static func readFirstLineStatic(from url: URL) -> String {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
         defer { try? handle.close() }
-        guard let data = try? handle.read(upToCount: 256) else { return "" }
+        guard let data = try? handle.read(upToCount: 512) else { return "" }
         guard let content = String(data: data, encoding: .utf8) else { return "" }
 
-        // Find first non-empty line
+        let isOrgFile = url.pathExtension.lowercased() == "org"
+        
+        // For org files, look for #+TITLE: first
+        if isOrgFile {
+            for line in content.components(separatedBy: .newlines) {
+                let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.uppercased().hasPrefix("#+TITLE:") {
+                    let title = String(trimmed.dropFirst(8)).trimmingCharacters(in: .whitespaces)
+                    if !title.isEmpty {
+                        return title
+                    }
+                }
+            }
+        }
+        
+        // Find first non-empty, non-metadata line
         for line in content.components(separatedBy: .newlines) {
             let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmed.isEmpty {
+                // Skip org metadata lines
+                if isOrgFile && trimmed.hasPrefix("#+") {
+                    continue
+                }
                 return trimmed
             }
         }
@@ -436,6 +455,14 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         defer { try? handle.close() }
         guard let data = try? handle.read(upToCount: maxBytes) else { return "" }
         guard let content = String(data: data, encoding: .utf8) else { return "" }
+        
+        // For org files, filter out metadata lines (#+KEY:)
+        if url.pathExtension.lowercased() == "org" {
+            let filteredLines = content.components(separatedBy: .newlines)
+                .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#+") }
+            return filteredLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        
         return content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
@@ -463,6 +490,13 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         guard let data = try? handle.read(upToCount: maxBytes) else { return "" }
         guard let content = String(data: data, encoding: .utf8) else { return "" }
 
+        // For org files, filter out metadata lines (#+KEY:)
+        if url.pathExtension.lowercased() == "org" {
+            let filteredLines = content.components(separatedBy: .newlines)
+                .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#+") }
+            return filteredLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        
         return content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     

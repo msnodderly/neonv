@@ -54,17 +54,24 @@ struct HorizontalNoteListView: View {
             } else {
                 List(notes, selection: $selectedNoteID) { note in
                     HStack(alignment: .top, spacing: 12) {
-                        HighlightedText(
-                            note.url.lastPathComponent,
-                            highlighting: searchTerms,
-                            font: .system(size: 12, weight: .medium),
-                            color: .primary
-                        )
-                        .lineLimit(1)
+                        VStack(alignment: .leading, spacing: 2) {
+                            HighlightedText(
+                                note.displayTitle,
+                                highlighting: searchTerms,
+                                font: .system(size: 12, weight: .medium),
+                                color: .primary
+                            )
+                            .lineLimit(1)
+                            
+                            Text(note.url.lastPathComponent)
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
                         .frame(width: 180, alignment: .leading)
 
                         if !note.contentPreview.isEmpty {
-                            Text(note.contentPreview)
+                            Text(note.contentPreview.replacingOccurrences(of: "\n", with: " "))
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
                                 .lineLimit(2)
