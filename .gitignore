@@ -134,3 +134,5 @@ remove-hover-flicker/
 defer-load-folder/
 # bd worktree
 audit-done-backticks/
+# bd worktree
+github-releases/
