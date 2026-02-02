@@ -33,6 +33,16 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.usesFindBar = true
         textView.isIncrementalSearchingEnabled = true
 
+        // Disable automatic substitutions for a true plain text experience
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.isAutomaticTextReplacementEnabled = false
+        textView.isAutomaticDataDetectionEnabled = false
+        textView.isAutomaticLinkDetectionEnabled = false
+        textView.isAutomaticSpellingCorrectionEnabled = false
+        textView.isAutomaticTextCompletionEnabled = false
+        textView.smartInsertDeleteEnabled = false
+
         textView.textContainer?.containerSize = NSSize(
             width: scrollView.contentSize.width,
             height: CGFloat.greatestFiniteMagnitude
