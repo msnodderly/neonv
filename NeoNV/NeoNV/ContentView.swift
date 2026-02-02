@@ -46,6 +46,19 @@ struct ContentView: View {
         let content: String
     }
 
+    /// Lowercased set of note titles and filenames (without extension) for wiki-link resolution
+    private var existingNoteNamesSet: Set<String> {
+        var names = Set<String>()
+        for note in noteStore.notes {
+            names.insert(note.title.lowercased())
+            names.insert(note.displayTitle.lowercased())
+            // Also add filename without extension
+            let filename = note.url.deletingPathExtension().lastPathComponent
+            names.insert(filename.lowercased())
+        }
+        return names
+    }
+
     private var filteredNotes: [NoteFile] {
         let query = debouncedSearchText
         let baseNotes = query.isEmpty ? noteStore.notes : noteStore.notes.filter { $0.matches(query: query) }
@@ -350,8 +363,10 @@ struct ContentView: View {
                 cursorPosition: $cursorPosition,
                 focusedField: _focusedField,
                 searchText: debouncedSearchText,
+                existingNoteNames: existingNoteNamesSet,
                 onShiftTab: { focusedField = settings.isFileListHidden ? .search : .noteList },
-                onEscape: { focusedField = settings.isFileListHidden ? .search : .noteList }
+                onEscape: { focusedField = settings.isFileListHidden ? .search : .noteList },
+                onWikiLinkClicked: { linkName in navigateToWikiLink(linkName) }
             )
             .frame(minWidth: 300)
         }
@@ -651,6 +666,46 @@ struct ContentView: View {
         searchText = ""
         // Don't clear selectedNoteID - let autoSelectTopMatch() handle it
         // This allows it to restore the last manual selection
+    }
+
+    private func navigateToWikiLink(_ linkName: String) {
+        let lowered = linkName.lowercased()
+
+        // Try to find an existing note matching the link name
+        if let match = noteStore.notes.first(where: { note in
+            note.title.lowercased() == lowered ||
+            note.displayTitle.lowercased() == lowered ||
+            note.url.deletingPathExtension().lastPathComponent.lowercased() == lowered
+        }) {
+            searchText = ""
+            selectedNoteID = match.id
+            focusedField = .editor
+            return
+        }
+
+        // Note doesn't exist — create it
+        guard let folderURL = noteStore.selectedFolderURL else { return }
+        let fileName = sanitizeFileName(linkName)
+        let ext = AppSettings.shared.defaultExtension.rawValue
+        let fileURL = folderURL.appendingPathComponent(fileName + ".\(ext)")
+        let initialContent = linkName + "\n\n"
+
+        Task {
+            do {
+                noteStore.markAsSavedLocally(fileURL)
+                try await atomicWrite(content: initialContent, to: fileURL)
+                await noteStore.discoverFiles()
+                await MainActor.run {
+                    searchText = ""
+                    if let newNote = noteStore.notes.first(where: { $0.url == fileURL }) {
+                        selectedNoteID = newNote.id
+                        focusedField = .editor
+                    }
+                }
+            } catch {
+                // Silently fail — the user will notice the link is still orange
+            }
+        }
     }
 
     private func sanitizeFileName(_ name: String) -> String {
@@ -1111,8 +1166,10 @@ struct EditorView: View {
     @FocusState var focusedField: FocusedField?
     @ObservedObject private var settings = AppSettings.shared
     var searchText: String
+    var existingNoteNames: Set<String> = []
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
+    var onWikiLinkClicked: ((String) -> Void)?
 
     var body: some View {
         PlainTextEditor(
@@ -1122,8 +1179,10 @@ struct EditorView: View {
             fontFamily: settings.fontFamily,
             showFindBar: showFindBar,
             searchTerms: [],
+            existingNoteNames: existingNoteNames,
             onShiftTab: onShiftTab,
-            onEscape: onEscape
+            onEscape: onEscape,
+            onWikiLinkClicked: onWikiLinkClicked
         )
         .focused($focusedField, equals: .editor)
         .onChange(of: showFindBar) { _, newValue in

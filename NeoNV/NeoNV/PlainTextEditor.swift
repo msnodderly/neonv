@@ -8,8 +8,10 @@ struct PlainTextEditor: NSViewRepresentable {
     var fontFamily: String = ""
     var showFindBar: Bool = false
     var searchTerms: [String] = []
+    var existingNoteNames: Set<String> = []
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
+    var onWikiLinkClicked: ((String) -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = FocusForwardingScrollView()
@@ -18,6 +20,7 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.delegate = context.coordinator
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
+        textView.onWikiLinkClicked = onWikiLinkClicked
 
         textView.isRichText = false
         textView.allowsUndo = true
@@ -71,9 +74,11 @@ struct PlainTextEditor: NSViewRepresentable {
 
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
+        textView.onWikiLinkClicked = onWikiLinkClicked
 
         applySearchHighlighting(to: textView)
         applyDoneStrikethrough(to: textView)
+        applyWikiLinkHighlighting(to: textView)
 
         if showFindBar {
             if !scrollView.isFindBarVisible {
@@ -156,6 +161,37 @@ struct PlainTextEditor: NSViewRepresentable {
         }
     }
 
+    /// Wiki-link regex pattern: matches [[link text]]
+    static let wikiLinkPattern = try! NSRegularExpression(pattern: "\\[\\[([^\\]]+)\\]\\]") // swiftlint:disable:this force_try
+
+    private func applyWikiLinkHighlighting(to textView: NSTextView) {
+        guard let textStorage = textView.textStorage else { return }
+        let text = textView.string
+        let nsText = text as NSString
+        let fullRange = NSRange(location: 0, length: nsText.length)
+
+        // Remove previous wiki-link underlines (we re-apply each cycle)
+        textStorage.removeAttribute(.underlineStyle, range: fullRange)
+        textStorage.removeAttribute(.cursor, range: fullRange)
+
+        let matches = Self.wikiLinkPattern.matches(in: text, range: fullRange)
+        let existingNames = existingNoteNames
+
+        for match in matches {
+            let bracketRange = match.range  // Full [[...]] range
+            let linkRange = match.range(at: 1)  // Inner text range
+            guard linkRange.location != NSNotFound else { continue }
+
+            let linkName = nsText.substring(with: linkRange)
+            let exists = existingNames.contains(linkName.lowercased())
+            let color = exists ? NSColor.systemBlue : NSColor.systemOrange
+
+            textStorage.addAttribute(.foregroundColor, value: color, range: bracketRange)
+            textStorage.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: bracketRange)
+            textStorage.addAttribute(.cursor, value: NSCursor.pointingHand, range: bracketRange)
+        }
+    }
+
     private static func focusSearchField(in view: NSView) {
         for subview in view.subviews {
             if let searchField = subview as? NSSearchField {
@@ -212,6 +248,36 @@ fileprivate class FocusForwardingScrollView: NSScrollView {
 class CustomTextView: NSTextView {
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
+    var onWikiLinkClicked: ((String) -> Void)?
+
+    override func mouseDown(with event: NSEvent) {
+        // Check for Cmd+Click on wiki-links
+        guard event.modifierFlags.contains(.command) || event.clickCount == 1 else {
+            super.mouseDown(with: event)
+            return
+        }
+
+        let point = convert(event.locationInWindow, from: nil)
+        let charIndex = characterIndexForInsertion(at: point)
+        let nsText = string as NSString
+
+        if charIndex < nsText.length {
+            let fullRange = NSRange(location: 0, length: nsText.length)
+            let matches = PlainTextEditor.wikiLinkPattern.matches(in: string, range: fullRange)
+
+            for match in matches {
+                let bracketRange = match.range
+                let linkRange = match.range(at: 1)
+                if NSLocationInRange(charIndex, bracketRange), linkRange.location != NSNotFound {
+                    let linkName = nsText.substring(with: linkRange)
+                    onWikiLinkClicked?(linkName)
+                    return
+                }
+            }
+        }
+
+        super.mouseDown(with: event)
+    }
 
     override func keyDown(with event: NSEvent) {
         // Cmd+Shift+D to insert date
