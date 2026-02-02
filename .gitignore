@@ -148,3 +148,5 @@ cloud-sync-fix/
 homebrew-ci/
 # bd worktree
 progressive-loading/
+# bd worktree
+metadata-cache/
