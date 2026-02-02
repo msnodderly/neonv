@@ -57,10 +57,20 @@ struct PlainTextEditor: NSViewRepresentable {
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? CustomTextView else { return }
 
-        if textView.string != text {
+        // Use normalized comparison to avoid unnecessary updates from line-ending differences
+        // that cause scroll jumps and cursor instability.
+        let normalizedText = text.replacingOccurrences(of: "\r\n", with: "\n")
+        if textView.string != normalizedText {
             let selectedRanges = textView.selectedRanges
-            textView.string = text
+            textView.string = normalizedText
             textView.selectedRanges = selectedRanges
+        }
+
+        // Sync cursor position if updated from outside (e.g., note switching or Cmd+L)
+        let currentRange = textView.selectedRange()
+        if currentRange.location != cursorPosition && currentRange.length == 0 {
+            let safePosition = min(cursorPosition, textView.string.count)
+            textView.setSelectedRange(NSRange(location: safePosition, length: 0))
         }
 
         // Update font if changed
@@ -91,6 +101,10 @@ struct PlainTextEditor: NSViewRepresentable {
 
     private func applySearchHighlighting(to textView: NSTextView) {
         guard let textStorage = textView.textStorage else { return }
+        
+        textStorage.beginEditing()
+        defer { textStorage.endEditing() }
+        
         let fullRange = NSRange(location: 0, length: textStorage.length)
 
         textStorage.removeAttribute(.backgroundColor, range: fullRange)
@@ -121,6 +135,10 @@ struct PlainTextEditor: NSViewRepresentable {
     
     private func applyDoneStrikethrough(to textView: NSTextView) {
         guard let textStorage = textView.textStorage else { return }
+        
+        textStorage.beginEditing()
+        defer { textStorage.endEditing() }
+        
         let fullRange = NSRange(location: 0, length: textStorage.length)
 
         // Remove existing strikethrough and done-line coloring
