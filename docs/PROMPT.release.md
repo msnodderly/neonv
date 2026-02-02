@@ -155,38 +155,35 @@ git push
 
 ---
 
-## Step 9: Update Homebrew Tap
+## Step 9: Update Homebrew Tap (Automated)
 
-The Homebrew cask formula lives in a separate repo and must be updated manually.
+The Homebrew tap is updated automatically by CI after the GitHub Release is created.
 
-1. **Download the DMG and compute SHA256:**
+**Prerequisites:** The `HOMEBREW_TAP_TOKEN` secret must be configured in the repo settings (a PAT with `repo` scope for `msnodderly/homebrew-tap`).
+
+**Verify it worked:**
+```bash
+brew update
+brew info --cask msnodderly/tap/neonv  # Should show new version
+```
+
+**Manual fallback** (if CI fails or `HOMEBREW_TAP_TOKEN` is not set):
+
+1. Download the DMG and compute SHA256:
    ```bash
    curl -sL "https://github.com/msnodderly/neonv/releases/download/v<VERSION>/NeoNV-<VERSION>-macos-universal.dmg" -o /tmp/neonv.dmg
    shasum -a 256 /tmp/neonv.dmg
    ```
 
-2. **Clone the tap repo, update, and push:**
+2. Clone, update, and push:
    ```bash
    cd /tmp && rm -rf homebrew-tap
    git clone https://github.com/msnodderly/homebrew-tap.git
-   ```
-
-3. **Edit `/tmp/homebrew-tap/Casks/neonv.rb`:**
-   - Update `version` to the new version (without `v` prefix)
-   - Update `sha256` to the hash from step 1
-
-4. **Commit and push:**
-   ```bash
-   cd /tmp/homebrew-tap
+   cd homebrew-tap
+   # Edit Casks/neonv.rb: update version and sha256
    git add Casks/neonv.rb
    git commit -m "chore: Update neonv to v<VERSION>"
    git push
-   ```
-
-5. **Verify the tap updated:**
-   ```bash
-   brew update
-   brew info --cask msnodderly/tap/neonv  # Should show new version
    ```
 
 ---
