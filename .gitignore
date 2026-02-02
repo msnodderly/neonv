@@ -150,3 +150,5 @@ homebrew-ci/
 progressive-loading/
 # bd worktree
 metadata-cache/
+# bd worktree
+rename-context-menu/
