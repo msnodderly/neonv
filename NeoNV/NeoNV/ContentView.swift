@@ -622,7 +622,7 @@ struct ContentView: View {
 
         Task {
             do {
-                noteStore.markAsSavedLocally(fileURL)
+                noteStore.markAsSavedLocally(fileURL, content: initialContent)
                 try await atomicWrite(content: initialContent, to: fileURL)
 
                 await noteStore.discoverFiles()
@@ -697,7 +697,7 @@ struct ContentView: View {
         let content = editorContent
 
         do {
-            noteStore.markAsSavedLocally(note.url)
+            noteStore.markAsSavedLocally(note.url, content: content)
             try await atomicWrite(content: content, to: note.url)
             await MainActor.run {
                 originalContent = content
@@ -733,6 +733,7 @@ struct ContentView: View {
 
     private func retrySave(error: SaveError) async {
         do {
+            noteStore.markAsSavedLocally(error.fileURL, content: error.content)
             try await atomicWrite(content: error.content, to: error.fileURL)
             await MainActor.run {
                 isDirty = false
@@ -788,6 +789,7 @@ struct ContentView: View {
         if panel.runModal() == .OK, let url = panel.url {
             Task {
                 do {
+                    noteStore.markAsSavedLocally(url, content: error.content)
                     try await atomicWrite(content: error.content, to: url)
                     await MainActor.run {
                         saveError = nil

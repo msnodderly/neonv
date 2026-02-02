@@ -140,11 +140,15 @@ final class FileWatcher {
                 if allowedExtensions.contains(ext) {
                     changeEvents.append(.created(url))
                 }
-            } else if flags & UInt32(kFSEventStreamEventFlagItemModified) != 0 ||
-                      flags & UInt32(kFSEventStreamEventFlagItemInodeMetaMod) != 0 {
+            } else if flags & UInt32(kFSEventStreamEventFlagItemModified) != 0 {
                 if allowedExtensions.contains(ext) {
                     changeEvents.append(.modified(url))
                 }
+            } else if flags & UInt32(kFSEventStreamEventFlagItemInodeMetaMod) != 0 {
+                // Metadata-only changes (xattrs, permissions) are commonly triggered
+                // by cloud sync services. Skip these — content hash check in NoteStore
+                // handles the rare case where content actually changed.
+                continue
             }
         }
         
