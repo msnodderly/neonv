@@ -291,6 +291,53 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         }
     }
     
+    @discardableResult
+    func renameNote(id: UUID, newName: String) throws -> NoteFile {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else {
+            throw NSError(domain: "NoteStore", code: 0, userInfo: [NSLocalizedDescriptionKey: "Note not found."])
+        }
+        let note = notes[index]
+        guard !note.isUnsaved else {
+            throw NSError(domain: "NoteStore", code: 0, userInfo: [NSLocalizedDescriptionKey: "Cannot rename an unsaved note."])
+        }
+
+        let sanitized = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !sanitized.isEmpty else {
+            throw NSError(domain: "NoteStore", code: 1, userInfo: [NSLocalizedDescriptionKey: "Filename cannot be empty."])
+        }
+
+        let ext = note.url.pathExtension
+        let newFileName = sanitized.hasSuffix(".\(ext)") ? sanitized : "\(sanitized).\(ext)"
+        let newURL = note.url.deletingLastPathComponent().appendingPathComponent(newFileName)
+
+        guard newURL != note.url else { return note }
+        guard !FileManager.default.fileExists(atPath: newURL.path) else {
+            throw NSError(domain: "NoteStore", code: 2, userInfo: [NSLocalizedDescriptionKey: "A file named \"\(newFileName)\" already exists."])
+        }
+
+        try FileManager.default.moveItem(at: note.url, to: newURL)
+
+        let relativePath: String
+        if let folder = selectedFolderURL {
+            relativePath = newURL.path.replacingOccurrences(of: folder.path + "/", with: "")
+        } else {
+            relativePath = newFileName
+        }
+
+        let resourceValues = try? newURL.resourceValues(forKeys: [.contentModificationDateKey])
+        let modDate = resourceValues?.contentModificationDate ?? note.modificationDate
+
+        let renamed = NoteFile(
+            url: newURL,
+            relativePath: relativePath,
+            modificationDate: modDate,
+            title: note.title,
+            contentPreview: note.contentPreview
+        )
+        notes[index] = renamed
+        return renamed
+    }
+
     func deleteNote(id: UUID) throws {
         guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
         let note = notes[index]
