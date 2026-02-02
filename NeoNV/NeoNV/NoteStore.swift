@@ -177,15 +177,36 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         }
     }
     
-    /// URLs of files whose content was written by this app (to ignore self-triggered FSEvents)
+    /// Content hashes of files last written by this app, keyed by URL.
+    /// Used to detect whether an FSEvent represents a genuine external change
+    /// or just cloud sync services (Dropbox, iCloud) re-touching the file.
+    private var lastSavedContentHash: [URL: Int] = [:]
+
+    /// URLs of files recently saved by this app (short-lived, for quick filtering).
     private var recentlySavedURLs: Set<URL> = []
 
-    func markAsSavedLocally(_ url: URL) {
+    func markAsSavedLocally(_ url: URL, content: String? = nil) {
         recentlySavedURLs.insert(url)
+        if let content = content {
+            lastSavedContentHash[url] = content.hashValue
+        }
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(1))
+            try? await Task.sleep(for: .seconds(3))
             self.recentlySavedURLs.remove(url)
         }
+    }
+
+    /// Returns true if the file content at `url` differs from what we last saved.
+    private func hasContentChangedExternally(at url: URL) -> Bool {
+        guard let savedHash = lastSavedContentHash[url] else {
+            // No record of saving this file — treat as external
+            return true
+        }
+        guard let data = try? Data(contentsOf: url),
+              let currentContent = String(data: data, encoding: .utf8) else {
+            return true
+        }
+        return currentContent.hashValue != savedHash
     }
 
     private func handleFileChanges(_ events: [FileChangeEvent]) {
@@ -198,13 +219,13 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
                 addOrUpdateNote(at: url, folderURL: folderURL)
                 // Atomic saves (vim, VS Code, etc.) appear as rename/create, not modify.
                 // Treat a "create" on an already-tracked file as a modification.
-                if existed && !recentlySavedURLs.contains(url) {
+                if existed && !recentlySavedURLs.contains(url) && hasContentChangedExternally(at: url) {
                     lastExternalChange = ExternalChangeEvent(url: url, kind: .modified)
                 }
 
             case .modified(let url):
                 addOrUpdateNote(at: url, folderURL: folderURL)
-                if !recentlySavedURLs.contains(url) {
+                if !recentlySavedURLs.contains(url) && hasContentChangedExternally(at: url) {
                     lastExternalChange = ExternalChangeEvent(url: url, kind: .modified)
                 }
 
