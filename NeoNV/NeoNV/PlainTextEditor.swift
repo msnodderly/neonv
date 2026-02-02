@@ -60,7 +60,9 @@ struct PlainTextEditor: NSViewRepresentable {
         // Use normalized comparison to avoid unnecessary updates from line-ending differences
         // that cause scroll jumps and cursor instability.
         let normalizedText = text.replacingOccurrences(of: "\r\n", with: "\n")
-        if textView.string != normalizedText {
+        let textChanged = textView.string != normalizedText
+        
+        if textChanged {
             let selectedRanges = textView.selectedRanges
             textView.string = normalizedText
             textView.selectedRanges = selectedRanges
@@ -82,8 +84,16 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
 
-        applySearchHighlighting(to: textView)
-        applyDoneStrikethrough(to: textView)
+        // Only re-apply highlighting if text or search terms changed
+        if textChanged || context.coordinator.lastSearchTerms != searchTerms {
+            applySearchHighlighting(to: textView)
+            context.coordinator.lastSearchTerms = searchTerms
+        }
+        
+        // Only re-apply strikethrough if text changed
+        if textChanged {
+            applyDoneStrikethrough(to: textView)
+        }
 
         if showFindBar {
             if !scrollView.isFindBarVisible {
@@ -198,6 +208,7 @@ struct PlainTextEditor: NSViewRepresentable {
     class Coordinator: NSObject, NSTextViewDelegate {
         var text: Binding<String>
         var cursorPosition: Binding<Int>
+        var lastSearchTerms: [String] = []
 
         init(text: Binding<String>, cursorPosition: Binding<Int>) {
             self.text = text
