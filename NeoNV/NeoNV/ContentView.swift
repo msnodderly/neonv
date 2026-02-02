@@ -59,6 +59,21 @@ struct ContentView: View {
         return names
     }
 
+    /// Original-cased note display titles for autocomplete suggestions
+    private var noteNamesForAutocomplete: [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        for note in noteStore.notes {
+            let title = note.displayTitle
+            let lower = title.lowercased()
+            if !seen.contains(lower) {
+                seen.insert(lower)
+                result.append(title)
+            }
+        }
+        return result
+    }
+
     private var filteredNotes: [NoteFile] {
         let query = debouncedSearchText
         let baseNotes = query.isEmpty ? noteStore.notes : noteStore.notes.filter { $0.matches(query: query) }
@@ -364,6 +379,7 @@ struct ContentView: View {
                 focusedField: _focusedField,
                 searchText: debouncedSearchText,
                 existingNoteNames: existingNoteNamesSet,
+                noteNamesForAutocomplete: noteNamesForAutocomplete,
                 onShiftTab: { focusedField = settings.isFileListHidden ? .search : .noteList },
                 onEscape: { focusedField = settings.isFileListHidden ? .search : .noteList },
                 onWikiLinkClicked: { linkName in navigateToWikiLink(linkName) }
@@ -1167,6 +1183,7 @@ struct EditorView: View {
     @ObservedObject private var settings = AppSettings.shared
     var searchText: String
     var existingNoteNames: Set<String> = []
+    var noteNamesForAutocomplete: [String] = []
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
     var onWikiLinkClicked: ((String) -> Void)?
@@ -1179,6 +1196,7 @@ struct EditorView: View {
             showFindBar: showFindBar,
             searchTerms: [],
             existingNoteNames: existingNoteNames,
+            noteNamesForAutocomplete: noteNamesForAutocomplete,
             onShiftTab: onShiftTab,
             onEscape: onEscape,
             onWikiLinkClicked: onWikiLinkClicked

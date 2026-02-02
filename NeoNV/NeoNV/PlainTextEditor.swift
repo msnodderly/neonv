@@ -8,6 +8,7 @@ struct PlainTextEditor: NSViewRepresentable {
     var showFindBar: Bool = false
     var searchTerms: [String] = []
     var existingNoteNames: Set<String> = []
+    var noteNamesForAutocomplete: [String] = []
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
     var onWikiLinkClicked: ((String) -> Void)?
@@ -20,6 +21,7 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
         textView.onWikiLinkClicked = onWikiLinkClicked
+        textView.existingNoteNames = noteNamesForAutocomplete
 
         textView.isRichText = false
         textView.allowsUndo = true
@@ -74,6 +76,7 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
         textView.onWikiLinkClicked = onWikiLinkClicked
+        textView.existingNoteNames = noteNamesForAutocomplete
 
         applySearchHighlighting(to: textView)
         applyDoneStrikethrough(to: textView)
@@ -224,6 +227,94 @@ struct PlainTextEditor: NSViewRepresentable {
             guard let textView = notification.object as? NSTextView else { return }
             cursorPosition.wrappedValue = textView.selectedRange().location
         }
+
+        func textView(
+            _ textView: NSTextView,
+            rangeForUserCompletion charRange: NSRange
+        ) -> NSRange {
+            guard let tv = textView as? CustomTextView, tv.isWikiCompletionActive else {
+                return charRange
+            }
+
+            let cursor = textView.selectedRange().location
+            let ns = textView.string as NSString
+            let prefix = ns.substring(to: cursor)
+
+            guard let openRange = prefix.range(of: "[[", options: .backwards) else {
+                tv.isWikiCompletionActive = false
+                return charRange
+            }
+
+            let openIndex = prefix.distance(from: prefix.startIndex, to: openRange.lowerBound)
+            let start = openIndex + 2
+
+            let between = ns.substring(with: NSRange(location: start, length: cursor - start))
+            if between.contains("]]") {
+                tv.isWikiCompletionActive = false
+                return charRange
+            }
+
+            return NSRange(location: start, length: cursor - start)
+        }
+
+        func textView(
+            _ textView: NSTextView,
+            completions words: [String],
+            forPartialWordRange charRange: NSRange,
+            indexOfSelectedItem index: UnsafeMutablePointer<Int>?
+        ) -> [String] {
+            guard let tv = textView as? CustomTextView, tv.isWikiCompletionActive else {
+                return words
+            }
+
+            let ns = textView.string as NSString
+            let query = charRange.length > 0 ? ns.substring(with: charRange) : ""
+            let q = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+            if q.contains("]") || q.contains("\n") {
+                tv.isWikiCompletionActive = false
+                return []
+            }
+
+            let candidates = tv.existingNoteNames
+
+            func isSubsequence(_ needle: String, _ haystack: String) -> Bool {
+                var it = haystack.makeIterator()
+                for c in needle {
+                    var found = false
+                    while let h = it.next() {
+                        if h == c {
+                            found = true
+                            break
+                        }
+                    }
+                    if !found { return false }
+                }
+                return true
+            }
+
+            func score(_ title: String) -> Int? {
+                if q.isEmpty { return 0 }
+                let t = title.lowercased()
+                if t.hasPrefix(q) { return 0 }
+                if t.contains(q) { return 1 }
+                if isSubsequence(q, t) { return 2 }
+                return nil
+            }
+
+            let ranked = candidates.compactMap { title -> (String, Int)? in
+                guard let s = score(title) else { return nil }
+                return (title, s)
+            }
+            .sorted { a, b in
+                if a.1 != b.1 { return a.1 < b.1 }
+                return a.0.count < b.0.count
+            }
+            .map(\.0)
+
+            index?.pointee = 0
+            return Array(ranked.prefix(50))
+        }
     }
 }
 
@@ -241,6 +332,9 @@ class CustomTextView: NSTextView {
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
     var onWikiLinkClicked: ((String) -> Void)?
+    var existingNoteNames: [String] = []
+    var isWikiCompletionActive = false
+    var isInsertingCompletion = false
 
     override func mouseDown(with event: NSEvent) {
         // Check for Cmd+Click on wiki-links
@@ -285,6 +379,11 @@ class CustomTextView: NSTextView {
         }
 
         if event.keyCode == 53 {
+            // Let completion panel handle Escape when active
+            if isWikiCompletionActive {
+                super.keyDown(with: event)
+                return
+            }
             // If the find bar is visible, dismiss it
             if let scrollView = enclosingScrollView, scrollView.isFindBarVisible {
                 let menuItem = NSMenuItem()
@@ -331,6 +430,57 @@ class CustomTextView: NSTextView {
 
     override func pasteAsRichText(_ sender: Any?) {
         pasteAsPlainText(sender)
+    }
+
+    override func insertText(_ insertString: Any, replacementRange: NSRange) {
+        super.insertText(insertString, replacementRange: replacementRange)
+        guard !isInsertingCompletion else { return }
+
+        guard let str = insertString as? String else { return }
+        if str == "[" {
+            let loc = selectedRange().location
+            if loc >= 2 {
+                let ns = string as NSString
+                if ns.substring(with: NSRange(location: loc - 2, length: 2)) == "[[" {
+                    isWikiCompletionActive = true
+                    DispatchQueue.main.async { [weak self] in self?.complete(nil) }
+                }
+            }
+        }
+    }
+
+    override func insertCompletion(
+        _ word: String,
+        forPartialWordRange charRange: NSRange,
+        movement: Int,
+        isFinal: Bool
+    ) {
+        isInsertingCompletion = true
+        super.insertCompletion(word, forPartialWordRange: charRange, movement: movement, isFinal: isFinal)
+        isInsertingCompletion = false
+
+        guard isFinal else { return }
+
+        if movement == NSCancelTextMovement {
+            isWikiCompletionActive = false
+            return
+        }
+
+        if movement == NSReturnTextMovement || movement == NSTabTextMovement {
+            let cursor = selectedRange().location
+            let ns = string as NSString
+            let suffix = cursor + 2 <= ns.length
+                ? ns.substring(with: NSRange(location: cursor, length: 2))
+                : ""
+
+            if suffix != "]]" {
+                isInsertingCompletion = true
+                insertText("]]", replacementRange: NSRange(location: cursor, length: 0))
+                isInsertingCompletion = false
+            }
+            setSelectedRange(NSRange(location: selectedRange().location, length: 0))
+            isWikiCompletionActive = false
+        }
     }
 }
 
