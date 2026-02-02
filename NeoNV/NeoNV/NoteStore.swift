@@ -328,16 +328,20 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
 
         let extensions = allowedExtensions
         let flag = CancellationFlag()
-        let discoveredNotes: [NoteFile] = await withTaskCancellationHandler {
-            await withCheckedContinuation { continuation in
-                DispatchQueue.global(qos: .userInitiated).async {
-                    let result = NoteStore.enumerateNotes(
-                        in: folderURL,
-                        allowedExtensions: extensions,
-                        isCancelled: { flag.isCancelled }
-                    )
-                    continuation.resume(returning: result)
-                }
+        notes = []
+
+        let stream = NoteStore.enumerateNotesStream(
+            in: folderURL,
+            allowedExtensions: extensions,
+            batchSize: 50,
+            isCancelled: { flag.isCancelled }
+        )
+
+        await withTaskCancellationHandler {
+            for await batch in stream {
+                guard !Task.isCancelled else { break }
+                notes.append(contentsOf: batch)
+                notes.sort { $0.modificationDate > $1.modificationDate }
             }
         } onCancel: {
             flag.isCancelled = true
@@ -345,7 +349,6 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
 
         guard !Task.isCancelled else { return }
 
-        notes = discoveredNotes
         isLoading = false
         startWatching()
     }
@@ -357,6 +360,83 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         "vendor", "Pods", "DerivedData", ".tox", ".pytest_cache",
         ".mypy_cache", ".ruff_cache", "__MACOSX"
     ]
+
+    /// Enumerates files in batches via AsyncStream for progressive UI updates
+    private static func enumerateNotesStream(
+        in folderURL: URL,
+        allowedExtensions: Set<String>,
+        batchSize: Int = 50,
+        isCancelled: @Sendable @escaping () -> Bool
+    ) -> AsyncStream<[NoteFile]> {
+        AsyncStream { continuation in
+            Task.detached(priority: .userInitiated) {
+                let fileManager = FileManager.default
+                guard let enumerator = fileManager.enumerator(
+                    at: folderURL,
+                    includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey, .isDirectoryKey],
+                    options: [.skipsHiddenFiles, .skipsPackageDescendants]
+                ) else {
+                    continuation.finish()
+                    return
+                }
+
+                let folderPath = folderURL.path + "/"
+                var batch: [NoteFile] = []
+                batch.reserveCapacity(batchSize)
+
+                for case let fileURL as URL in enumerator {
+                    if isCancelled() {
+                        continuation.finish()
+                        return
+                    }
+
+                    do {
+                        let resourceValues = try fileURL.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey, .isDirectoryKey])
+
+                        if resourceValues.isDirectory == true {
+                            let dirName = fileURL.lastPathComponent
+                            if junkDirectories.contains(dirName) {
+                                enumerator.skipDescendants()
+                            }
+                            continue
+                        }
+
+                        guard resourceValues.isRegularFile == true else { continue }
+
+                        let ext = fileURL.pathExtension.lowercased()
+                        guard allowedExtensions.contains(ext) else { continue }
+
+                        let modDate = resourceValues.contentModificationDate ?? Date.distantPast
+                        let relativePath = fileURL.path.replacingOccurrences(of: folderPath, with: "")
+                        let title = readFirstLineStatic(from: fileURL)
+                        let contentPreview = readContentPreviewStatic(from: fileURL)
+
+                        let note = NoteFile(
+                            url: fileURL,
+                            relativePath: relativePath,
+                            modificationDate: modDate,
+                            title: title,
+                            contentPreview: contentPreview
+                        )
+                        batch.append(note)
+
+                        if batch.count >= batchSize {
+                            continuation.yield(batch)
+                            batch = []
+                            batch.reserveCapacity(batchSize)
+                        }
+                    } catch {
+                        continue
+                    }
+                }
+
+                if !batch.isEmpty {
+                    continuation.yield(batch)
+                }
+                continuation.finish()
+            }
+        }
+    }
 
     /// Enumerates files and reads metadata off the main thread
     private static func enumerateNotes(in folderURL: URL, allowedExtensions: Set<String>, isCancelled: @Sendable () -> Bool = { false }) -> [NoteFile] {
@@ -415,7 +495,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         return result
     }
 
-    private static func readFirstLineStatic(from url: URL) -> String {
+    nonisolated private static func readFirstLineStatic(from url: URL) -> String {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
         defer { try? handle.close() }
         guard let data = try? handle.read(upToCount: 512) else { return "" }
@@ -450,7 +530,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         return ""
     }
 
-    private static func readContentPreviewStatic(from url: URL, maxBytes: Int = 2048) -> String {
+    nonisolated private static func readContentPreviewStatic(from url: URL, maxBytes: Int = 2048) -> String {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
         defer { try? handle.close() }
         guard let data = try? handle.read(upToCount: maxBytes) else { return "" }
