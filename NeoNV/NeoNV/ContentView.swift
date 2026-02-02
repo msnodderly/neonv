@@ -24,6 +24,9 @@ struct ContentView: View {
     @State private var searchDebounceTask: Task<Void, Never>?
     @State private var showPreview = false
     @State private var noteToDelete: NoteFile?
+    @State private var noteToRename: NoteFile?
+    @State private var renameText: String = ""
+    @State private var renameError: String?
     @State private var externalConflict: ExternalConflict?
     @State private var externalToastMessage: String?
     @State private var selectedNoteURL: URL?
@@ -215,6 +218,27 @@ struct ContentView: View {
                 Text("Are you sure you want to delete \"\(note.displayTitle)\"? This action cannot be undone.")
             }
         }
+        .alert("Rename Note", isPresented: Binding(
+            get: { noteToRename != nil },
+            set: { if !$0 { noteToRename = nil; renameError = nil } }
+        )) {
+            TextField("New filename", text: $renameText)
+            Button("Cancel", role: .cancel) {
+                noteToRename = nil
+                renameError = nil
+            }
+            Button("Rename") {
+                if let note = noteToRename {
+                    renameNote(note, to: renameText)
+                }
+            }
+        } message: {
+            if let error = renameError {
+                Text(error)
+            } else if let note = noteToRename {
+                Text("Enter a new filename for \"\(note.displayTitle)\"")
+            }
+        }
         .modifier(NotificationHandlers(
             onFocusSearch: {
                 if settings.isSearchFieldHidden {
@@ -305,6 +329,10 @@ struct ContentView: View {
                     onDeleteNote: { note in noteToDelete = note },
                     onShowInFinder: { note in
                         NSWorkspace.shared.activateFileViewerSelecting([note.url])
+                    },
+                    onRenameNote: { note in
+                        renameText = note.url.deletingPathExtension().lastPathComponent
+                        noteToRename = note
                     }
                 )
                 .frame(minHeight: 80, idealHeight: 150, maxHeight: 300)
@@ -329,6 +357,10 @@ struct ContentView: View {
             onDeleteNote: { note in noteToDelete = note },
             onShowInFinder: { note in
                 NSWorkspace.shared.activateFileViewerSelecting([note.url])
+            },
+            onRenameNote: { note in
+                renameText = note.url.deletingPathExtension().lastPathComponent
+                noteToRename = note
             }
         )
     }
@@ -389,6 +421,18 @@ struct ContentView: View {
         }
 
         noteToDelete = nil
+    }
+
+    private func renameNote(_ note: NoteFile, to newName: String) {
+        do {
+            let renamed = try noteStore.renameNote(id: note.id, newName: newName)
+            selectedNoteID = renamed.id
+            selectedNoteURL = renamed.url
+            noteToRename = nil
+            renameError = nil
+        } catch {
+            renameError = error.localizedDescription
+        }
     }
 
     private func togglePreview() {
@@ -1005,6 +1049,7 @@ struct NoteListView: View {
     var onUpArrowToSearch: () -> Void
     var onDeleteNote: ((NoteFile) -> Void)?
     var onShowInFinder: ((NoteFile) -> Void)?
+    var onRenameNote: ((NoteFile) -> Void)?
 
     @ObservedObject private var settings = AppSettings.shared
 
@@ -1056,6 +1101,11 @@ struct NoteListView: View {
                     }
                     .tag(note.id)
                     .contextMenu {
+                        if !note.isUnsaved, let onRenameNote = onRenameNote {
+                            Button("Rename") {
+                                onRenameNote(note)
+                            }
+                        }
                         if let onShowInFinder = onShowInFinder {
                             Button("Show in Finder") {
                                 onShowInFinder(note)

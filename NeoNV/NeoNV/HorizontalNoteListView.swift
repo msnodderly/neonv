@@ -13,6 +13,7 @@ struct HorizontalNoteListView: View {
     var onUpArrowToSearch: () -> Void
     var onDeleteNote: ((NoteFile) -> Void)?
     var onShowInFinder: ((NoteFile) -> Void)?
+    var onRenameNote: ((NoteFile) -> Void)?
 
     @ObservedObject private var settings = AppSettings.shared
 
@@ -89,6 +90,11 @@ struct HorizontalNoteListView: View {
                     .padding(.vertical, 4)
                     .tag(note.id)
                     .contextMenu {
+                        if !note.isUnsaved, let onRenameNote = onRenameNote {
+                            Button("Rename") {
+                                onRenameNote(note)
+                            }
+                        }
                         if let onShowInFinder = onShowInFinder {
                             Button("Show in Finder") {
                                 onShowInFinder(note)
