@@ -33,6 +33,7 @@ struct ContentView: View {
     @State private var showFindBar = false
     @State private var showHelp = false
     @State private var cursorPosition = 0
+    @State private var pendingCursorAtEnd = false
     @State private var showKeyboardShortcuts = false
     @FocusState private var focusedField: FocusedField?
 
@@ -623,7 +624,12 @@ struct ContentView: View {
                 await MainActor.run {
                     originalContent = content
                     editorContent = content
-                    cursorPosition = 0
+                    if pendingCursorAtEnd {
+                        cursorPosition = content.count
+                        pendingCursorAtEnd = false
+                    } else {
+                        cursorPosition = 0
+                    }
                     isDirty = false
                     unsavedNoteIDs.remove(noteID)
                 }
@@ -674,6 +680,7 @@ struct ContentView: View {
                 await MainActor.run {
                     searchText = ""
                     if let newNote = noteStore.notes.first(where: { $0.url == fileURL }) {
+                        pendingCursorAtEnd = true
                         selectedNoteID = newNote.id
                         focusedField = .editor
                     }
