@@ -142,13 +142,9 @@ cmdw-fix/
 cmd-n-window-restore/
 editor-click-fix/
 disable-substitutions/
-# bd worktree
-cloud-sync-fix/
-# bd worktree
 homebrew-ci/
-# bd worktree
 progressive-loading/
-# bd worktree
 metadata-cache/
-# bd worktree
 rename-context-menu/
+# bd worktree
+cursor-end/
