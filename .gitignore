@@ -144,3 +144,5 @@ editor-click-fix/
 disable-substitutions/
 # bd worktree
 cloud-sync-fix/
+# bd worktree
+homebrew-ci/
