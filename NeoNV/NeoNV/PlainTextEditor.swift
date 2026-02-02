@@ -253,9 +253,16 @@ class CustomTextView: NSTextView {
     var onEscape: (() -> Void)?
 
     override func keyDown(with event: NSEvent) {
-        // Cmd+Shift+D to insert date
+        // Cmd+Shift+D or Cmd+Period to insert date
         if event.modifierFlags.contains([.command, .shift]),
            let chars = event.charactersIgnoringModifiers, chars.lowercased() == "d" {
+            insertCurrentDate()
+            return
+        }
+        
+        // Cmd+Period (keyCode 47) as alternate shortcut for insert date
+        if event.keyCode == 47 && event.modifierFlags.contains(.command) &&
+           !event.modifierFlags.contains(.shift) && !event.modifierFlags.contains(.option) {
             insertCurrentDate()
             return
         }
