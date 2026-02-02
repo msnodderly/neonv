@@ -890,6 +890,7 @@ struct SearchBar: View {
 
             TextField("Search or create...", text: $text)
                 .textFieldStyle(.plain)
+                .disableAutocorrection(true)
                 .focused($focusedField, equals: .search)
                 .onKeyPress(.tab) {
                     onNavigateToList()
