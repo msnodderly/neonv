@@ -891,6 +891,16 @@ struct SearchBar: View {
             TextField("Search or create...", text: $text)
                 .textFieldStyle(.plain)
                 .focused($focusedField, equals: .search)
+                .onKeyPress { press in
+                    if press.modifiers.contains([.command, .shift]) && (press.key == .init("d") || press.key == .init("D")) {
+                        let formatter = DateFormatter()
+                        formatter.dateFormat = "yyyy-MM-dd"
+                        let dateString = formatter.string(from: Date())
+                        text += dateString
+                        return .handled
+                    }
+                    return .ignored
+                }
                 .onKeyPress(.tab) {
                     onNavigateToList()
                     return .handled
