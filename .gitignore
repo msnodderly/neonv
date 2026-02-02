@@ -141,3 +141,5 @@ refactor-org-preview/
 cmdw-fix/
 # bd worktree
 cmd-n-window-restore/
+# bd worktree
+editor-click-fix/
