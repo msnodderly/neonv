@@ -143,3 +143,5 @@ cmdw-fix/
 cmd-n-window-restore/
 # bd worktree
 editor-click-fix/
+# bd worktree
+disable-substitutions/
