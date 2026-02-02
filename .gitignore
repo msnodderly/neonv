@@ -123,36 +123,21 @@ swiftlint-trivial/
 markdown-complexity/
 preview-focus/
 preview-update/
-# bd worktree
 remove-flicker/
 org-title-render/
-# bd worktree
 preview-first-nonempty/
-# bd worktree
 remove-hover-flicker/
-# bd worktree
 defer-load-folder/
-# bd worktree
-audit-done-backticks/
-# bd worktree
 github-releases/
-# bd worktree
 skip-non-text-files/
-# bd worktree
 homebrew-cask/
-# bd worktree
 version-about/
-# bd worktree
 type-to-exit/
-# bd worktree
 license-gplv3/
-# bd worktree
 markdown-tables/
-# bd worktree
 font-picker/
-# bd worktree
 break-contentview/
-# bd worktree
 refactor-org-preview/
-# bd worktree
 cmdw-fix/
+# bd worktree
+cmd-n-window-restore/
