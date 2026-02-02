@@ -146,3 +146,5 @@ disable-substitutions/
 cloud-sync-fix/
 # bd worktree
 homebrew-ci/
+# bd worktree
+progressive-loading/
