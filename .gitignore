@@ -139,11 +139,8 @@ font-picker/
 break-contentview/
 refactor-org-preview/
 cmdw-fix/
-# bd worktree
 cmd-n-window-restore/
-# bd worktree
 editor-click-fix/
-# bd worktree
 disable-substitutions/
 # bd worktree
-date-shortcut/
+cloud-sync-fix/
