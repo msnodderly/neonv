@@ -939,7 +939,13 @@ struct SearchBar: View {
                 .disableAutocorrection(true)
                 .focused($focusedField, equals: .search)
                 .onKeyPress { press in
-                    if press.modifiers.contains([.command, .shift]) && (press.key == .init("d") || press.key == .init("D")) {
+                    // Cmd+Shift+D or Cmd+Period to insert date
+                    let isCmdShiftD = press.modifiers.contains([.command, .shift]) &&
+                        (press.key == .init("d") || press.key == .init("D"))
+                    let isCmdPeriod = press.modifiers.contains(.command) &&
+                        !press.modifiers.contains(.shift) && !press.modifiers.contains(.option) &&
+                        press.key == .init(".")
+                    if isCmdShiftD || isCmdPeriod {
                         let formatter = DateFormatter()
                         formatter.dateFormat = "yyyy-MM-dd"
                         let dateString = formatter.string(from: Date())
