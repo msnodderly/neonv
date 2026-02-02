@@ -38,7 +38,18 @@ struct NeoNVApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("New Note") {
-                    NotificationCenter.default.post(name: .createNewNote, object: nil)
+                    let hasVisibleWindow = NSApp.windows.contains { window in
+                        window.isVisible && window.className.contains("AppKitWindow")
+                    }
+                    if hasVisibleWindow {
+                        NotificationCenter.default.post(name: .createNewNote, object: nil)
+                    } else {
+                        NSApp.setActivationPolicy(.regular)
+                        NSApp.activate(ignoringOtherApps: true)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            NotificationCenter.default.post(name: .createNewNote, object: nil)
+                        }
+                    }
                 }
                 .keyboardShortcut("n", modifiers: .command)
             }
