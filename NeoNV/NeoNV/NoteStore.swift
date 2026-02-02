@@ -232,8 +232,13 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         }
 
         notes.sort { $0.modificationDate > $1.modificationDate }
+
+        // Keep the cache fresh after incremental updates.
+        if let folderURL = selectedFolderURL {
+            MetadataCache.save(notes, for: folderURL)
+        }
     }
-    
+
     private func addOrUpdateNote(at url: URL, folderURL: URL) {
         let ext = url.pathExtension.lowercased()
         guard allowedExtensions.contains(ext) else { return }
@@ -326,6 +331,19 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         isLoading = true
         stopWatching()
 
+        // Show cached notes immediately for a fast warm start.
+        if notes.isEmpty, let cached = MetadataCache.load(for: folderURL) {
+            notes = cached.map { cn in
+                NoteFile(
+                    url: folderURL.appendingPathComponent(cn.relativePath),
+                    relativePath: cn.relativePath,
+                    modificationDate: cn.modificationDate,
+                    title: cn.title,
+                    contentPreview: cn.contentPreview
+                )
+            }
+        }
+
         let extensions = allowedExtensions
         let flag = CancellationFlag()
         let discoveredNotes: [NoteFile] = await withTaskCancellationHandler {
@@ -348,6 +366,9 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         notes = discoveredNotes
         isLoading = false
         startWatching()
+
+        // Persist fresh metadata for next launch.
+        MetadataCache.save(discoveredNotes, for: folderURL)
     }
 
     /// Directories to skip during enumeration (common junk directories)

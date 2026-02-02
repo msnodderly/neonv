@@ -13,6 +13,8 @@
 		A01234560000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A01234560000000000000013 /* Assets.xcassets */; };
 		A01234560000000000000004 /* PlainTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01234560000000000000015 /* PlainTextEditor.swift */; };
 		A01234560000000000000005 /* NoteStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01234560000000000000016 /* NoteStore.swift */; };
+		B56F140363114B4EA3624603 /* MetadataCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2BF47A3DE644AEA0C024E6 /* MetadataCache.swift */; };
+		AB2BF47A3DE644AEA0C024E6 /* MetadataCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataCache.swift; sourceTree = "<group>"; };
 		A01234560000000000000006 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01234560000000000000017 /* AppSettings.swift */; };
 		A01234560000000000000007 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01234560000000000000018 /* SettingsView.swift */; };
 		A01234560000000000000008 /* MarkdownPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01234560000000000000019 /* MarkdownPreviewView.swift */; };
@@ -71,6 +73,7 @@
 				A01234560000000000000019 /* MarkdownPreviewView.swift */,
 				A0123456000000000000001B /* OrgPreviewView.swift */,
 				A01234560000000000000016 /* NoteStore.swift */,
+				AB2BF47A3DE644AEA0C024E6 /* MetadataCache.swift */,
 				A01234560000000000000017 /* AppSettings.swift */,
 				A01234560000000000000018 /* SettingsView.swift */,
 				A0123456000000000000001A /* FileWatcher.swift */,
@@ -190,6 +193,7 @@
 				A01234560000000000000008 /* MarkdownPreviewView.swift in Sources */,
 				A0123456000000000000000B /* OrgPreviewView.swift in Sources */,
 				A01234560000000000000005 /* NoteStore.swift in Sources */,
+				B56F140363114B4EA3624603 /* MetadataCache.swift in Sources */,
 				A01234560000000000000006 /* AppSettings.swift in Sources */,
 				A01234560000000000000007 /* SettingsView.swift in Sources */,
 				A0123456000000000000000A /* FileWatcher.swift in Sources */,
