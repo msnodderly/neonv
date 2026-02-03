@@ -241,7 +241,7 @@ struct PlainTextEditor: NSViewRepresentable {
     }
 }
 
-fileprivate class FocusForwardingScrollView: NSScrollView {
+private class FocusForwardingScrollView: NSScrollView {
     override var acceptsFirstResponder: Bool { true }
     override func becomeFirstResponder() -> Bool {
         if let docView = documentView {
@@ -298,7 +298,7 @@ class CustomTextView: NSTextView {
         let dateString = formatter.string(from: Date())
         
         if let undoManager = undoManager {
-            undoManager.registerUndo(withTarget: self) { target in
+            undoManager.registerUndo(withTarget: self) { _ in
                 // Simple undo implementation: delete the inserted text
                 // In a real app, we rely on the text view's native undo grouping,
                 // but explicit registration helps ensure the action is atomic.

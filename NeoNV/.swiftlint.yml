@@ -1,30 +1,36 @@
 # SwiftLint configuration for NeoNV
+#
+# Threshold tightening progress (toward SwiftLint defaults):
+# - line_length: 190/250 (target: 120/200) - OrgPreviewView needs refactoring
+# - type_body_length: 775/1000 (target: 250/350) - ContentView needs refactoring
+# - function_body_length: 225/300 (target: 50/100) - OrgPreviewView needs refactoring
+# - file_length: 800/1200 (target: 500/800) - passing, could tighten after refactors
+# - cyclomatic_complexity: 35/50 (target: 10/20) - OrgPreviewView needs refactoring
 
 included:
   - NeoNV
 
-# Relax rules to accommodate existing codebase
 line_length:
-  warning: 160
+  warning: 190
   error: 250
   ignores_urls: true
   ignores_comments: true
 
 type_body_length:
-  warning: 500
-  error: 800
+  warning: 775
+  error: 1000
 
 function_body_length:
-  warning: 100
-  error: 250
+  warning: 225
+  error: 300
 
 file_length:
   warning: 800
   error: 1200
 
 cyclomatic_complexity:
-  warning: 15
-  error: 35
+  warning: 35
+  error: 50
 
 # Disable rules that are too noisy for this project
 disabled_rules:

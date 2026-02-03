@@ -474,7 +474,7 @@ extension NSFont {
     }
 }
 
-fileprivate class FocusForwardingScrollView: NSScrollView {
+private class FocusForwardingScrollView: NSScrollView {
     override var acceptsFirstResponder: Bool { true }
     override func becomeFirstResponder() -> Bool {
         if let docView = documentView {
