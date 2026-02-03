@@ -147,9 +147,5 @@ progressive-loading/
 metadata-cache/
 rename-context-menu/
 cmd-period/
-# bd worktree
 auto-mkdir/
-# bd worktree
 swiftlint-orgpreview/
-# bd worktree
-rmw/
