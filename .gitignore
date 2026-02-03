@@ -149,3 +149,5 @@ rename-context-menu/
 cmd-period/
 auto-mkdir/
 swiftlint-orgpreview/
+# bd worktree
+swiftlint-thresholds/
