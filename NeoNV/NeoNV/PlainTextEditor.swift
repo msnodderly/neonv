@@ -100,9 +100,10 @@ struct PlainTextEditor: NSViewRepresentable {
             context.coordinator.lastSearchTerms = searchTerms
         }
         
-        // Only re-apply strikethrough if text changed
-        if textChanged {
+        // Only re-apply strikethrough if text changed or user edited text
+        if textChanged || context.coordinator.needsStrikethroughUpdate {
             applyDoneStrikethrough(to: textView)
+            context.coordinator.needsStrikethroughUpdate = false
         }
 
         if showFindBar {
@@ -219,6 +220,7 @@ struct PlainTextEditor: NSViewRepresentable {
         var text: Binding<String>
         var cursorPosition: Binding<Int>
         var lastSearchTerms: [String] = []
+        var needsStrikethroughUpdate: Bool = false
 
         init(text: Binding<String>, cursorPosition: Binding<Int>) {
             self.text = text
@@ -229,6 +231,7 @@ struct PlainTextEditor: NSViewRepresentable {
             guard let textView = notification.object as? NSTextView else { return }
             text.wrappedValue = textView.string
             cursorPosition.wrappedValue = textView.selectedRange().location
+            needsStrikethroughUpdate = true
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {
