@@ -151,3 +151,5 @@ cmd-period/
 auto-mkdir/
 # bd worktree
 swiftlint-orgpreview/
+# bd worktree
+rmw/
