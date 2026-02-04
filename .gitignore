@@ -165,3 +165,5 @@ org-extension-fix/
 org-tags-display/
 # bd worktree
 org-tags-prepopulate/
+# bd worktree
+tags-sync-fix/
