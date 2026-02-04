@@ -1,178 +1,254 @@
 # Keyboard & UX Requirements
 
-*Discovered through prototype testing - every beep is a friction point to fix*
+*Implementation Status: ✅ Phase 1 & 2 Complete (v0.9.0)*
 
-## Navigation Flow
+This document tracks keyboard navigation and UX requirements. Originally written during prototyping, now reflects production implementation.
+
+## Navigation Flow ✅ IMPLEMENTED
 
 ### Search → Note List → Editor
 
 **App launch:**
-- Search box should be focused by default 
-- User can start typing immediately
+- **✅ Search box focused by default**
+- **✅ User can start typing immediately**
 
 **Forward navigation (Tab / Down Arrow):**
-- **From Search:** Tab OR Down Arrow → moves to note list
-- **From Note List:** Tab → moves to editor
-- **In Editor:** Tab inserts tab character (for code/indentation)
+- **✅ From Search:** Tab OR Down Arrow → moves to note list
+- **✅ From Note List:** Tab OR Right Arrow → moves to editor
+- **✅ In Editor:** Tab inserts tab character (for code/indentation)
+- **✅ Enter in List:** Opens note in editor
 
-**Backward navigation (Shift-Tab / Up Arrow):**
-- **From Editor:** Shift-Tab → back to note list
-- **From Note List:** Shift-Tab → back to search box
-- **Up Arrow** in note list: navigate up (if at top, go to search?)
+**Backward navigation (Shift-Tab / Up Arrow / Escape):**
+- **✅ From Editor:** Shift-Tab → back to note list, Escape → back to list
+- **✅ From Note List:** Shift-Tab → back to search box
+- **✅ Up Arrow in note list (first item):** Moves to search box
+- **✅ Escape from anywhere:** Returns to search
 
 **Arrow keys in note list:**
-- Up/Down arrows navigate the list (standard behavior)
-- Should work immediately when list is focused
+- **✅ Up/Down arrows** navigate the list (standard behavior)
+- **✅ Works immediately** when list is focused
+- **✅ Right Arrow** opens selected note in editor
 
 ---
 
 ## Essential Keyboard Shortcuts
 
-### Text Editing
-- **Cmd-Z** - Undo (standard macOS)
-- **Cmd-Shift-Z** - Redo (standard macOS)
-- **Cmd-A** - Select all in current pane
+### ✅ Implemented in v0.9.0
 
-### Navigation
-- **Cmd-L** - Return to search bar (like browser address bar)
-- **Up/Down arrows** - Navigate note list when focused
-- **Enter** or TAB or Right Arrow -  Open selected note from list
+| Shortcut | Action | Status |
+|----------|--------|--------|
+| **Cmd-L** | Focus search bar | ✅ |
+| **Cmd-Shift-L** | Toggle search field visibility | ✅ |
+| **Cmd-N** | New note | ✅ |
+| **Cmd-P** | Toggle preview mode | ✅ |
+| **Cmd-K** | Show keyboard shortcuts reference | ✅ |
+| **Cmd-G** | Open in external editor | ✅ |
+| **Cmd-Shift-D** | Insert current date (yyyy-MM-dd) | ✅ |
+| **Cmd-.** | Insert current date (alternative) | ✅ |
+| **Cmd-F** | Find in note | ✅ |
+| **Cmd-R** | Show in Finder | ✅ |
+| **Cmd-Shift-J** | Toggle layout (vertical/horizontal) | ✅ |
+| **Cmd-Z** | Undo (standard macOS) | ✅ |
+| **Cmd-Shift-Z** | Redo (standard macOS) | ✅ |
+| **Cmd-A** | Select all in current pane | ✅ |
+| **Delete** | Delete selected note | ✅ |
+| **Escape** | Return to search from editor/list | ✅ |
+| **Tab/Shift-Tab** | Navigate panes | ✅ |
+| **Enter** (in list) | Open selected note | ✅ |
+| **Right Arrow** (in list) | Move to editor | ✅ |
+| **Down Arrow** (in search) | Move to note list | ✅ |
+| **Up/Down** (in list) | Navigate notes | ✅ |
+| **Page Up/Down** (in preview) | Scroll by page | ✅ |
 
-### App-Level
-- **Cmd-N** - New note (clears editor, focuses it)
-- **Cmd-F** - Focus search (alternative to Cmd-L)
-- **Esc** - Return to search from anywhere
-- **CMD-E** or Ctrl-x-ctrl-e (emacs style) - Open selected note in external editor
+### ❌ Not Implemented
+- **Global hotkey** to summon app (requires AppKit CGEvent handling)
 
 ---
 
-## The "Beep Audit" Principle
+## The "Beep Audit" Principle ✅ ACHIEVED
 
 **Rule:** Every time the app beeps, that's a user expecting something to happen.
 
-**Process:**
-1. Log where the user was (search/list/editor)
-2. Log what key they pressed
-3. Log what they probably expected to happen
-4. Implement the right behavior or document why not
+**Result:** All expected key combinations now handled. No beeps during normal navigation.
 
-**Examples from testing:**
-- Beep on Tab from search → User expected to move to note list
-- Beep on Shift-Tab from editor → User expected to cycle back to list
+**Successfully resolved beep scenarios:**
+- ✅ Tab from search → moves to note list
+- ✅ Shift-Tab from editor → cycles back to list
+- ✅ Down Arrow in search → moves to note list
+- ✅ Up Arrow in search (at top) → stays in search (no action, no beep)
+- ✅ Up Arrow in list (at first item) → moves to search
+- ✅ Escape from editor/list → returns to search
+- ✅ Tab in editor → inserts tab character
+- ✅ Right Arrow in list → opens note in editor
+- ✅ All navigation keys → graceful handling
+
+**Implementation approach:**
+1. ✅ Logged all beep occurrences during prototype testing
+2. ✅ Identified expected behavior for each key combination
+3. ✅ Implemented handlers using SwiftUI `.onKeyPress()` API
+4. ✅ Verified no beeps remain in normal use
 
 ---
 
-## File Naming / Display
+## File Naming / Display ✅ IMPLEMENTED
 
 ### Display name in note list:
-- **Primary text:** Abbreviated first line (~50 chars, ellipsis if longer) 
-- **Strip markdown formatting** from display:
-  - Remove leading `#` (headers: `# Title` → `Title`)
-  - Remove leading `-`, `*`, `+` (list items: `- Task` → `Task`)
-  - Remove leading `>` (blockquotes: `> Quote` → `Quote`)
-  - Keep the actual content, just remove common markdown decorators
-- **Length:** 50 chars feels good for now
+- **✅ Primary text:** First ~50 chars of first line
+- **✅ Markdown stripping:** Removes `#`, `-`, `*`, `>` decorators from display
+- **✅ Content preview:** 2-line snippet shown under path
+- **✅ Length:** 50 chars confirmed as good
 
 ### Filename display in subtitle:
-- **Show actual filename** as part of path (not just "notes/")
-- Format: `notes/meeting-notes.md` or `projects/work/idea.txt`
-- Helps user understand what the file is actually called on disk
+- **✅ Shows actual filename:** Format like `projects/work/idea.txt`
+- **✅ Path context:** Full relative path from notes folder
+- **✅ Visual hierarchy:** Path shown in muted color below title
 
 ### Filename assignment indicator:
-- **Not yet saved:** Show something like `notes/[unsaved]` or `notes/•••` or italic filename?
-- **Saved with name:** Show actual filename
-- **Need to design:** Visual distinction between saved/unsaved
+- **✅ Not yet saved:** Shows `[unsaved]` in orange/italic
+- **✅ Saved with name:** Shows actual relative path
+- **✅ Visual distinction:** Clear difference between saved and unsaved states
 
-**Questions to answer:**
-- Does abbreviated first line feel natural? ✅ YES
-- What length feels right? ✅ 50 chars is good
-- Should we show file extension in list? ✅ YES, in the path subtitle
-- How do we handle duplicate first lines? (sanitize + add number suffix?)
+### Auto-created subdirectories (v0.9.0+):
+- **✅ Nested paths:** First line like `projects/2026/notes` auto-creates directories
+- **✅ Sanitization:** Applied to each path component separately
+- **✅ Examples:**
+  - `work/bug fixes` → `notes/work/bug-fixes.md`
+  - `2026/01/daily log` → `notes/2026/01/daily-log.md`
 
-**Fallback behavior:**
-- If first line is empty: `untitled-[timestamp].txt`
+**Fallback behavior (implemented):**
+- If first line is empty: `untitled-[yyyyMMdd-HHmmss].ext`
 - If first line is only whitespace: treat as empty
-- If first line is too long: truncate in display, use full on disk (up to OS limits)
+- If first line is too long: truncate at 100 characters
+- If first line has only special chars: timestamp fallback
 
 ---
 
-## Preview Mode (to test in prototype)
+## Preview Mode ✅ IMPLEMENTED
 
 ### Toggle behavior:
-- **Cmd-P** - Toggle preview (mnemonic: Preview) ✅
-- **Button in toolbar** - Visual toggle option ✅
+- **✅ Cmd-P** - Toggle preview on/off
+- **✅ Button in toolbar** - Visual toggle button available
+- **✅ Position:** Preview replaces editor pane (not side-by-side)
 
 ### Preview focus and scrolling:
-- **Preview pane must be focusable** and selected by default when entering preview mode
-- **Keyboard scrolling:** Up/Down arrows, Page Up/Page Down should scroll content
-- Without this, keyboard users are stuck
+- **✅ Implemented:** Preview pane focusable and receives focus by default
+- **✅ Keyboard scrolling:** Up/Down arrows, Page Up/Page Down scroll content
+- **✅ Line-by-line scrolling:** Up/Down arrows scroll one line at a time
+- **✅ Page scrolling:** Page Up/Down scroll by full page
 
 ### Smart preview switching:
-- **If in preview mode and user types ANY character** → instantly switch to edit mode
-- Cursor should be positioned where typing would naturally insert (end of content? or try to match position?)
-- This eliminates the "why isn't my typing working?" confusion
+- **❌ Not working:** Typing characters in preview mode does not switch to edit mode (see Known Issues)
+- **Workaround:** Press Cmd-P to manually toggle back to edit mode
+- **Expected behavior:** Should auto-switch to edit mode and capture keystroke
 
-### Preview pane location:
-- **Current choice:** Replaces editor (toggle between raw/preview)
-- Feels clean and uncluttered ✅
-
-### What to preview:
-- Markdown rendering (basic: headers, lists, bold, italic, links)
-- Plain text → just shows same as editor (no point)
-- Org-mode → leave as plain text for now, plugin later
+### Preview rendering:
+- **✅ Markdown:** Full rendering with headers, lists, bold, italic, links, code blocks, tables
+- **✅ Org-mode:** Basic rendering with TODO colors, emphasis, code blocks
+- **✅ Plain text:** Shows formatted version with proper line spacing
+- **✅ Performance:** Renders quickly even for long documents
 
 ---
 
-## Focus Indicators
+## Focus Indicators ✅ IMPLEMENTED
 
-**Problem to solve:** User needs to know which pane is active
+**Visual cues implemented:**
+- **✅ Search bar:** System focus ring appears when focused
+- **✅ Note list:** System selection highlight (blue/gray depending on theme)
+- **✅ Editor:** Cursor visible and blinking when focused
+- **✅ Preview pane:** Receives focus and supports keyboard scrolling
 
-**Visual cues needed:**
-- Search bar: subtle highlight or border when focused
-- Note list: system selection highlight (already works)
-- Editor: cursor visible (already works), maybe subtle border?
-
-**Test:** Is the default macOS focus ring enough, or too subtle?
+**Implementation decision:** Default macOS focus ring is sufficient - users understand standard system behavior. Custom focus indicators would add visual noise without benefit.
 
 ---
 
-## Autosave Behavior (for real MVP)
+## Autosave Behavior ✅ IMPLEMENTED
 
-**When to save:**
-- On every keystroke (debounced 500ms)
-- On focus loss from editor
-- On selecting different note
-- On app quit
+**When saves occur:**
+- **✅ On every keystroke** (debounced 500ms to avoid excessive I/O)
+- **✅ On focus loss** from editor
+- **✅ On selecting different note**
+- **✅ On app quit** (with unsaved changes warning if needed)
 
 **Visual feedback:**
-- **Subtle:** Small "Saved" indicator that fades after 1s
-- **Or:** No feedback (silent autosave, only scream on failure)
+- **✅ Orange dot indicator** in toolbar when unsaved changes exist
+- **✅ Silent save** - no toast or flash when save succeeds
+- **✅ Loud failure** - modal alert blocks editing if save fails
+- **✅ [unsaved] badge** in file list for new notes not yet saved
 
-**Prototype question:** Do we even need "saved" feedback, or is silence better?
-
----
-
-## Search Behavior (current prototype is simple substring)
-
-**For MVP, consider:**
-- Fuzzy matching (like Cmd-P in editors)
-- Search in content, not just filename
-- Match highlighting in results
-
-**Prototype observation:** Simple substring filter feels fast. Is fuzzy worth the complexity?
+**Implementation decision:** Silent autosave confirmed as correct choice. Only failures get attention.
 
 ---
 
-## External Edit Detection (for real MVP)
+## Search Behavior ✅ IMPLEMENTED
+
+**Implemented features:**
+- **✅ Fuzzy full-text search:** Searches title, path, and content preview
+- **✅ Real-time filtering:** Instant results as you type (50ms debounce)
+- **✅ Match counter:** Shows "N matches" or "⏮ to create" in search bar
+- **✅ Auto-selection:** First match auto-selects when searching
+- **✅ Selection memory:** Restores previous selection when clearing search
+- **✅ Search highlighting:** Optional highlighting of search terms in editor (toggle in settings)
+- **✅ Smart create:** Enter key creates new note if no matches, or navigates to note if matches exist
+
+**Performance:**
+- **✅ Fast:** Searches through 1000+ notes instantly
+- **✅ Efficient:** Metadata caching prevents repeated file reads
+- **✅ No indexing lag:** Results appear immediately without "building index" delays
+
+**Implementation decision:** Fuzzy matching proved worth the complexity - feels natural and fast.
+
+---
+
+## External Edit Detection ✅ IMPLEMENTED
 
 **Behavior when file changes externally:**
-1. If editor is **not dirty** (no unsaved changes): auto-reload silently
-2. If editor **is dirty**: show modal with options:
+1. **✅ If editor is not dirty** (no unsaved changes): auto-reload silently with toast notification
+2. **✅ If editor is dirty:** show modal with options:
    - Keep my version (overwrite external change)
    - Use external version (discard my changes)
-   - Save mine to new file (safety net)
 
-**Visual indicator:** Subtle flash or toast: "Updated externally"
+**Content Hash Tracking (v0.9.0):**
+- **✅ SHA256 hash** calculated on file load
+- **✅ Smart comparison:** When FSEvents detects change, compares content hash
+- **✅ Filters false positives:** If content identical (cloud sync metadata update), silently updates timestamp
+- **✅ Real conflicts only:** Only shows dialog when actual content changed
+- **✅ Benefits:** Eliminates interruptions from Dropbox/iCloud/Syncthing metadata touches
+
+**Visual feedback:**
+- **✅ Toast notification:** "Reloaded — file changed externally"
+- **✅ Deleted file toast:** "Deleted externally" when file removed
+- **✅ Modal dialog:** Clean two-option modal for real conflicts
+
+---
+
+## Additional Features Implemented
+
+Beyond the original MVP spec, the following features were added based on daily use:
+
+### Layout Flexibility (v0.8.0+)
+- **✅ Vertical layout** (default): Sidebar list + editor pane
+- **✅ Horizontal layout**: Top list pane + editor pane
+- **✅ Toggle:** Cmd-Shift-J switches between modes
+- **✅ Persistence:** Layout choice saved across sessions
+
+### UI Customization
+- **✅ Collapsible search field:** Drag divider to hide/show search (double-click to restore)
+- **✅ Toggle file list visibility:** View menu option to hide/show list
+- **✅ Toggle search field visibility:** Cmd-Shift-L to hide/show independently
+- **✅ Font customization:** Settings panel for font family and size (8-72pt)
+- **✅ Search highlighting:** Optional highlighting of search terms in editor
+
+### Enhanced File Operations
+- **✅ Right-click rename** (v0.7.0): Rename with duplicate validation
+- **✅ Auto-create subdirectories** (v0.9.0): First line with `/` creates nested folders
+- **✅ Content hash tracking:** Smart cloud sync conflict detection
+- **✅ 2-line content preview:** Snippet shown in file list
+- **✅ Insert current date:** Cmd-Shift-D or Cmd-. inserts `yyyy-MM-dd`
+
+### Editor Features
+- **✅ Find in note:** Cmd-F opens find bar within current note
+- **✅ Incremental text styling** (v0.9.0): Prevents flickering when typing at bottom
+- **✅ External editor integration:** Cmd-G opens note in configured editor
 
 ---
 
@@ -188,25 +264,41 @@
 
 ---
 
-## Open Questions from Prototype
+## Implementation Decisions (Resolved)
 
-1. **Is TextEditor fast enough?** Or do we need NSTextView for performance?
-2. **Does SwiftUI List handle 1000+ items smoothly?**
-3. **Preview toggle:** Replace editor, or side-by-side?
-4. **Filename display:** Show extension? Show path for nested folders?
-5. **Search bar size:** Current size feels okay, or too prominent?
+1. **✅ TextEditor performance?** Fast enough for MVP; incremental styling added in v0.9.0 to fix editor flickering with large files
+2. **✅ SwiftUI List with 1000+ items?** Handles smoothly with metadata caching and efficient rendering
+3. **✅ Preview toggle:** Replaces editor (confirmed correct choice - clean and uncluttered)
+4. **✅ Filename display:** Shows extension and full relative path - works excellently
+5. **✅ Search bar size:** Collapsible with drag divider (added in v0.8.0) - perfect solution
 
 ---
 
-## Next Prototype Tests
+## Implementation Status (v0.9.0)
 
 1. ✅ Basic layout (search, list, editor)
-2. ✅ Search filtering
-3. 🔄 First-line-as-filename display
-4. 🔄 Preview toggle button
-5. ⏭️ Keyboard shortcuts (save for MVP)
-6. ⏭️ Performance with 100+ fake notes
+2. ✅ Search filtering (fuzzy full-text with debouncing)
+3. ✅ First-line-as-filename display
+4. ✅ Preview toggle button (Cmd-P + toolbar button)
+5. ✅ Keyboard shortcuts (all major ones implemented and documented)
+6. ✅ Performance with 1000+ notes (optimized with metadata caching)
+7. ✅ External edit detection (FSEvents + content hash tracking)
+8. ✅ Conflict resolution (smart modal with Keep/Use options)
+9. ✅ Settings panel (folder, extension, editor, font customization)
+10. ✅ Multiple layout modes (vertical/horizontal with Cmd-Shift-J)
+11. ✅ Collapsible UI elements (search field, file list toggles)
+12. ✅ File operations (rename, delete, show in Finder)
+13. ✅ Auto-created subdirectories (v0.9.0)
 
 ---
 
-*This is a living document. Add friction points as you discover them.*
+## Known Issues
+
+### Type-to-Exit Preview Not Working
+- **Issue:** Typing characters in preview mode does not automatically switch to edit mode
+- **Workaround:** Press Cmd-P to manually toggle to edit mode
+- **Status:** Tracked in [GitHub issue #87](https://github.com/msnodderly/neonv/issues/87)
+
+---
+
+*Last updated: February 2026 (v0.9.0)*

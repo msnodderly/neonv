@@ -44,6 +44,27 @@ This document covers edge cases, error handling scenarios, and known limitations
 
 **Workaround:** The timestamp-based untitled fallback prevents most collisions in practice.
 
+### Auto-Created Subdirectories (v0.9.0+)
+
+**Current Behavior:**
+- First line can include forward slashes to create nested structure
+- Subdirectories are automatically created if they don't exist
+- Example: `projects/2026/meeting notes` creates `projects/2026/` folders
+
+**Examples:**
+
+| User Input | Generated Path |
+|------------|----------------|
+| `work/bug fixes` | `notes/work/bug-fixes.md` |
+| `2026/01/daily log` | `notes/2026/01/daily-log.md` |
+| `ideas/app/features` | `notes/ideas/app/features.md` |
+
+**Implications:**
+- Enables organizing notes into hierarchies without manual folder creation
+- Forward slashes in first line are interpreted as path separators
+- All parent directories created automatically on first save
+- Filename sanitization applies to each path component separately
+
 ---
 
 ## Large File Handling
@@ -273,6 +294,62 @@ If distributed via Mac App Store with sandbox:
 - User must grant folder access via open panel
 - Security-scoped bookmarks required (already implemented)
 - Network drives may require additional entitlements
+
+---
+
+## Keyboard Navigation
+
+### Implemented Shortcuts (v0.9.0)
+
+| Shortcut | Action |
+|----------|--------|
+| **Cmd-L** | Focus search bar |
+| **Cmd-Shift-L** | Toggle search field visibility |
+| **Cmd-N** | New note |
+| **Cmd-P** | Toggle preview mode |
+| **Cmd-K** | Show keyboard shortcuts reference |
+| **Cmd-G** | Open in external editor |
+| **Cmd-Shift-D** | Insert current date (yyyy-MM-dd) |
+| **Cmd-.** | Insert current date (alternative) |
+| **Cmd-F** | Find in note |
+| **Cmd-R** | Show in Finder |
+| **Cmd-Shift-J** | Toggle vertical/horizontal layout |
+| **Delete** | Delete selected note (with confirmation) |
+| **Tab** / **Shift-Tab** | Navigate between panes (Search → List → Editor) |
+| **Escape** | Return to search from editor/list |
+| **Down Arrow** (in search) | Move to note list |
+| **Up Arrow** (in list, first item) | Move to search |
+| **Right Arrow** (in list) | Move to editor |
+| **Enter** (in list) | Open note in editor |
+| **Enter** (in search) | Create new note or navigate if matches exist |
+| **Page Up/Down** (in preview) | Scroll content by page |
+| **Up/Down** (in preview) | Scroll content line by line |
+
+### Navigation Behavior
+
+**Focus Cycle:**
+```
+Search ←→ Note List ←→ Editor/Preview
+       Tab/↓          Tab
+      Shift-Tab     Shift-Tab
+```
+
+**No-Beep Policy:**
+- All standard navigation keys handled gracefully
+- No system beeps for expected key combinations
+- Invalid actions either do nothing or provide visual feedback
+
+### Known Limitations
+
+**No Global Hotkey:**
+The app does not support a global hotkey to summon it from any application. This requires AppKit CGEvent handling not yet implemented.
+
+**Workaround:** Use macOS Spotlight (Cmd-Space) to launch or switch to neonv, or keep it in the Dock for quick access.
+
+**Type-to-Exit Preview Not Working:**
+Typing characters in preview mode does not automatically switch to edit mode ([issue #87](https://github.com/msnodderly/neonv/issues/87)).
+
+**Workaround:** Press Cmd-P to manually toggle back to edit mode before typing.
 
 ---
 
