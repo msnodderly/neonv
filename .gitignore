@@ -147,3 +147,9 @@ progressive-loading/
 metadata-cache/
 rename-context-menu/
 cmd-period/
+auto-mkdir/
+swiftlint-orgpreview/
+# bd worktree
+swiftlint-thresholds/
+# bd worktree
+fix-editor-flicker/
