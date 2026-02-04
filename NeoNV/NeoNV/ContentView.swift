@@ -510,14 +510,6 @@ struct ContentView: View {
                         .filter { !$0.isEmpty }
                 }
 
-                guard !inputTags.isEmpty else {
-                    await MainActor.run {
-                        noteToTag = nil
-                        tagText = ""
-                    }
-                    return
-                }
-
                 // For non-org files, ensure tags have # prefix
                 if !isOrgFile {
                     inputTags = inputTags.map { tag in
@@ -525,66 +517,81 @@ struct ContentView: View {
                     }
                 }
 
-                // Combine with existing tags (deduplicate)
-                // Normalize existing tags to have # prefix for comparison (non-org)
-                let existingTags: [String]
-                if !isOrgFile {
-                    existingTags = note.tags.map { tag in
-                        tag.hasPrefix("#") ? tag : "#\(tag)"
-                    }
-                } else {
-                    existingTags = note.tags
-                }
-                let combinedTags = Array(Set(existingTags + inputTags)).sorted()
+                // Use the input tags exactly (replacing existing tags, not merging)
+                // This allows users to remove or modify tags by editing the text field
+                let finalTags = Array(Set(inputTags)).sorted()
 
-                // Format tag line based on file type
-                let tagLine: String
-                if isOrgFile {
-                    // Org-mode format: #+FILETAGS: :tag1:tag2:tag3:
-                    tagLine = "#+FILETAGS: :\(combinedTags.joined(separator: ":")):"
-                } else {
-                    // Standard format: Tags: #tag1, #tag2, #tag3
-                    tagLine = "Tags: \(combinedTags.joined(separator: ", "))"
-                }
-
-                // Find and replace existing tag line, or add at the beginning
-                var foundTagLine = false
-                for (index, line) in lines.enumerated() {
-                    let trimmed = line.trimmingCharacters(in: .whitespaces)
-                    if isOrgFile {
-                        // Look for #+FILETAGS: in org files
-                        if trimmed.uppercased().hasPrefix("#+FILETAGS:") {
-                            lines[index] = tagLine
-                            foundTagLine = true
-                            break
-                        }
-                    } else {
-                        // Look for Tags: in other files
-                        if trimmed.lowercased().hasPrefix("tags:") || trimmed.lowercased().hasPrefix("tag:") {
-                            lines[index] = tagLine
-                            foundTagLine = true
-                            break
-                        }
-                    }
-                }
-
-                if !foundTagLine {
-                    if isOrgFile {
-                        // For org files, add after any existing #+KEY: metadata at the top
-                        var insertIndex = 0
-                        for (index, line) in lines.enumerated() {
-                            let trimmed = line.trimmingCharacters(in: .whitespaces)
-                            if trimmed.hasPrefix("#+") {
-                                insertIndex = index + 1
-                            } else if !trimmed.isEmpty {
+                // Handle empty tags case: remove existing tag line from file
+                if finalTags.isEmpty {
+                    // Find and remove existing tag line
+                    for (index, line) in lines.enumerated() {
+                        let trimmed = line.trimmingCharacters(in: .whitespaces)
+                        if isOrgFile {
+                            if trimmed.uppercased().hasPrefix("#+FILETAGS:") {
+                                lines.remove(at: index)
+                                break
+                            }
+                        } else {
+                            if trimmed.lowercased().hasPrefix("tags:") || trimmed.lowercased().hasPrefix("tag:") {
+                                lines.remove(at: index)
+                                // Also remove following blank line if present
+                                if index < lines.count && lines[index].trimmingCharacters(in: .whitespaces).isEmpty {
+                                    lines.remove(at: index)
+                                }
                                 break
                             }
                         }
-                        lines.insert(tagLine, at: insertIndex)
+                    }
+                } else {
+                    // Format tag line based on file type
+                    let tagLine: String
+                    if isOrgFile {
+                        // Org-mode format: #+FILETAGS: :tag1:tag2:tag3:
+                        tagLine = "#+FILETAGS: :\(finalTags.joined(separator: ":")):"
                     } else {
-                        // Add at the beginning for other files
-                        lines.insert(tagLine, at: 0)
-                        lines.insert("", at: 1) // Add blank line after tags
+                        // Standard format: Tags: #tag1, #tag2, #tag3
+                        tagLine = "Tags: \(finalTags.joined(separator: ", "))"
+                    }
+
+                    // Find and replace existing tag line, or add at the beginning
+                    var foundTagLine = false
+                    for (index, line) in lines.enumerated() {
+                        let trimmed = line.trimmingCharacters(in: .whitespaces)
+                        if isOrgFile {
+                            // Look for #+FILETAGS: in org files
+                            if trimmed.uppercased().hasPrefix("#+FILETAGS:") {
+                                lines[index] = tagLine
+                                foundTagLine = true
+                                break
+                            }
+                        } else {
+                            // Look for Tags: in other files
+                            if trimmed.lowercased().hasPrefix("tags:") || trimmed.lowercased().hasPrefix("tag:") {
+                                lines[index] = tagLine
+                                foundTagLine = true
+                                break
+                            }
+                        }
+                    }
+
+                    if !foundTagLine {
+                        if isOrgFile {
+                            // For org files, add after any existing #+KEY: metadata at the top
+                            var insertIndex = 0
+                            for (index, line) in lines.enumerated() {
+                                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                                if trimmed.hasPrefix("#+") {
+                                    insertIndex = index + 1
+                                } else if !trimmed.isEmpty {
+                                    break
+                                }
+                            }
+                            lines.insert(tagLine, at: insertIndex)
+                        } else {
+                            // Add at the beginning for other files
+                            lines.insert(tagLine, at: 0)
+                            lines.insert("", at: 1) // Add blank line after tags
+                        }
                     }
                 }
 
