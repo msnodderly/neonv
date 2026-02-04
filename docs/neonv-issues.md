@@ -1,6 +1,9 @@
 # neonv: Implementation Issues
 
-This document breaks down the product spec into discrete, actionable issues suitable for GitHub Issues or similar task tracking. Each issue is scoped to be completable in a single work session (1-4 hours) where possible.
+This document breaks down the product spec into discrete, actionable issues suitable for GitHub Issues or similar task tracking. 
+
+This document is essentially the recipe to recreate neonv from scratch.
+
 
 ---
 
@@ -21,7 +24,7 @@ A SwiftUI prototype was built and tested. Key findings that affect implementatio
 - `@FocusState` enables programmatic focus management
 - Preview toggle button + Cmd-P shortcut is intuitive
 
-### Critical Additions (Non-Negotiable for MVP)
+### Additions (Non-Negotiable for MVP)
 - **Every beep is a bug** - Full keyboard navigation required from day one
 - **Search box must be focused on launch** - User starts typing immediately
 - **Tab cycles through panes**: Search → List → Editor (with Shift-Tab reverse)
@@ -35,9 +38,7 @@ A SwiftUI prototype was built and tested. Key findings that affect implementatio
 - Metal shader cache can lock during build - delete `/var/folders/.../com.apple.metal/`
 - May need AppKit for: global hotkey, NSTextView at scale, complex keyboard edge cases
 
-### Reference Documents
-- `prototype-learnings.md` - Detailed session notes
-- `keyboard-and-ux-requirements.md` - Full keyboard specifications
+
 
 ---
 
