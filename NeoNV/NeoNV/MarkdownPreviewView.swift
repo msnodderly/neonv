@@ -5,7 +5,7 @@ struct MarkdownPreviewView: NSViewRepresentable {
     var content: String
     var fontSize: CGFloat = 13
     var onShiftTab: (() -> Void)?
-    var onTypeToEdit: ((String) -> Void)?
+    var onTypeToEdit: ((String?) -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = FocusForwardingScrollView()
@@ -526,11 +526,12 @@ class PreviewTextView: NSTextView {
            !chars.isEmpty,
            !event.modifierFlags.contains(.command),
            !event.modifierFlags.contains(.control) {
-            // Check if it's a printable character (letter, number, or punctuation)
+            // Check if it's a printable character (letter, number, punctuation, or space)
             let firstChar = chars.unicodeScalars.first!
             if CharacterSet.alphanumerics.contains(firstChar) ||
                CharacterSet.punctuationCharacters.contains(firstChar) ||
-               CharacterSet.symbols.contains(firstChar) {
+               CharacterSet.symbols.contains(firstChar) ||
+               chars == " " || chars == "\t" {
                 onTypeToEdit?(chars)
                 return
             }
