@@ -497,7 +497,7 @@ struct ContentView: View {
                 var lines = currentContent.components(separatedBy: .newlines)
 
                 // Parse new tags (support both comma and colon separators for input)
-                let inputTags: [String]
+                var inputTags: [String]
                 if tagString.contains(":") && !tagString.contains(",") {
                     // Org-mode style input: :tag1:tag2:tag3:
                     inputTags = tagString.components(separatedBy: ":")
@@ -518,8 +518,24 @@ struct ContentView: View {
                     return
                 }
 
+                // For non-org files, ensure tags have # prefix
+                if !isOrgFile {
+                    inputTags = inputTags.map { tag in
+                        tag.hasPrefix("#") ? tag : "#\(tag)"
+                    }
+                }
+
                 // Combine with existing tags (deduplicate)
-                let combinedTags = Array(Set(note.tags + inputTags)).sorted()
+                // Normalize existing tags to have # prefix for comparison (non-org)
+                let existingTags: [String]
+                if !isOrgFile {
+                    existingTags = note.tags.map { tag in
+                        tag.hasPrefix("#") ? tag : "#\(tag)"
+                    }
+                } else {
+                    existingTags = note.tags
+                }
+                let combinedTags = Array(Set(existingTags + inputTags)).sorted()
 
                 // Format tag line based on file type
                 let tagLine: String
@@ -527,7 +543,7 @@ struct ContentView: View {
                     // Org-mode format: #+FILETAGS: :tag1:tag2:tag3:
                     tagLine = "#+FILETAGS: :\(combinedTags.joined(separator: ":")):"
                 } else {
-                    // Standard format: Tags: tag1, tag2, tag3
+                    // Standard format: Tags: #tag1, #tag2, #tag3
                     tagLine = "Tags: \(combinedTags.joined(separator: ", "))"
                 }
 
@@ -1319,7 +1335,7 @@ struct NoteListView: View {
                         if !note.tags.isEmpty {
                             HStack(spacing: 4) {
                                 ForEach(note.tags, id: \.self) { tag in
-                                    Text("#\(tag)")
+                                    Text(tag)
                                         .font(.system(size: 10))
                                         .foregroundColor(.blue)
                                         .padding(.horizontal, 4)

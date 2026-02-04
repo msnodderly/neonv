@@ -73,7 +73,7 @@ struct HorizontalNoteListView: View {
                             if !note.tags.isEmpty {
                                 HStack(spacing: 4) {
                                     ForEach(note.tags, id: \.self) { tag in
-                                        Text("#\(tag)")
+                                        Text(tag)
                                             .font(.system(size: 9))
                                             .foregroundColor(.blue)
                                             .padding(.horizontal, 3)
