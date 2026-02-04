@@ -284,7 +284,9 @@ struct PlainTextEditor: NSViewRepresentable {
                 } else {
                     textStorage.removeAttribute(.strikethroughStyle, range: lineRange)
                     textStorage.removeAttribute(.strikethroughColor, range: lineRange)
-                    textStorage.removeAttribute(.foregroundColor, range: lineRange)
+                    // Set explicit text color to respect dark/light mode (removing the attribute
+                    // causes fallback to black, which is unreadable in dark mode)
+                    textStorage.addAttribute(.foregroundColor, value: NSColor.textColor, range: lineRange)
                 }
 
                 lineStart = lineEnd
