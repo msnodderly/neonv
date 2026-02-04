@@ -1,5 +1,5 @@
 ---
-name: releasing
+name: create-release
 description: "Releases a new version of neonv. Use when asked to release, cut a release, publish a version, or ship."
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: creating-issues
+name: create-issue
 description: "Creates issues using bd CLI and syncs to GitHub. Use when asked to create an issue, file a bug, add a task, or track new work."
 ---
 
