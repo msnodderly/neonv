@@ -35,6 +35,8 @@ struct ContentView: View {
     @State private var cursorPosition = 0
     @State private var pendingCursorAtEnd = false
     @State private var showKeyboardShortcuts = false
+    @State private var noteToTag: NoteFile?
+    @State private var tagText: String = ""
     @FocusState private var focusedField: FocusedField?
 
     struct ExternalConflict: Identifiable {
@@ -240,6 +242,29 @@ struct ContentView: View {
                 Text("Enter a new filename for \"\(note.displayTitle)\"")
             }
         }
+        .alert("Add Tags", isPresented: Binding(
+            get: { noteToTag != nil },
+            set: { if !$0 { noteToTag = nil; tagText = "" } }
+        )) {
+            TextField("Tags (comma-separated)", text: $tagText)
+            Button("Cancel", role: .cancel) {
+                noteToTag = nil
+                tagText = ""
+            }
+            Button("Save") {
+                if let note = noteToTag {
+                    addTagsToNote(note, tagString: tagText)
+                }
+            }
+        } message: {
+            if let note = noteToTag {
+                if note.tags.isEmpty {
+                    Text("Add tags to \"\(note.displayTitle)\"\n\nEnter tags separated by commas (e.g., work, important, todo)")
+                } else {
+                    Text("Current tags: \(note.tags.joined(separator: ", "))\n\nEnter tags separated by commas")
+                }
+            }
+        }
         .modifier(NotificationHandlers(
             onFocusSearch: {
                 if settings.isSearchFieldHidden {
@@ -268,7 +293,14 @@ struct ContentView: View {
             onOpenInExternalEditor: openInExternalEditor,
             onToggleSearchField: toggleSearchField,
             onToggleFileList: toggleFileList,
-            onToggleLayout: toggleLayout
+            onToggleLayout: toggleLayout,
+            onAddTag: {
+                guard let id = selectedNoteID,
+                      let note = noteStore.notes.first(where: { $0.id == id }),
+                      !note.isUnsaved else { return }
+                tagText = note.tags.joined(separator: ", ")
+                noteToTag = note
+            }
         ))
         .sheet(isPresented: $showHelp) {
             HelpView()
@@ -334,6 +366,10 @@ struct ContentView: View {
                     onRenameNote: { note in
                         renameText = note.url.deletingPathExtension().lastPathComponent
                         noteToRename = note
+                    },
+                    onAddTag: { note in
+                        tagText = note.tags.joined(separator: ", ")
+                        noteToTag = note
                     }
                 )
                 .frame(minHeight: 80, idealHeight: 150, maxHeight: 300)
@@ -362,6 +398,10 @@ struct ContentView: View {
             onRenameNote: { note in
                 renameText = note.url.deletingPathExtension().lastPathComponent
                 noteToRename = note
+            },
+            onAddTag: { note in
+                tagText = note.tags.joined(separator: ", ")
+                noteToTag = note
             }
         )
     }
@@ -433,6 +473,84 @@ struct ContentView: View {
             renameError = nil
         } catch {
             renameError = error.localizedDescription
+        }
+    }
+
+    private func addTagsToNote(_ note: NoteFile, tagString: String) {
+        guard !note.isUnsaved else {
+            noteToTag = nil
+            tagText = ""
+            return
+        }
+
+        Task {
+            do {
+                // Read current file content
+                let currentContent = try String(contentsOf: note.url, encoding: .utf8)
+                var lines = currentContent.components(separatedBy: .newlines)
+
+                // Parse new tags
+                let newTags = tagString.components(separatedBy: ",")
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                    .filter { !$0.isEmpty }
+
+                guard !newTags.isEmpty else {
+                    await MainActor.run {
+                        noteToTag = nil
+                        tagText = ""
+                    }
+                    return
+                }
+
+                // Combine with existing tags (deduplicate)
+                let combinedTags = Array(Set(note.tags + newTags)).sorted()
+                let tagLine = "Tags: \(combinedTags.joined(separator: ", "))"
+
+                // Find and replace existing Tags: line, or add at the beginning
+                var foundTagLine = false
+                for (index, line) in lines.enumerated() {
+                    let trimmed = line.trimmingCharacters(in: .whitespaces)
+                    if trimmed.lowercased().hasPrefix("tags:") || trimmed.lowercased().hasPrefix("tag:") {
+                        lines[index] = tagLine
+                        foundTagLine = true
+                        break
+                    }
+                }
+
+                if !foundTagLine {
+                    // Add at the beginning
+                    lines.insert(tagLine, at: 0)
+                    lines.insert("", at: 1) // Add blank line after tags
+                }
+
+                let newContent = lines.joined(separator: "\n")
+
+                // Save the file
+                noteStore.markAsSavedLocally(note.url, content: newContent)
+                try await atomicWrite(content: newContent, to: note.url)
+
+                await MainActor.run {
+                    // Update editor if this is the currently selected note
+                    if selectedNoteID == note.id {
+                        editorContent = newContent
+                        originalContent = newContent
+                        isDirty = false
+                    }
+                    noteToTag = nil
+                    tagText = ""
+                }
+            } catch {
+                await MainActor.run {
+                    let alert = NSAlert()
+                    alert.messageText = "Failed to Add Tags"
+                    alert.informativeText = "Could not add tags to \"\(note.displayTitle)\":\n\n\(error.localizedDescription)"
+                    alert.alertStyle = .warning
+                    alert.addButton(withTitle: "OK")
+                    alert.runModal()
+                    noteToTag = nil
+                    tagText = ""
+                }
+            }
         }
     }
 
@@ -1106,6 +1224,7 @@ struct NoteListView: View {
     var onDeleteNote: ((NoteFile) -> Void)?
     var onShowInFinder: ((NoteFile) -> Void)?
     var onRenameNote: ((NoteFile) -> Void)?
+    var onAddTag: ((NoteFile) -> Void)?
 
     @ObservedObject private var settings = AppSettings.shared
 
@@ -1147,7 +1266,21 @@ struct NoteListView: View {
                                 color: .secondary
                             )
                         }
-                        
+
+                        if !note.tags.isEmpty {
+                            HStack(spacing: 4) {
+                                ForEach(note.tags, id: \.self) { tag in
+                                    Text("#\(tag)")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.blue)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 1)
+                                        .background(Color.blue.opacity(0.1))
+                                        .cornerRadius(3)
+                                }
+                            }
+                        }
+
                         if !note.contentPreview.isEmpty {
                             Text(note.contentPreview.replacingOccurrences(of: "\n", with: " "))
                                 .font(.system(size: 11))
@@ -1157,6 +1290,11 @@ struct NoteListView: View {
                     }
                     .tag(note.id)
                     .contextMenu {
+                        if !note.isUnsaved, let onAddTag = onAddTag {
+                            Button("Add Tags...") {
+                                onAddTag(note)
+                            }
+                        }
                         if !note.isUnsaved, let onRenameNote = onRenameNote {
                             Button("Rename") {
                                 onRenameNote(note)
@@ -1256,6 +1394,7 @@ struct NotificationHandlers: ViewModifier {
     let onToggleSearchField: () -> Void
     let onToggleFileList: () -> Void
     let onToggleLayout: () -> Void
+    let onAddTag: () -> Void
 
     func body(content: Content) -> some View {
         content
@@ -1294,6 +1433,9 @@ struct NotificationHandlers: ViewModifier {
             }
             .onReceive(NotificationCenter.default.publisher(for: .toggleLayout)) { _ in
                 onToggleLayout()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .addTag)) { _ in
+                onAddTag()
             }
     }
 }
