@@ -5,7 +5,7 @@ description: "Creates issues using bd CLI and syncs to GitHub. Use when asked to
 
 # Creating Issues
 
-Creates ONE issue using `bd`, syncs it, then stops. Does NOT implement the issue.
+Create ONE issue using `bd`, sync it, then stop. Do NOT implement the issue.
 
 ## Context
 
