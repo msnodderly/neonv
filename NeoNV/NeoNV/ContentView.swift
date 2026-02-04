@@ -258,8 +258,13 @@ struct ContentView: View {
             }
         } message: {
             if let note = noteToTag {
+                let isOrgFile = note.url.pathExtension.lowercased() == "org"
                 if note.tags.isEmpty {
-                    Text("Add tags to \"\(note.displayTitle)\"\n\nEnter tags separated by commas (e.g., work, important, todo)")
+                    if isOrgFile {
+                        Text("Add tags to \"\(note.displayTitle)\"\n\nEnter tags separated by commas.\nWill be saved as #+FILETAGS: :tag1:tag2:")
+                    } else {
+                        Text("Add tags to \"\(note.displayTitle)\"\n\nEnter tags separated by commas (e.g., work, important, todo)")
+                    }
                 } else {
                     Text("Current tags: \(note.tags.joined(separator: ", "))\n\nEnter tags separated by commas")
                 }
@@ -483,18 +488,29 @@ struct ContentView: View {
             return
         }
 
+        let isOrgFile = note.url.pathExtension.lowercased() == "org"
+
         Task {
             do {
                 // Read current file content
                 let currentContent = try String(contentsOf: note.url, encoding: .utf8)
                 var lines = currentContent.components(separatedBy: .newlines)
 
-                // Parse new tags
-                let newTags = tagString.components(separatedBy: ",")
-                    .map { $0.trimmingCharacters(in: .whitespaces) }
-                    .filter { !$0.isEmpty }
+                // Parse new tags (support both comma and colon separators for input)
+                let inputTags: [String]
+                if tagString.contains(":") && !tagString.contains(",") {
+                    // Org-mode style input: :tag1:tag2:tag3:
+                    inputTags = tagString.components(separatedBy: ":")
+                        .map { $0.trimmingCharacters(in: .whitespaces) }
+                        .filter { !$0.isEmpty }
+                } else {
+                    // Standard comma-separated input
+                    inputTags = tagString.components(separatedBy: ",")
+                        .map { $0.trimmingCharacters(in: .whitespaces) }
+                        .filter { !$0.isEmpty }
+                }
 
-                guard !newTags.isEmpty else {
+                guard !inputTags.isEmpty else {
                     await MainActor.run {
                         noteToTag = nil
                         tagText = ""
@@ -503,24 +519,57 @@ struct ContentView: View {
                 }
 
                 // Combine with existing tags (deduplicate)
-                let combinedTags = Array(Set(note.tags + newTags)).sorted()
-                let tagLine = "Tags: \(combinedTags.joined(separator: ", "))"
+                let combinedTags = Array(Set(note.tags + inputTags)).sorted()
 
-                // Find and replace existing Tags: line, or add at the beginning
+                // Format tag line based on file type
+                let tagLine: String
+                if isOrgFile {
+                    // Org-mode format: #+FILETAGS: :tag1:tag2:tag3:
+                    tagLine = "#+FILETAGS: :\(combinedTags.joined(separator: ":")):"
+                } else {
+                    // Standard format: Tags: tag1, tag2, tag3
+                    tagLine = "Tags: \(combinedTags.joined(separator: ", "))"
+                }
+
+                // Find and replace existing tag line, or add at the beginning
                 var foundTagLine = false
                 for (index, line) in lines.enumerated() {
                     let trimmed = line.trimmingCharacters(in: .whitespaces)
-                    if trimmed.lowercased().hasPrefix("tags:") || trimmed.lowercased().hasPrefix("tag:") {
-                        lines[index] = tagLine
-                        foundTagLine = true
-                        break
+                    if isOrgFile {
+                        // Look for #+FILETAGS: in org files
+                        if trimmed.uppercased().hasPrefix("#+FILETAGS:") {
+                            lines[index] = tagLine
+                            foundTagLine = true
+                            break
+                        }
+                    } else {
+                        // Look for Tags: in other files
+                        if trimmed.lowercased().hasPrefix("tags:") || trimmed.lowercased().hasPrefix("tag:") {
+                            lines[index] = tagLine
+                            foundTagLine = true
+                            break
+                        }
                     }
                 }
 
                 if !foundTagLine {
-                    // Add at the beginning
-                    lines.insert(tagLine, at: 0)
-                    lines.insert("", at: 1) // Add blank line after tags
+                    if isOrgFile {
+                        // For org files, add after any existing #+KEY: metadata at the top
+                        var insertIndex = 0
+                        for (index, line) in lines.enumerated() {
+                            let trimmed = line.trimmingCharacters(in: .whitespaces)
+                            if trimmed.hasPrefix("#+") {
+                                insertIndex = index + 1
+                            } else if !trimmed.isEmpty {
+                                break
+                            }
+                        }
+                        lines.insert(tagLine, at: insertIndex)
+                    } else {
+                        // Add at the beginning for other files
+                        lines.insert(tagLine, at: 0)
+                        lines.insert("", at: 1) // Add blank line after tags
+                    }
                 }
 
                 let newContent = lines.joined(separator: "\n")

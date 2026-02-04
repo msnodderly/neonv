@@ -280,7 +280,8 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             let relativePath = url.path.replacingOccurrences(of: folderURL.path + "/", with: "")
             let title = readFirstLine(from: url)
             let contentPreview = readContentPreview(from: url)
-            let tags = Self.parseTagsStatic(from: contentPreview)
+            let isOrgFile = ext == "org"
+            let tags = Self.parseTagsStatic(from: contentPreview, isOrgFile: isOrgFile)
 
             if let index = notes.firstIndex(where: { $0.url == url }) {
                 notes[index].updateContent(title: title, contentPreview: contentPreview, modificationDate: modDate, tags: tags)
@@ -495,7 +496,8 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
                 let relativePath = fileURL.path.replacingOccurrences(of: folderPath, with: "")
                 let title = readFirstLineStatic(from: fileURL)
                 let contentPreview = readContentPreviewStatic(from: fileURL)
-                let tags = parseTagsStatic(from: contentPreview)
+                let isOrgFile = ext == "org"
+                let tags = parseTagsStatic(from: contentPreview, isOrgFile: isOrgFile)
 
                 let note = NoteFile(
                     url: fileURL,
@@ -515,14 +517,25 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         return result
     }
 
-    private static func parseTagsStatic(from content: String) -> [String] {
-        // Look for "Tags: tag1, tag2, tag3" at the beginning of the file
+    static func parseTagsStatic(from content: String, isOrgFile: Bool = false) -> [String] {
         let lines = content.components(separatedBy: .newlines)
         for line in lines.prefix(10) { // Only check first 10 lines
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             if trimmed.isEmpty { continue }
-            if trimmed.lowercased().hasPrefix("tags:") || trimmed.lowercased().hasPrefix("tag:") {
-                let tagPart = String(trimmed.dropFirst(trimmed.contains(":") ? trimmed.firstIndex(of: ":")!.utf16Offset(in: trimmed) + 1 : 4))
+
+            // Org-mode format: #+FILETAGS: :tag1:tag2:tag3:
+            if trimmed.uppercased().hasPrefix("#+FILETAGS:") {
+                let tagPart = String(trimmed.dropFirst(11)).trimmingCharacters(in: .whitespaces)
+                let tags = tagPart.components(separatedBy: ":")
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                    .filter { !$0.isEmpty }
+                return tags
+            }
+
+            // Standard format for non-org files: Tags: tag1, tag2, tag3
+            if !isOrgFile && (trimmed.lowercased().hasPrefix("tags:") || trimmed.lowercased().hasPrefix("tag:")) {
+                guard let colonIndex = trimmed.firstIndex(of: ":") else { continue }
+                let tagPart = String(trimmed[trimmed.index(after: colonIndex)...])
                 let tags = tagPart.components(separatedBy: ",")
                     .map { $0.trimmingCharacters(in: .whitespaces) }
                     .filter { !$0.isEmpty }
