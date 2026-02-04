@@ -667,7 +667,6 @@ struct ContentView: View {
         let parts = sanitizePathComponents(searchText)
         guard !parts.isEmpty else { return }
 
-        let ext = AppSettings.shared.defaultExtension.rawValue
         let directoryParts = parts.dropLast()
         let baseName = parts.last!
 
@@ -676,7 +675,14 @@ struct ContentView: View {
             dirURL = dirURL.appendingPathComponent(part, isDirectory: true)
         }
 
-        let fileURL = dirURL.appendingPathComponent("\(baseName).\(ext)")
+        let fileName: String
+        if hasValidExtension(baseName) {
+            fileName = baseName
+        } else {
+            let ext = AppSettings.shared.defaultExtension.rawValue
+            fileName = "\(baseName).\(ext)"
+        }
+        let fileURL = dirURL.appendingPathComponent(fileName)
         let initialContent = searchText + "\n\n"
 
         Task {
@@ -719,8 +725,25 @@ struct ContentView: View {
         // This allows it to restore the last manual selection
     }
 
-    private func sanitizePathComponent(_ name: String) -> String {
-        var sanitized = name.lowercased()
+    private static let validExtensions: Set<String> = ["md", "txt", "org", "markdown", "text"]
+
+    private func sanitizePathComponent(_ name: String, preserveExtension: Bool = false) -> String {
+        var baseName = name
+        var extensionPart: String?
+
+        if preserveExtension {
+            let lowercased = name.lowercased()
+            for ext in Self.validExtensions {
+                if lowercased.hasSuffix(".\(ext)") {
+                    let extWithDot = ".\(ext)"
+                    baseName = String(name.dropLast(extWithDot.count))
+                    extensionPart = ext
+                    break
+                }
+            }
+        }
+
+        var sanitized = baseName.lowercased()
             .replacingOccurrences(of: " ", with: "-")
             .replacingOccurrences(of: "[^a-z0-9-]", with: "", options: .regularExpression)
 
@@ -734,6 +757,10 @@ struct ContentView: View {
             sanitized = "untitled-\(formatter.string(from: Date()))"
         }
 
+        if let ext = extensionPart {
+            sanitized += ".\(ext)"
+        }
+
         return sanitized
     }
 
@@ -745,12 +772,18 @@ struct ContentView: View {
         let rawParts = normalized.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
 
         var parts: [String] = []
-        for part in rawParts {
+        for (index, part) in rawParts.enumerated() {
             if part == "." || part == ".." { continue }
-            let sanitized = sanitizePathComponent(part)
+            let isLastPart = index == rawParts.count - 1
+            let sanitized = sanitizePathComponent(part, preserveExtension: isLastPart)
             if !sanitized.isEmpty { parts.append(sanitized) }
         }
         return parts
+    }
+
+    private func hasValidExtension(_ name: String) -> Bool {
+        let lowercased = name.lowercased()
+        return Self.validExtensions.contains { lowercased.hasSuffix(".\($0)") }
     }
 
     private func scheduleAutoSave() {
