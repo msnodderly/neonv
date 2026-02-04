@@ -664,14 +664,29 @@ struct ContentView: View {
             return
         }
 
-        let fileName = sanitizeFileName(searchText)
-        let ext = AppSettings.shared.defaultExtension.rawValue
-        let fileURL = folderURL.appendingPathComponent(fileName + ".\(ext)")
+        let parts = sanitizePathComponents(searchText)
+        guard !parts.isEmpty else { return }
 
+        let ext = AppSettings.shared.defaultExtension.rawValue
+        let directoryParts = parts.dropLast()
+        let baseName = parts.last!
+
+        var dirURL = folderURL
+        for part in directoryParts {
+            dirURL = dirURL.appendingPathComponent(part, isDirectory: true)
+        }
+
+        let fileURL = dirURL.appendingPathComponent("\(baseName).\(ext)")
         let initialContent = searchText + "\n\n"
 
         Task {
             do {
+                let fm = FileManager.default
+                try fm.createDirectory(
+                    at: fileURL.deletingLastPathComponent(),
+                    withIntermediateDirectories: true
+                )
+
                 noteStore.markAsSavedLocally(fileURL, content: initialContent)
                 try await atomicWrite(content: initialContent, to: fileURL)
 
@@ -704,7 +719,7 @@ struct ContentView: View {
         // This allows it to restore the last manual selection
     }
 
-    private func sanitizeFileName(_ name: String) -> String {
+    private func sanitizePathComponent(_ name: String) -> String {
         var sanitized = name.lowercased()
             .replacingOccurrences(of: " ", with: "-")
             .replacingOccurrences(of: "[^a-z0-9-]", with: "", options: .regularExpression)
@@ -720,6 +735,22 @@ struct ContentView: View {
         }
 
         return sanitized
+    }
+
+    private func sanitizePathComponents(_ input: String) -> [String] {
+        let normalized = input
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\\", with: "/")
+
+        let rawParts = normalized.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
+
+        var parts: [String] = []
+        for part in rawParts {
+            if part == "." || part == ".." { continue }
+            let sanitized = sanitizePathComponent(part)
+            if !sanitized.isEmpty { parts.append(sanitized) }
+        }
+        return parts
     }
 
     private func scheduleAutoSave() {
