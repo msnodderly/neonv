@@ -66,6 +66,12 @@ struct ContentView: View {
         }
     }
 
+    private var hasExactMatch: Bool {
+        let query = debouncedSearchText.lowercased()
+        guard !query.isEmpty else { return false }
+        return filteredNotes.contains { $0.searchTitle == query }
+    }
+
     @ObservedObject private var settings = AppSettings.shared
 
     var body: some View {
@@ -75,6 +81,7 @@ struct ContentView: View {
                     text: $searchText,
                     focusedField: _focusedField,
                     matchCount: filteredNotes.count,
+                    hasExactMatch: hasExactMatch,
                     onNavigateToList: navigateToList,
                     onNavigateToEditor: { focusedField = .editor },
                     onCreateNote: createNewNote,
@@ -962,6 +969,7 @@ struct SearchBar: View {
     @Binding var text: String
     @FocusState var focusedField: FocusedField?
     var matchCount: Int
+    var hasExactMatch: Bool
     var onNavigateToList: () -> Void
     var onNavigateToEditor: () -> Void
     var onCreateNote: () -> Void
@@ -1004,10 +1012,8 @@ struct SearchBar: View {
                     return .handled
                 }
                 .onKeyPress(.return) {
-                    if matchCount == 1 {
+                    if hasExactMatch {
                         onNavigateToEditor()
-                    } else if matchCount > 1 {
-                        onNavigateToList()
                     } else if !text.isEmpty {
                         onCreateNote()
                     }
