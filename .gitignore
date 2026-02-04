@@ -163,3 +163,5 @@ tagging-support/
 org-extension-fix/
 # bd worktree
 org-tags-display/
+# bd worktree
+org-tags-prepopulate/
