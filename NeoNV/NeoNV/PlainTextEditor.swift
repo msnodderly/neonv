@@ -16,6 +16,8 @@ struct PlainTextEditor: NSViewRepresentable {
         let textView = CustomTextView(frame: .zero)
 
         textView.delegate = context.coordinator
+        textView.textStorage?.delegate = context.coordinator
+        context.coordinator.textView = textView
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
 
@@ -32,6 +34,7 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.textContainerInset = NSSize(width: 8, height: 8)
         textView.usesFindBar = true
         textView.isIncrementalSearchingEnabled = true
+        textView.layoutManager?.allowsNonContiguousLayout = true
 
         // Disable automatic substitutions for a true plain text experience
         textView.isAutomaticQuoteSubstitutionEnabled = false
@@ -56,6 +59,9 @@ struct PlainTextEditor: NSViewRepresentable {
         scrollView.borderType = .noBorder
 
         textView.string = text
+
+        // Apply initial done-styling for the full document
+        context.coordinator.applyDoneAttributesFullDocument()
 
         // Restore cursor position (clamped to valid range)
         let safePosition = min(cursorPosition, text.count)
@@ -100,10 +106,9 @@ struct PlainTextEditor: NSViewRepresentable {
             context.coordinator.lastSearchTerms = searchTerms
         }
         
-        // Only re-apply strikethrough if text changed or user edited text
-        if textChanged || context.coordinator.needsStrikethroughUpdate {
-            applyDoneStrikethrough(to: textView)
-            context.coordinator.needsStrikethroughUpdate = false
+        // Apply full done-styling only when switching to a new document
+        if textChanged {
+            context.coordinator.applyDoneAttributesFullDocument()
         }
 
         if showFindBar {
@@ -154,46 +159,7 @@ struct PlainTextEditor: NSViewRepresentable {
         }
     }
     
-    private func applyDoneStrikethrough(to textView: NSTextView) {
-        guard let textStorage = textView.textStorage else { return }
-        
-        textStorage.beginEditing()
-        defer { textStorage.endEditing() }
-        
-        let fullRange = NSRange(location: 0, length: textStorage.length)
 
-        // Remove existing strikethrough and done-line coloring
-        textStorage.removeAttribute(.strikethroughStyle, range: fullRange)
-        textStorage.removeAttribute(.strikethroughColor, range: fullRange)
-
-        // Reset foreground color to default for all text
-        let defaultColor = NSColor.textColor
-        textStorage.addAttribute(.foregroundColor, value: defaultColor, range: fullRange)
-
-        let text = textView.string
-        let nsText = text as NSString
-        let doneColor = NSColor.secondaryLabelColor
-
-        // Find lines containing @done and apply strikethrough
-        var lineStart = 0
-        while lineStart < nsText.length {
-            var lineEnd = 0
-            var contentsEnd = 0
-            nsText.getLineStart(nil, end: &lineEnd, contentsEnd: &contentsEnd, for: NSRange(location: lineStart, length: 0))
-
-            let lineRange = NSRange(location: lineStart, length: contentsEnd - lineStart)
-            let lineContent = nsText.substring(with: lineRange)
-
-            let isDone = lineContent.contains("@done") || lineContent.hasPrefix("- [x] ") || lineContent.hasPrefix("- [X] ")
-            if isDone {
-                textStorage.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: lineRange)
-                textStorage.addAttribute(.strikethroughColor, value: doneColor, range: lineRange)
-                textStorage.addAttribute(.foregroundColor, value: doneColor, range: lineRange)
-            }
-
-            lineStart = lineEnd
-        }
-    }
 
     private static func focusSearchField(in view: NSView) {
         for subview in view.subviews {
@@ -216,11 +182,12 @@ struct PlainTextEditor: NSViewRepresentable {
         Coordinator(text: $text, cursorPosition: $cursorPosition)
     }
 
-    class Coordinator: NSObject, NSTextViewDelegate {
+    class Coordinator: NSObject, NSTextViewDelegate, NSTextStorageDelegate {
         var text: Binding<String>
         var cursorPosition: Binding<Int>
         var lastSearchTerms: [String] = []
-        var needsStrikethroughUpdate: Bool = false
+        weak var textView: NSTextView?
+        private var isApplyingDoneAttributes = false
 
         init(text: Binding<String>, cursorPosition: Binding<Int>) {
             self.text = text
@@ -231,12 +198,78 @@ struct PlainTextEditor: NSViewRepresentable {
             guard let textView = notification.object as? NSTextView else { return }
             text.wrappedValue = textView.string
             cursorPosition.wrappedValue = textView.selectedRange().location
-            needsStrikethroughUpdate = true
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             cursorPosition.wrappedValue = textView.selectedRange().location
+        }
+
+        func textStorage(
+            _ textStorage: NSTextStorage,
+            didProcessEditing editedMask: NSTextStorageEditActions,
+            range editedRange: NSRange,
+            changeInLength delta: Int
+        ) {
+            guard !isApplyingDoneAttributes,
+                  editedMask.contains(.editedCharacters)
+            else { return }
+
+            let ns = textStorage.string as NSString
+            guard ns.length > 0, editedRange.location < ns.length else { return }
+
+            // Expand to full line(s) containing the edit
+            let affected = ns.lineRange(for: editedRange)
+            applyDoneAttributes(textStorage: textStorage, in: affected)
+        }
+
+        private func applyDoneAttributes(textStorage: NSTextStorage, in range: NSRange) {
+            isApplyingDoneAttributes = true
+            defer { isApplyingDoneAttributes = false }
+
+            let ns = textStorage.string as NSString
+            let doneColor = NSColor.secondaryLabelColor
+
+            textStorage.beginEditing()
+            defer { textStorage.endEditing() }
+
+            var lineStart = range.location
+            let end = NSMaxRange(range)
+
+            while lineStart < end, lineStart < ns.length {
+                var lineEnd = 0
+                var contentsEnd = 0
+                ns.getLineStart(nil, end: &lineEnd, contentsEnd: &contentsEnd,
+                                for: NSRange(location: lineStart, length: 0))
+
+                let lineRange = NSRange(location: lineStart, length: contentsEnd - lineStart)
+                let lineContent = ns.substring(with: lineRange)
+
+                let isDone = lineContent.contains("@done")
+                          || lineContent.hasPrefix("- [x] ")
+                          || lineContent.hasPrefix("- [X] ")
+
+                if isDone {
+                    textStorage.addAttribute(.strikethroughStyle,
+                                             value: NSUnderlineStyle.single.rawValue,
+                                             range: lineRange)
+                    textStorage.addAttribute(.strikethroughColor, value: doneColor, range: lineRange)
+                    textStorage.addAttribute(.foregroundColor, value: doneColor, range: lineRange)
+                } else {
+                    textStorage.removeAttribute(.strikethroughStyle, range: lineRange)
+                    textStorage.removeAttribute(.strikethroughColor, range: lineRange)
+                    textStorage.removeAttribute(.foregroundColor, range: lineRange)
+                }
+
+                lineStart = lineEnd
+            }
+        }
+
+        func applyDoneAttributesFullDocument() {
+            guard let textView = textView,
+                  let textStorage = textView.textStorage else { return }
+            let fullRange = NSRange(location: 0, length: textStorage.length)
+            applyDoneAttributes(textStorage: textStorage, in: fullRange)
         }
     }
 }
