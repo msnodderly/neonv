@@ -99,6 +99,12 @@ struct NeoNVApp: App {
                     NotificationCenter.default.post(name: .toggleLayout, object: nil)
                 }
                 .keyboardShortcut("j", modifiers: [.command, .shift])
+
+                Button("Toggle Layout") {
+                    NotificationCenter.default.post(name: .toggleLayout, object: nil)
+                }
+                .keyboardShortcut("l", modifiers: [.command, .control])
+                .hidden()
             }
 
             CommandGroup(replacing: .printItem) { }
