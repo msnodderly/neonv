@@ -151,3 +151,5 @@ auto-mkdir/
 swiftlint-orgpreview/
 swiftlint-thresholds/
 fix-editor-flicker/
+# bd worktree
+preview-typing/
