@@ -159,3 +159,5 @@ cmd-ctrl-l-layout-toggle/
 enter-creates-file/
 # bd worktree
 tagging-support/
+# bd worktree
+org-extension-fix/
