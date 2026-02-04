@@ -291,6 +291,13 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         }
     }
     
+    private static let validExtensions: Set<String> = ["md", "txt", "org", "markdown", "text"]
+
+    private func hasValidExtension(_ name: String) -> Bool {
+        let lowercased = name.lowercased()
+        return Self.validExtensions.contains { lowercased.hasSuffix(".\($0)") }
+    }
+
     @discardableResult
     func renameNote(id: UUID, newName: String) throws -> NoteFile {
         guard let index = notes.firstIndex(where: { $0.id == id }) else {
@@ -306,8 +313,13 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             throw NSError(domain: "NoteStore", code: 1, userInfo: [NSLocalizedDescriptionKey: "Filename cannot be empty."])
         }
 
-        let ext = note.url.pathExtension
-        let newFileName = sanitized.hasSuffix(".\(ext)") ? sanitized : "\(sanitized).\(ext)"
+        let newFileName: String
+        if hasValidExtension(sanitized) {
+            newFileName = sanitized
+        } else {
+            let ext = note.url.pathExtension
+            newFileName = sanitized.hasSuffix(".\(ext)") ? sanitized : "\(sanitized).\(ext)"
+        }
         let newURL = note.url.deletingLastPathComponent().appendingPathComponent(newFileName)
 
         guard newURL != note.url else { return note }
