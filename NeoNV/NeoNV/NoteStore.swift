@@ -281,7 +281,9 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             let title = readFirstLine(from: url)
             let contentPreview = readContentPreview(from: url)
             let isOrgFile = ext == "org"
-            let tags = Self.parseTagsStatic(from: contentPreview, isOrgFile: isOrgFile)
+            // For org files, parse tags from raw content (before metadata filtering)
+            let rawContent = isOrgFile ? readRawContent(from: url) : contentPreview
+            let tags = Self.parseTagsStatic(from: rawContent, isOrgFile: isOrgFile)
 
             if let index = notes.firstIndex(where: { $0.url == url }) {
                 notes[index].updateContent(title: title, contentPreview: contentPreview, modificationDate: modDate, tags: tags)
@@ -509,7 +511,9 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
                 let title = readFirstLineStatic(from: fileURL)
                 let contentPreview = readContentPreviewStatic(from: fileURL)
                 let isOrgFile = ext == "org"
-                let tags = parseTagsStatic(from: contentPreview, isOrgFile: isOrgFile)
+                // For org files, parse tags from raw content (before metadata filtering)
+                let rawContent = isOrgFile ? readRawContentStatic(from: fileURL) : contentPreview
+                let tags = parseTagsStatic(from: rawContent, isOrgFile: isOrgFile)
 
                 let note = NoteFile(
                     url: fileURL,
@@ -607,6 +611,14 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         
         return content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
+
+    /// Reads raw content without filtering, for tag parsing purposes
+    private static func readRawContentStatic(from url: URL, maxBytes: Int = 2048) -> String {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
+        defer { try? handle.close() }
+        guard let data = try? handle.read(upToCount: maxBytes) else { return "" }
+        return String(data: data, encoding: .utf8) ?? ""
+    }
     
     private func readFirstLine(from url: URL) -> String {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
@@ -640,6 +652,14 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         }
         
         return content.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Reads raw content without filtering, for tag parsing purposes
+    private func readRawContent(from url: URL, maxBytes: Int = 2048) -> String {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
+        defer { try? handle.close() }
+        guard let data = try? handle.read(upToCount: maxBytes) else { return "" }
+        return String(data: data, encoding: .utf8) ?? ""
     }
     
     private func saveFolder(_ url: URL) {
