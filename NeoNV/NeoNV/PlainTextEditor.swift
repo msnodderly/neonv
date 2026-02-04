@@ -84,16 +84,18 @@ struct PlainTextEditor: NSViewRepresentable {
             textView.selectedRanges = selectedRanges
         }
 
-        // Sync cursor position if updated from outside (e.g., note switching or Cmd+L)
+        // Sync cursor position only when NOT actively editing (avoids feedback loop)
+        let isEditing = (textView.window?.firstResponder === textView)
         let currentRange = textView.selectedRange()
-        if currentRange.location != cursorPosition && currentRange.length == 0 {
+        if !isEditing, currentRange.length == 0, currentRange.location != cursorPosition {
             let safePosition = min(cursorPosition, textView.string.count)
             textView.setSelectedRange(NSRange(location: safePosition, length: 0))
         }
 
-        // Update font if changed
+        // Update font only if actually different (compare by name/size to avoid layout churn)
         let expectedFont = resolvedFont()
-        if textView.font != expectedFont {
+        if textView.font?.fontName != expectedFont.fontName ||
+           textView.font?.pointSize != expectedFont.pointSize {
             textView.font = expectedFont
         }
 
@@ -158,8 +160,6 @@ struct PlainTextEditor: NSViewRepresentable {
             }
         }
     }
-    
-
 
     private static func focusSearchField(in view: NSView) {
         for subview in view.subviews {
@@ -188,6 +188,8 @@ struct PlainTextEditor: NSViewRepresentable {
         var lastSearchTerms: [String] = []
         weak var textView: NSTextView?
         private var isApplyingDoneAttributes = false
+        private var pendingDoneRange: NSRange?
+        private var scheduledDoneApply = false
 
         init(text: Binding<String>, cursorPosition: Binding<Int>) {
             self.text = text
@@ -196,13 +198,18 @@ struct PlainTextEditor: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
-            text.wrappedValue = textView.string
-            cursorPosition.wrappedValue = textView.selectedRange().location
+            let newText = textView.string
+            if text.wrappedValue != newText {
+                text.wrappedValue = newText
+            }
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
-            cursorPosition.wrappedValue = textView.selectedRange().location
+            let loc = textView.selectedRange().location
+            if cursorPosition.wrappedValue != loc {
+                cursorPosition.wrappedValue = loc
+            }
         }
 
         func textStorage(
@@ -220,7 +227,26 @@ struct PlainTextEditor: NSViewRepresentable {
 
             // Expand to full line(s) containing the edit
             let affected = ns.lineRange(for: editedRange)
-            applyDoneAttributes(textStorage: textStorage, in: affected)
+
+            // Merge ranges to coalesce multiple rapid edits
+            if let existing = pendingDoneRange {
+                let start = min(existing.location, affected.location)
+                let end = max(NSMaxRange(existing), NSMaxRange(affected))
+                pendingDoneRange = NSRange(location: start, length: end - start)
+            } else {
+                pendingDoneRange = affected
+            }
+
+            // Schedule coalesced apply on next runloop to avoid layout thrash
+            guard !scheduledDoneApply else { return }
+            scheduledDoneApply = true
+
+            DispatchQueue.main.async { [weak self, weak textStorage] in
+                guard let self, let textStorage, let range = self.pendingDoneRange else { return }
+                self.pendingDoneRange = nil
+                self.scheduledDoneApply = false
+                self.applyDoneAttributes(textStorage: textStorage, in: range)
+            }
         }
 
         private func applyDoneAttributes(textStorage: NSTextStorage, in range: NSRange) {
