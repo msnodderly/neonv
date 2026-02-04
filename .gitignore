@@ -167,3 +167,5 @@ org-tags-display/
 org-tags-prepopulate/
 # bd worktree
 tags-sync-fix/
+# bd worktree
+unsaved-notes-fix/
