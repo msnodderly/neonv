@@ -5,7 +5,7 @@ description: "Releases a new version of neonv. Use when asked to release, cut a 
 
 # Releasing
 
-Releases ONE version. Completes all steps. Stops.
+Creat a Release. Complete all steps. Stop.
 
 ## Context
 
