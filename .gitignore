@@ -155,3 +155,5 @@ fix-editor-flicker/
 preview-typing/
 # bd worktree
 cmd-ctrl-l-layout-toggle/
+# bd worktree
+enter-creates-file/
