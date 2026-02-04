@@ -279,9 +279,17 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             let modDate = resourceValues.contentModificationDate ?? Date()
             let relativePath = url.path.replacingOccurrences(of: folderURL.path + "/", with: "")
             let title = readFirstLine(from: url)
-            let contentPreview = readContentPreview(from: url)
+            let rawContent = readRawContent(from: url)
             let isOrgFile = ext == "org"
-            let tags = Self.parseTagsStatic(from: contentPreview, isOrgFile: isOrgFile)
+            let tags = Self.parseTagsStatic(from: rawContent, isOrgFile: isOrgFile)
+            let contentPreview: String
+            if isOrgFile {
+                let filteredLines = rawContent.components(separatedBy: .newlines)
+                    .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#+") }
+                contentPreview = filteredLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            } else {
+                contentPreview = rawContent.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
 
             if let index = notes.firstIndex(where: { $0.url == url }) {
                 notes[index].updateContent(title: title, contentPreview: contentPreview, modificationDate: modDate, tags: tags)
@@ -354,7 +362,8 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             relativePath: relativePath,
             modificationDate: modDate,
             title: note.title,
-            contentPreview: note.contentPreview
+            contentPreview: note.contentPreview,
+            tags: note.tags
         )
         notes[index] = renamed
         return renamed
@@ -429,7 +438,8 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
                     relativePath: cn.relativePath,
                     modificationDate: cn.modificationDate,
                     title: cn.title,
-                    contentPreview: cn.contentPreview
+                    contentPreview: cn.contentPreview,
+                    tags: cn.tags
                 )
             }
         }
@@ -507,9 +517,17 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
                 let modDate = resourceValues.contentModificationDate ?? Date.distantPast
                 let relativePath = fileURL.path.replacingOccurrences(of: folderPath, with: "")
                 let title = readFirstLineStatic(from: fileURL)
-                let contentPreview = readContentPreviewStatic(from: fileURL)
+                let rawContent = readRawContentStatic(from: fileURL)
                 let isOrgFile = ext == "org"
-                let tags = parseTagsStatic(from: contentPreview, isOrgFile: isOrgFile)
+                let tags = parseTagsStatic(from: rawContent, isOrgFile: isOrgFile)
+                let contentPreview: String
+                if isOrgFile {
+                    let filteredLines = rawContent.components(separatedBy: .newlines)
+                        .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#+") }
+                    contentPreview = filteredLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+                } else {
+                    contentPreview = rawContent.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
 
                 let note = NoteFile(
                     url: fileURL,
@@ -593,10 +611,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
     }
 
     private static func readContentPreviewStatic(from url: URL, maxBytes: Int = 2048) -> String {
-        guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
-        defer { try? handle.close() }
-        guard let data = try? handle.read(upToCount: maxBytes) else { return "" }
-        guard let content = String(data: data, encoding: .utf8) else { return "" }
+        let content = readRawContentStatic(from: url, maxBytes: maxBytes)
         
         // For org files, filter out metadata lines (#+KEY:)
         if url.pathExtension.lowercased() == "org" {
@@ -606,6 +621,13 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         }
         
         return content.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func readRawContentStatic(from url: URL, maxBytes: Int = 2048) -> String {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
+        defer { try? handle.close() }
+        guard let data = try? handle.read(upToCount: maxBytes) else { return "" }
+        return String(data: data, encoding: .utf8) ?? ""
     }
     
     private func readFirstLine(from url: URL) -> String {
@@ -625,12 +647,16 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         return ""
     }
 
-    private func readContentPreview(from url: URL, maxBytes: Int = 2048) -> String {
+    private func readRawContent(from url: URL, maxBytes: Int = 2048) -> String {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
         defer { try? handle.close() }
 
         guard let data = try? handle.read(upToCount: maxBytes) else { return "" }
-        guard let content = String(data: data, encoding: .utf8) else { return "" }
+        return String(data: data, encoding: .utf8) ?? ""
+    }
+
+    private func readContentPreview(from url: URL, maxBytes: Int = 2048) -> String {
+        let content = readRawContent(from: url, maxBytes: maxBytes)
 
         // For org files, filter out metadata lines (#+KEY:)
         if url.pathExtension.lowercased() == "org" {
