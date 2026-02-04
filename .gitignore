@@ -153,3 +153,5 @@ swiftlint-thresholds/
 fix-editor-flicker/
 # bd worktree
 preview-typing/
+# bd worktree
+cmd-ctrl-l-layout-toggle/
