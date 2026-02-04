@@ -14,6 +14,7 @@ struct HorizontalNoteListView: View {
     var onDeleteNote: ((NoteFile) -> Void)?
     var onShowInFinder: ((NoteFile) -> Void)?
     var onRenameNote: ((NoteFile) -> Void)?
+    var onAddTag: ((NoteFile) -> Void)?
 
     @ObservedObject private var settings = AppSettings.shared
 
@@ -63,11 +64,25 @@ struct HorizontalNoteListView: View {
                                 color: .primary
                             )
                             .lineLimit(1)
-                            
+
                             Text(note.url.lastPathComponent)
                                 .font(.system(size: 10))
                                 .foregroundColor(.secondary)
                                 .lineLimit(1)
+
+                            if !note.tags.isEmpty {
+                                HStack(spacing: 4) {
+                                    ForEach(note.tags, id: \.self) { tag in
+                                        Text(tag)
+                                            .font(.system(size: 9))
+                                            .foregroundColor(.blue)
+                                            .padding(.horizontal, 3)
+                                            .padding(.vertical, 1)
+                                            .background(Color.blue.opacity(0.1))
+                                            .cornerRadius(3)
+                                    }
+                                }
+                            }
                         }
                         .frame(width: 180, alignment: .leading)
 
@@ -90,6 +105,11 @@ struct HorizontalNoteListView: View {
                     .padding(.vertical, 4)
                     .tag(note.id)
                     .contextMenu {
+                        if !note.isUnsaved, let onAddTag = onAddTag {
+                            Button("Add Tags...") {
+                                onAddTag(note)
+                            }
+                        }
                         if !note.isUnsaved, let onRenameNote = onRenameNote {
                             Button("Rename") {
                                 onRenameNote(note)

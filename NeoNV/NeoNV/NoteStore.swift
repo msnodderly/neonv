@@ -20,13 +20,15 @@ struct NoteFile: Identifiable, Equatable {
     var title: String
     var contentPreview: String
     var isUnsaved: Bool = false
+    var tags: [String] = []
 
     /// Pre-computed lowercased strings for fast search matching
     private(set) var searchTitle: String = ""
     private(set) var searchPath: String = ""
     private(set) var searchPreview: String = ""
+    private(set) var searchTags: String = ""
 
-    init(url: URL, relativePath: String, modificationDate: Date, title: String, contentPreview: String = "", isUnsaved: Bool = false) {
+    init(url: URL, relativePath: String, modificationDate: Date, title: String, contentPreview: String = "", isUnsaved: Bool = false, tags: [String] = []) {
         self.id = UUID()
         self.url = url
         self.relativePath = relativePath
@@ -34,24 +36,29 @@ struct NoteFile: Identifiable, Equatable {
         self.title = title
         self.contentPreview = contentPreview
         self.isUnsaved = isUnsaved
+        self.tags = tags
         self.searchTitle = title.lowercased()
         self.searchPath = relativePath.lowercased()
         self.searchPreview = contentPreview.lowercased()
+        self.searchTags = tags.joined(separator: " ").lowercased()
     }
 
     func matches(query: String) -> Bool {
         let lowercasedQuery = query.lowercased()
         return searchTitle.contains(lowercasedQuery) ||
                searchPath.contains(lowercasedQuery) ||
-               searchPreview.contains(lowercasedQuery)
+               searchPreview.contains(lowercasedQuery) ||
+               searchTags.contains(lowercasedQuery)
     }
 
-    mutating func updateContent(title: String, contentPreview: String, modificationDate: Date) {
+    mutating func updateContent(title: String, contentPreview: String, modificationDate: Date, tags: [String] = []) {
         self.title = title
         self.contentPreview = contentPreview
         self.modificationDate = modificationDate
+        self.tags = tags
         self.searchTitle = title.lowercased()
         self.searchPreview = contentPreview.lowercased()
+        self.searchTags = tags.joined(separator: " ").lowercased()
     }
     
     var displayTitle: String {
@@ -273,16 +280,19 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             let relativePath = url.path.replacingOccurrences(of: folderURL.path + "/", with: "")
             let title = readFirstLine(from: url)
             let contentPreview = readContentPreview(from: url)
-            
+            let isOrgFile = ext == "org"
+            let tags = Self.parseTagsStatic(from: contentPreview, isOrgFile: isOrgFile)
+
             if let index = notes.firstIndex(where: { $0.url == url }) {
-                notes[index].updateContent(title: title, contentPreview: contentPreview, modificationDate: modDate)
+                notes[index].updateContent(title: title, contentPreview: contentPreview, modificationDate: modDate, tags: tags)
             } else {
                 let note = NoteFile(
                     url: url,
                     relativePath: relativePath,
                     modificationDate: modDate,
                     title: title,
-                    contentPreview: contentPreview
+                    contentPreview: contentPreview,
+                    tags: tags
                 )
                 notes.append(note)
             }
@@ -498,13 +508,16 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
                 let relativePath = fileURL.path.replacingOccurrences(of: folderPath, with: "")
                 let title = readFirstLineStatic(from: fileURL)
                 let contentPreview = readContentPreviewStatic(from: fileURL)
+                let isOrgFile = ext == "org"
+                let tags = parseTagsStatic(from: contentPreview, isOrgFile: isOrgFile)
 
                 let note = NoteFile(
                     url: fileURL,
                     relativePath: relativePath,
                     modificationDate: modDate,
                     title: title,
-                    contentPreview: contentPreview
+                    contentPreview: contentPreview,
+                    tags: tags
                 )
                 result.append(note)
             } catch {
@@ -514,6 +527,34 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
 
         result.sort { $0.modificationDate > $1.modificationDate }
         return result
+    }
+
+    static func parseTagsStatic(from content: String, isOrgFile: Bool = false) -> [String] {
+        let lines = content.components(separatedBy: .newlines)
+        for line in lines.prefix(10) { // Only check first 10 lines
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty { continue }
+
+            // Org-mode format: #+FILETAGS: :tag1:tag2:tag3:
+            if trimmed.uppercased().hasPrefix("#+FILETAGS:") {
+                let tagPart = String(trimmed.dropFirst(11)).trimmingCharacters(in: .whitespaces)
+                let tags = tagPart.components(separatedBy: ":")
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                    .filter { !$0.isEmpty }
+                return tags
+            }
+
+            // Standard format for non-org files: Tags: tag1, tag2, tag3
+            if !isOrgFile && (trimmed.lowercased().hasPrefix("tags:") || trimmed.lowercased().hasPrefix("tag:")) {
+                guard let colonIndex = trimmed.firstIndex(of: ":") else { continue }
+                let tagPart = String(trimmed[trimmed.index(after: colonIndex)...])
+                let tags = tagPart.components(separatedBy: ",")
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                    .filter { !$0.isEmpty }
+                return tags
+            }
+        }
+        return []
     }
 
     private static func readFirstLineStatic(from url: URL) -> String {

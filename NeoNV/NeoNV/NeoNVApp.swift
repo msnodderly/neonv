@@ -79,6 +79,13 @@ struct NeoNVApp: App {
             }
 
             CommandGroup(after: .toolbar) {
+                Button("Add Tags...") {
+                    NotificationCenter.default.post(name: .addTag, object: nil)
+                }
+                .keyboardShortcut("t", modifiers: [.command, .shift])
+
+                Divider()
+
                 Button("Toggle Search Bar") {
                     NotificationCenter.default.post(name: .toggleSearchField, object: nil)
                 }
@@ -147,4 +154,5 @@ extension Notification.Name {
     static let toggleSearchField = Notification.Name("toggleSearchField")
     static let toggleFileList = Notification.Name("toggleFileList")
     static let toggleLayout = Notification.Name("toggleLayout")
+    static let addTag = Notification.Name("addTag")
 }
