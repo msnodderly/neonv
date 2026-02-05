@@ -56,6 +56,7 @@ struct NoteFile: Identifiable, Equatable {
         self.contentPreview = contentPreview
         self.modificationDate = modificationDate
         self.tags = tags
+        self.isUnsaved = false
         self.searchTitle = title.lowercased()
         self.searchPreview = contentPreview.lowercased()
         self.searchTags = tags.joined(separator: " ").lowercased()
