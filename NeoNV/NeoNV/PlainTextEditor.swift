@@ -24,7 +24,9 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
         textView.onWikiLinkClicked = onWikiLinkClicked
-        textView.existingNoteNames = noteNamesForAutocomplete
+        textView.autocompleteNoteNames = noteNamesForAutocomplete
+        context.coordinator.existingNoteNames = existingNoteNames
+        context.coordinator.lastWikiLinkNames = existingNoteNames
 
         textView.isRichText = false
         textView.allowsUndo = true
@@ -107,7 +109,8 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
         textView.onWikiLinkClicked = onWikiLinkClicked
-        textView.existingNoteNames = noteNamesForAutocomplete
+        textView.autocompleteNoteNames = noteNamesForAutocomplete
+        context.coordinator.existingNoteNames = existingNoteNames
 
         // Only re-apply highlighting if text or search terms changed
         if textChanged || context.coordinator.lastSearchTerms != searchTerms {
@@ -115,14 +118,14 @@ struct PlainTextEditor: NSViewRepresentable {
             context.coordinator.lastSearchTerms = searchTerms
         }
         
-        // Apply full done-styling only when switching to a new document
-        if textChanged {
+        let wikiNamesChanged = context.coordinator.lastWikiLinkNames != existingNoteNames
+
+        // Apply full done-styling only when switching to a new document or when wiki names change.
+        if textChanged || wikiNamesChanged {
             context.coordinator.applyDoneAttributesFullDocument()
         }
 
-        let wikiNamesChanged = context.coordinator.lastWikiLinkNames != existingNoteNames
-        if textChanged || wikiNamesChanged {
-            applyWikiLinkHighlighting(to: textView, existingNoteNames: existingNoteNames, coordinator: context.coordinator)
+        if wikiNamesChanged {
             context.coordinator.lastWikiLinkNames = existingNoteNames
         }
 
@@ -175,46 +178,14 @@ struct PlainTextEditor: NSViewRepresentable {
     }
 
     /// Wiki-link regex pattern: matches [[link text]]
-    fileprivate static let wikiLinkPattern = try! NSRegularExpression(pattern: "\\[\\[([^\\]]+)\\]\\]") // swiftlint:disable:this force_try
-
-    private func applyWikiLinkHighlighting(
-        to textView: NSTextView,
-        existingNoteNames: Set<String>,
-        coordinator: Coordinator
-    ) {
-        guard let textStorage = textView.textStorage else { return }
-        let text = textView.string
-        let nsText = text as NSString
-        let fullRange = NSRange(location: 0, length: nsText.length)
-
-        textStorage.beginEditing()
-        defer { textStorage.endEditing() }
-
-        textStorage.removeAttribute(.underlineStyle, range: fullRange)
-        textStorage.removeAttribute(.underlineColor, range: fullRange)
-        textStorage.removeAttribute(.cursor, range: fullRange)
-        textStorage.removeAttribute(.foregroundColor, range: fullRange)
-        textStorage.addAttribute(.foregroundColor, value: NSColor.textColor, range: fullRange)
-
-        coordinator.applyDoneAttributesFullDocument()
-
-        let matches = Self.wikiLinkPattern.matches(in: text, range: fullRange)
-
-        for match in matches {
-            let bracketRange = match.range  // Full [[...]] range
-            let linkRange = match.range(at: 1)  // Inner text range
-            guard linkRange.location != NSNotFound else { continue }
-
-            let linkName = nsText.substring(with: linkRange).lowercased()
-            let exists = existingNoteNames.contains(linkName)
-            let color = exists ? NSColor.systemBlue : NSColor.systemOrange
-
-            textStorage.addAttribute(.foregroundColor, value: color, range: bracketRange)
-            textStorage.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: bracketRange)
-            textStorage.addAttribute(.underlineColor, value: color, range: bracketRange)
-            textStorage.addAttribute(.cursor, value: NSCursor.pointingHand, range: bracketRange)
+    fileprivate static let wikiLinkPattern: NSRegularExpression = {
+        do {
+            return try NSRegularExpression(pattern: "\\[\\[([^\\]]+)\\]\\]")
+        } catch {
+            fatalError("Invalid wiki link regex: \\(error)")
         }
-    }
+    }()
+    fileprivate static let wikiLinkAttribute = NSAttributedString.Key("neonvWikiLink")
 
     private static func focusSearchField(in view: NSView) {
         for subview in view.subviews {
@@ -242,6 +213,7 @@ struct PlainTextEditor: NSViewRepresentable {
         var cursorPosition: Binding<Int>
         var lastSearchTerms: [String] = []
         var lastWikiLinkNames: Set<String> = []
+        var existingNoteNames: Set<String> = []
         weak var textView: NSTextView?
         private var isApplyingDoneAttributes = false
         private var pendingDoneRange: NSRange?
@@ -316,7 +288,7 @@ struct PlainTextEditor: NSViewRepresentable {
                 return []
             }
 
-            let candidates = tv.existingNoteNames
+            let candidates = tv.autocompleteNoteNames
 
             func isSubsequence(_ needle: String, _ haystack: String) -> Bool {
                 var it = haystack.makeIterator()
@@ -403,6 +375,8 @@ struct PlainTextEditor: NSViewRepresentable {
             textStorage.beginEditing()
             defer { textStorage.endEditing() }
 
+            clearWikiAttributes(textStorage: textStorage, in: range)
+
             var lineStart = range.location
             let end = NSMaxRange(range)
 
@@ -435,6 +409,8 @@ struct PlainTextEditor: NSViewRepresentable {
 
                 lineStart = lineEnd
             }
+
+            applyWikiAttributes(textStorage: textStorage, in: range)
         }
 
         func applyDoneAttributesFullDocument() {
@@ -442,6 +418,43 @@ struct PlainTextEditor: NSViewRepresentable {
                   let textStorage = textView.textStorage else { return }
             let fullRange = NSRange(location: 0, length: textStorage.length)
             applyDoneAttributes(textStorage: textStorage, in: fullRange)
+        }
+
+        private func clearWikiAttributes(textStorage: NSTextStorage, in range: NSRange) {
+            textStorage.enumerateAttribute(
+                PlainTextEditor.wikiLinkAttribute,
+                in: range,
+                options: []
+            ) { value, attrRange, _ in
+                guard value != nil else { return }
+                textStorage.removeAttribute(.underlineStyle, range: attrRange)
+                textStorage.removeAttribute(.underlineColor, range: attrRange)
+                textStorage.removeAttribute(.cursor, range: attrRange)
+                textStorage.removeAttribute(.foregroundColor, range: attrRange)
+                textStorage.removeAttribute(PlainTextEditor.wikiLinkAttribute, range: attrRange)
+            }
+        }
+
+        private func applyWikiAttributes(textStorage: NSTextStorage, in range: NSRange) {
+            let text = textStorage.string
+            let nsText = text as NSString
+            let matches = PlainTextEditor.wikiLinkPattern.matches(in: text, range: range)
+
+            for match in matches {
+                let bracketRange = match.range
+                let linkRange = match.range(at: 1)
+                guard linkRange.location != NSNotFound else { continue }
+
+                let linkName = nsText.substring(with: linkRange)
+                let exists = existingNoteNames.contains(linkName.lowercased())
+                let color = exists ? NSColor.systemBlue : NSColor.systemOrange
+
+                textStorage.addAttribute(.foregroundColor, value: color, range: bracketRange)
+                textStorage.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: bracketRange)
+                textStorage.addAttribute(.underlineColor, value: color, range: bracketRange)
+                textStorage.addAttribute(.cursor, value: NSCursor.pointingHand, range: bracketRange)
+                textStorage.addAttribute(PlainTextEditor.wikiLinkAttribute, value: linkName, range: bracketRange)
+            }
         }
     }
 }
@@ -460,7 +473,7 @@ class CustomTextView: NSTextView {
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
     var onWikiLinkClicked: ((String) -> Void)?
-    var existingNoteNames: [String] = []
+    var autocompleteNoteNames: [String] = []
     var isWikiCompletionActive = false
     var isInsertingCompletion = false
 
@@ -472,20 +485,15 @@ class CustomTextView: NSTextView {
 
         let point = convert(event.locationInWindow, from: nil)
         let charIndex = characterIndexForInsertion(at: point)
-        let nsText = string as NSString
-
-        if charIndex < nsText.length {
-            let fullRange = NSRange(location: 0, length: nsText.length)
-            let matches = PlainTextEditor.wikiLinkPattern.matches(in: string, range: fullRange)
-
-            for match in matches {
-                let bracketRange = match.range
-                let linkRange = match.range(at: 1)
-                if NSLocationInRange(charIndex, bracketRange), linkRange.location != NSNotFound {
-                    let linkName = nsText.substring(with: linkRange)
-                    onWikiLinkClicked?(linkName)
-                    return
-                }
+        if let textStorage = textStorage, charIndex < textStorage.length {
+            var effectiveRange = NSRange(location: 0, length: 0)
+            if let linkName = textStorage.attribute(
+                PlainTextEditor.wikiLinkAttribute,
+                at: charIndex,
+                effectiveRange: &effectiveRange
+            ) as? String {
+                onWikiLinkClicked?(linkName)
+                return
             }
         }
 

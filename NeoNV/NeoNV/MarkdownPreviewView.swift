@@ -65,19 +65,6 @@ struct MarkdownPreviewView: NSViewRepresentable {
         Coordinator(onWikiLinkClicked: onWikiLinkClicked)
     }
 
-    private static let wikiLinkScheme = "neonv"
-
-    private static func wikiLinkURL(for name: String) -> URL? {
-        let encoded = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
-        return URL(string: "\(wikiLinkScheme)://wiki/\(encoded)")
-    }
-
-    private static func decodeWikiLinkName(from url: URL) -> String? {
-        guard url.scheme == wikiLinkScheme, url.host == "wiki" else { return nil }
-        let raw = url.path.hasPrefix("/") ? String(url.path.dropFirst()) : url.path
-        return raw.removingPercentEncoding ?? raw
-    }
-
     final class Coordinator: NSObject, NSTextViewDelegate {
         var onWikiLinkClicked: ((String) -> Void)?
 
@@ -86,11 +73,7 @@ struct MarkdownPreviewView: NSViewRepresentable {
         }
 
         func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
-            if let url = link as? URL, let name = MarkdownPreviewView.decodeWikiLinkName(from: url) {
-                onWikiLinkClicked?(name)
-                return true
-            }
-            return false
+            WikiLinkHelper.handleClickedLink(link, onWikiLinkClicked: onWikiLinkClicked)
         }
     }
 
@@ -491,7 +474,7 @@ struct MarkdownPreviewView: NSViewRepresentable {
                 wikiAttrs[.foregroundColor] = color
                 wikiAttrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
                 wikiAttrs[.underlineColor] = color
-                if let url = Self.wikiLinkURL(for: inner) {
+                if let url = WikiLinkHelper.wikiLinkURL(for: inner) {
                     wikiAttrs[.link] = url
                 }
                 result.append(NSAttributedString(string: inner, attributes: wikiAttrs))
@@ -631,6 +614,29 @@ class PreviewTextView: NSTextView {
         if newOrigin.y < 0 { newOrigin.y = 0 }
         clipView.scroll(to: newOrigin)
         scrollView.reflectScrolledClipView(clipView)
+    }
+}
+
+enum WikiLinkHelper {
+    static let scheme = "neonv"
+
+    static func wikiLinkURL(for name: String) -> URL? {
+        let encoded = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
+        return URL(string: "\(scheme)://wiki/\(encoded)")
+    }
+
+    static func decodeWikiLinkName(from url: URL) -> String? {
+        guard url.scheme == scheme, url.host == "wiki" else { return nil }
+        let raw = url.path.hasPrefix("/") ? String(url.path.dropFirst()) : url.path
+        return raw.removingPercentEncoding ?? raw
+    }
+
+    static func handleClickedLink(_ link: Any, onWikiLinkClicked: ((String) -> Void)?) -> Bool {
+        if let url = link as? URL, let name = decodeWikiLinkName(from: url) {
+            onWikiLinkClicked?(name)
+            return true
+        }
+        return false
     }
 }
 

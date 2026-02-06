@@ -61,19 +61,6 @@ struct OrgPreviewView: NSViewRepresentable {
         Coordinator(onWikiLinkClicked: onWikiLinkClicked)
     }
 
-    private static let wikiLinkScheme = "neonv"
-
-    private static func wikiLinkURL(for name: String) -> URL? {
-        let encoded = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
-        return URL(string: "\(wikiLinkScheme)://wiki/\(encoded)")
-    }
-
-    private static func decodeWikiLinkName(from url: URL) -> String? {
-        guard url.scheme == wikiLinkScheme, url.host == "wiki" else { return nil }
-        let raw = url.path.hasPrefix("/") ? String(url.path.dropFirst()) : url.path
-        return raw.removingPercentEncoding ?? raw
-    }
-
     final class Coordinator: NSObject, NSTextViewDelegate {
         var onWikiLinkClicked: ((String) -> Void)?
 
@@ -82,11 +69,7 @@ struct OrgPreviewView: NSViewRepresentable {
         }
 
         func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
-            if let url = link as? URL, let name = OrgPreviewView.decodeWikiLinkName(from: url) {
-                onWikiLinkClicked?(name)
-                return true
-            }
-            return false
+            WikiLinkHelper.handleClickedLink(link, onWikiLinkClicked: onWikiLinkClicked)
         }
     }
 }
@@ -262,7 +245,7 @@ extension OrgPreviewView {
         if upperTrimmed.hasPrefix("#+END_QUOTE") {
             appendQuoteBlock(blockContent, to: result, ctx: ctx, isLastLine: isLastLine)
             blockContent = ""
-            return .none
+            return BlockState.none
         }
         if upperTrimmed.hasPrefix("#+BEGIN_EXAMPLE") || upperTrimmed.hasPrefix("#+BEGIN_SRC") {
             return upperTrimmed.contains("EXAMPLE") ? .example : .src
@@ -270,7 +253,7 @@ extension OrgPreviewView {
         if upperTrimmed.hasPrefix("#+END_EXAMPLE") || upperTrimmed.hasPrefix("#+END_SRC") {
             appendCodeBlock(blockContent, to: result, ctx: ctx)
             blockContent = ""
-            return .none
+            return BlockState.none
         }
         return nil
     }
@@ -670,7 +653,7 @@ extension OrgPreviewView {
             linkAttrs[.foregroundColor] = color
             linkAttrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
             linkAttrs[.underlineColor] = color
-            if let url = Self.wikiLinkURL(for: urlText) {
+            if let url = WikiLinkHelper.wikiLinkURL(for: urlText) {
                 linkAttrs[.link] = url
             }
         }

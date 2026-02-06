@@ -107,10 +107,16 @@ struct ExternalChangeEvent: Equatable {
 
 @MainActor
 class NoteStore: ObservableObject, FileWatcherDelegate {
-    @Published var notes: [NoteFile] = []
+    @Published var notes: [NoteFile] = [] {
+        didSet {
+            rebuildWikiLinkCaches()
+        }
+    }
     @Published var selectedFolderURL: URL?
     @Published var isLoading = false
     @Published var lastExternalChange: ExternalChangeEvent?
+    @Published private(set) var wikiLinkNameSet: Set<String> = []
+    @Published private(set) var wikiLinkAutocompleteNames: [String] = []
 
     private let allowedExtensions: Set<String> = ["txt", "md", "markdown", "org", "text"]
     private let folderBookmarkKey = "selectedFolderBookmark"
@@ -122,6 +128,52 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             setFolder(from: cliPath)
         } else {
             loadSavedFolder()
+        }
+    }
+
+    private func rebuildWikiLinkCaches() {
+        var names = Set<String>()
+        var seen = Set<String>()
+        var autocomplete: [String] = []
+
+        for note in notes where !note.isUnsaved {
+            let title = note.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if !title.isEmpty {
+                names.insert(title)
+            }
+
+            let display = note.displayTitle.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if !display.isEmpty {
+                names.insert(display)
+            }
+
+            let relative = note.relativePath.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if !relative.isEmpty {
+                names.insert(relative)
+            }
+
+            let fileName = note.url.lastPathComponent.lowercased()
+            let baseName = note.url.deletingPathExtension().lastPathComponent.lowercased()
+            names.insert(fileName)
+            names.insert(baseName)
+
+            let candidates = [
+                note.displayTitle,
+                note.url.deletingPathExtension().lastPathComponent
+            ]
+            for candidate in candidates {
+                let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else { continue }
+                let lower = trimmed.lowercased()
+                guard !seen.contains(lower) else { continue }
+                seen.insert(lower)
+                autocomplete.append(trimmed)
+            }
+        }
+
+        wikiLinkNameSet = names
+        wikiLinkAutocompleteNames = autocomplete.sorted {
+            $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
         }
     }
 

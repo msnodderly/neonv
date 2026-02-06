@@ -52,7 +52,6 @@ struct ContentView: View {
         let content: String
     }
 
-
     private var filteredNotes: [NoteFile] {
         let query = debouncedSearchText
         let baseNotes = query.isEmpty ? noteStore.notes : noteStore.notes.filter { $0.matches(query: query) }
@@ -324,7 +323,7 @@ struct ContentView: View {
                 fontSize: CGFloat(AppSettings.shared.fontSize),
                 onShiftTab: { focusedField = .noteList },
                 onTypeToEdit: { switchToEditor() },
-                existingNoteNames: wikiLinkNameSet,
+                existingNoteNames: noteStore.wikiLinkNameSet,
                 onWikiLinkClicked: handleWikiLinkClicked
             )
             .focused($focusedField, equals: .preview)
@@ -335,7 +334,7 @@ struct ContentView: View {
                 fontSize: CGFloat(AppSettings.shared.fontSize),
                 onShiftTab: { focusedField = .noteList },
                 onTypeToEdit: { switchToEditor() },
-                existingNoteNames: wikiLinkNameSet,
+                existingNoteNames: noteStore.wikiLinkNameSet,
                 onWikiLinkClicked: handleWikiLinkClicked
             )
             .focused($focusedField, equals: .preview)
@@ -433,8 +432,8 @@ struct ContentView: View {
                 cursorPosition: $cursorPosition,
                 focusedField: _focusedField,
                 searchText: debouncedSearchText,
-                existingNoteNames: wikiLinkNameSet,
-                noteNamesForAutocomplete: wikiLinkAutocompleteNames,
+                existingNoteNames: noteStore.wikiLinkNameSet,
+                noteNamesForAutocomplete: noteStore.wikiLinkAutocompleteNames,
                 onShiftTab: { focusedField = settings.isFileListHidden ? .search : .noteList },
                 onEscape: { focusedField = settings.isFileListHidden ? .search : .noteList },
                 onWikiLinkClicked: handleWikiLinkClicked
@@ -916,7 +915,6 @@ struct ContentView: View {
             }
         }
     }
-
 
     private func clearSearch() {
         searchText = ""
@@ -1503,21 +1501,19 @@ struct NotificationHandlers: ViewModifier {
 }
 
 extension ContentView {
-    static let validExtensions: Set<String> = ["md", "txt", "org", "markdown", "text"]
+    private static let validExtensions: Set<String> = ["md", "txt", "org", "markdown", "text"]
 
-    func sanitizePathComponent(_ name: String, preserveExtension: Bool = false) -> String {
+    private func sanitizePathComponent(_ name: String, preserveExtension: Bool = false) -> String {
         var baseName = name
         var extensionPart: String?
 
         if preserveExtension {
             let lowercased = name.lowercased()
-            for ext in Self.validExtensions {
-                if lowercased.hasSuffix(".\(ext)") {
-                    let extWithDot = ".\(ext)"
-                    baseName = String(name.dropLast(extWithDot.count))
-                    extensionPart = ext
-                    break
-                }
+            for ext in Self.validExtensions where lowercased.hasSuffix(".\(ext)") {
+                let extWithDot = ".\(ext)"
+                baseName = String(name.dropLast(extWithDot.count))
+                extensionPart = ext
+                break
             }
         }
 
@@ -1542,7 +1538,7 @@ extension ContentView {
         return sanitized
     }
 
-    func sanitizePathComponents(_ input: String) -> [String] {
+    private func sanitizePathComponents(_ input: String) -> [String] {
         let normalized = input
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "\\", with: "/")
@@ -1558,52 +1554,9 @@ extension ContentView {
         return parts
     }
 
-    func hasValidExtension(_ name: String) -> Bool {
+    private func hasValidExtension(_ name: String) -> Bool {
         let lowercased = name.lowercased()
         return Self.validExtensions.contains { lowercased.hasSuffix(".\($0)") }
-    }
-
-    var wikiLinkNameSet: Set<String> {
-        var names = Set<String>()
-        for note in noteStore.notes where !note.isUnsaved {
-            let title = note.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            if !title.isEmpty {
-                names.insert(title)
-            }
-            let display = note.displayTitle.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            if !display.isEmpty {
-                names.insert(display)
-            }
-            let relative = note.relativePath.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            if !relative.isEmpty {
-                names.insert(relative)
-            }
-            let fileName = note.url.lastPathComponent.lowercased()
-            let baseName = note.url.deletingPathExtension().lastPathComponent.lowercased()
-            names.insert(fileName)
-            names.insert(baseName)
-        }
-        return names
-    }
-
-    var wikiLinkAutocompleteNames: [String] {
-        var seen = Set<String>()
-        var results: [String] = []
-        for note in noteStore.notes where !note.isUnsaved {
-            let candidates = [
-                note.displayTitle,
-                note.url.deletingPathExtension().lastPathComponent
-            ]
-            for candidate in candidates {
-                let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !trimmed.isEmpty else { continue }
-                let lower = trimmed.lowercased()
-                guard !seen.contains(lower) else { continue }
-                seen.insert(lower)
-                results.append(trimmed)
-            }
-        }
-        return results.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
 
     func handleWikiLinkClicked(_ rawName: String) {
