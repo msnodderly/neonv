@@ -157,17 +157,16 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             names.insert(fileName)
             names.insert(baseName)
 
-            let candidates = [
-                note.displayTitle,
-                note.url.deletingPathExtension().lastPathComponent
-            ]
-            for candidate in candidates {
+            let candidate = note.url.deletingPathExtension().lastPathComponent
+            if !candidate.isEmpty {
                 let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !trimmed.isEmpty else { continue }
-                let lower = trimmed.lowercased()
-                guard !seen.contains(lower) else { continue }
-                seen.insert(lower)
-                autocomplete.append(trimmed)
+                if !trimmed.isEmpty {
+                    let lower = trimmed.lowercased()
+                    if !seen.contains(lower) {
+                        seen.insert(lower)
+                        autocomplete.append(trimmed)
+                    }
+                }
             }
         }
 
