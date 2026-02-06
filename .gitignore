@@ -149,7 +149,25 @@ rename-context-menu/
 cmd-period/
 auto-mkdir/
 swiftlint-orgpreview/
-# bd worktree
 swiftlint-thresholds/
-# bd worktree
 fix-editor-flicker/
+# bd worktree
+preview-typing/
+# bd worktree
+cmd-ctrl-l-layout-toggle/
+# bd worktree
+enter-creates-file/
+# bd worktree
+tagging-support/
+# bd worktree
+org-extension-fix/
+# bd worktree
+org-tags-display/
+# bd worktree
+org-tags-prepopulate/
+# bd worktree
+tags-sync-fix/
+# bd worktree
+unsaved-notes-fix/
+# bd worktree
+rtt-wikilinks/

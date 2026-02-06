@@ -23,6 +23,7 @@ struct KeyboardShortcutsView: View {
             shortcuts: [
                 Shortcut(key: "⌘N", description: "Create new note"),
                 Shortcut(key: "⌘P", description: "Toggle markdown preview"),
+                Shortcut(key: "⌘⇧J / ⌃⌘L", description: "Toggle layout orientation"),
                 Shortcut(key: "⌘G", description: "Open in external editor"),
                 Shortcut(key: "⌘⇧D", description: "Insert timestamp"),
                 Shortcut(key: "Delete", description: "Delete selected note"),

@@ -35,6 +35,8 @@ struct ContentView: View {
     @State private var cursorPosition = 0
     @State private var pendingCursorAtEnd = false
     @State private var showKeyboardShortcuts = false
+    @State private var noteToTag: NoteFile?
+    @State private var tagText: String = ""
     @FocusState private var focusedField: FocusedField?
 
     struct ExternalConflict: Identifiable {
@@ -240,6 +242,34 @@ struct ContentView: View {
                 Text("Enter a new filename for \"\(note.displayTitle)\"")
             }
         }
+        .alert("Add Tags", isPresented: Binding(
+            get: { noteToTag != nil },
+            set: { if !$0 { noteToTag = nil; tagText = "" } }
+        )) {
+            TextField("Tags (comma-separated)", text: $tagText)
+            Button("Cancel", role: .cancel) {
+                noteToTag = nil
+                tagText = ""
+            }
+            Button("Save") {
+                if let note = noteToTag {
+                    addTagsToNote(note, tagString: tagText)
+                }
+            }
+        } message: {
+            if let note = noteToTag {
+                let isOrgFile = note.url.pathExtension.lowercased() == "org"
+                if note.tags.isEmpty {
+                    if isOrgFile {
+                        Text("Add tags to \"\(note.displayTitle)\"\n\nEnter tags separated by commas.\nWill be saved as #+FILETAGS: :tag1:tag2:")
+                    } else {
+                        Text("Add tags to \"\(note.displayTitle)\"\n\nEnter tags separated by commas (e.g., work, important, todo)")
+                    }
+                } else {
+                    Text("Current tags: \(note.tags.joined(separator: ", "))\n\nEnter tags separated by commas")
+                }
+            }
+        }
         .modifier(NotificationHandlers(
             onFocusSearch: {
                 if settings.isSearchFieldHidden {
@@ -268,7 +298,14 @@ struct ContentView: View {
             onOpenInExternalEditor: openInExternalEditor,
             onToggleSearchField: toggleSearchField,
             onToggleFileList: toggleFileList,
-            onToggleLayout: toggleLayout
+            onToggleLayout: toggleLayout,
+            onAddTag: {
+                guard let id = selectedNoteID,
+                      let note = noteStore.notes.first(where: { $0.id == id }),
+                      !note.isUnsaved else { return }
+                tagText = note.tags.joined(separator: ", ")
+                noteToTag = note
+            }
         ))
         .sheet(isPresented: $showHelp) {
             HelpView()
@@ -334,6 +371,10 @@ struct ContentView: View {
                     onRenameNote: { note in
                         renameText = note.url.deletingPathExtension().lastPathComponent
                         noteToRename = note
+                    },
+                    onAddTag: { note in
+                        tagText = note.tags.joined(separator: ", ")
+                        noteToTag = note
                     }
                 )
                 .frame(minHeight: 80, idealHeight: 150, maxHeight: 300)
@@ -362,6 +403,10 @@ struct ContentView: View {
             onRenameNote: { note in
                 renameText = note.url.deletingPathExtension().lastPathComponent
                 noteToRename = note
+            },
+            onAddTag: { note in
+                tagText = note.tags.joined(separator: ", ")
+                noteToTag = note
             }
         )
     }
@@ -433,6 +478,151 @@ struct ContentView: View {
             renameError = nil
         } catch {
             renameError = error.localizedDescription
+        }
+    }
+
+    private func addTagsToNote(_ note: NoteFile, tagString: String) {
+        guard !note.isUnsaved else {
+            noteToTag = nil
+            tagText = ""
+            return
+        }
+
+        let isOrgFile = note.url.pathExtension.lowercased() == "org"
+
+        Task {
+            do {
+                // Read current file content
+                let currentContent = try String(contentsOf: note.url, encoding: .utf8)
+                var lines = currentContent.components(separatedBy: .newlines)
+
+                // Parse new tags (support both comma and colon separators for input)
+                var inputTags: [String]
+                if tagString.contains(":") && !tagString.contains(",") {
+                    // Org-mode style input: :tag1:tag2:tag3:
+                    inputTags = tagString.components(separatedBy: ":")
+                        .map { $0.trimmingCharacters(in: .whitespaces) }
+                        .filter { !$0.isEmpty }
+                } else {
+                    // Standard comma-separated input
+                    inputTags = tagString.components(separatedBy: ",")
+                        .map { $0.trimmingCharacters(in: .whitespaces) }
+                        .filter { !$0.isEmpty }
+                }
+
+                // For non-org files, ensure tags have # prefix
+                if !isOrgFile {
+                    inputTags = inputTags.map { tag in
+                        tag.hasPrefix("#") ? tag : "#\(tag)"
+                    }
+                }
+
+                // Use the input tags exactly (replacing existing tags, not merging)
+                // This allows users to remove or modify tags by editing the text field
+                let finalTags = Array(Set(inputTags)).sorted()
+
+                // Handle empty tags case: remove existing tag line from file
+                if finalTags.isEmpty {
+                    // Find and remove existing tag line
+                    for (index, line) in lines.enumerated() {
+                        let trimmed = line.trimmingCharacters(in: .whitespaces)
+                        if isOrgFile {
+                            if trimmed.uppercased().hasPrefix("#+FILETAGS:") {
+                                lines.remove(at: index)
+                                break
+                            }
+                        } else {
+                            if trimmed.lowercased().hasPrefix("tags:") || trimmed.lowercased().hasPrefix("tag:") {
+                                lines.remove(at: index)
+                                // Also remove following blank line if present
+                                if index < lines.count && lines[index].trimmingCharacters(in: .whitespaces).isEmpty {
+                                    lines.remove(at: index)
+                                }
+                                break
+                            }
+                        }
+                    }
+                } else {
+                    // Format tag line based on file type
+                    let tagLine: String
+                    if isOrgFile {
+                        // Org-mode format: #+FILETAGS: :tag1:tag2:tag3:
+                        tagLine = "#+FILETAGS: :\(finalTags.joined(separator: ":")):"
+                    } else {
+                        // Standard format: Tags: #tag1, #tag2, #tag3
+                        tagLine = "Tags: \(finalTags.joined(separator: ", "))"
+                    }
+
+                    // Find and replace existing tag line, or add at the beginning
+                    var foundTagLine = false
+                    for (index, line) in lines.enumerated() {
+                        let trimmed = line.trimmingCharacters(in: .whitespaces)
+                        if isOrgFile {
+                            // Look for #+FILETAGS: in org files
+                            if trimmed.uppercased().hasPrefix("#+FILETAGS:") {
+                                lines[index] = tagLine
+                                foundTagLine = true
+                                break
+                            }
+                        } else {
+                            // Look for Tags: in other files
+                            if trimmed.lowercased().hasPrefix("tags:") || trimmed.lowercased().hasPrefix("tag:") {
+                                lines[index] = tagLine
+                                foundTagLine = true
+                                break
+                            }
+                        }
+                    }
+
+                    if !foundTagLine {
+                        if isOrgFile {
+                            // For org files, add after any existing #+KEY: metadata at the top
+                            var insertIndex = 0
+                            for (index, line) in lines.enumerated() {
+                                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                                if trimmed.hasPrefix("#+") {
+                                    insertIndex = index + 1
+                                } else if !trimmed.isEmpty {
+                                    break
+                                }
+                            }
+                            lines.insert(tagLine, at: insertIndex)
+                        } else {
+                            // Add at the beginning for other files
+                            lines.insert(tagLine, at: 0)
+                            lines.insert("", at: 1) // Add blank line after tags
+                        }
+                    }
+                }
+
+                let newContent = lines.joined(separator: "\n")
+
+                // Save the file
+                noteStore.markAsSavedLocally(note.url, content: newContent)
+                try await atomicWrite(content: newContent, to: note.url)
+
+                await MainActor.run {
+                    // Update editor if this is the currently selected note
+                    if selectedNoteID == note.id {
+                        editorContent = newContent
+                        originalContent = newContent
+                        isDirty = false
+                    }
+                    noteToTag = nil
+                    tagText = ""
+                }
+            } catch {
+                await MainActor.run {
+                    let alert = NSAlert()
+                    alert.messageText = "Failed to Add Tags"
+                    alert.informativeText = "Could not add tags to \"\(note.displayTitle)\":\n\n\(error.localizedDescription)"
+                    alert.alertStyle = .warning
+                    alert.addButton(withTitle: "OK")
+                    alert.runModal()
+                    noteToTag = nil
+                    tagText = ""
+                }
+            }
         }
     }
 
@@ -667,7 +857,6 @@ struct ContentView: View {
         let parts = sanitizePathComponents(searchText)
         guard !parts.isEmpty else { return }
 
-        let ext = AppSettings.shared.defaultExtension.rawValue
         let directoryParts = parts.dropLast()
         let baseName = parts.last!
 
@@ -676,7 +865,14 @@ struct ContentView: View {
             dirURL = dirURL.appendingPathComponent(part, isDirectory: true)
         }
 
-        let fileURL = dirURL.appendingPathComponent("\(baseName).\(ext)")
+        let fileName: String
+        if hasValidExtension(baseName) {
+            fileName = baseName
+        } else {
+            let ext = AppSettings.shared.defaultExtension.rawValue
+            fileName = "\(baseName).\(ext)"
+        }
+        let fileURL = dirURL.appendingPathComponent(fileName)
         let initialContent = searchText + "\n\n"
 
         Task {
@@ -719,8 +915,25 @@ struct ContentView: View {
         // This allows it to restore the last manual selection
     }
 
-    private func sanitizePathComponent(_ name: String) -> String {
-        var sanitized = name.lowercased()
+    private static let validExtensions: Set<String> = ["md", "txt", "org", "markdown", "text"]
+
+    private func sanitizePathComponent(_ name: String, preserveExtension: Bool = false) -> String {
+        var baseName = name
+        var extensionPart: String?
+
+        if preserveExtension {
+            let lowercased = name.lowercased()
+            for ext in Self.validExtensions {
+                if lowercased.hasSuffix(".\(ext)") {
+                    let extWithDot = ".\(ext)"
+                    baseName = String(name.dropLast(extWithDot.count))
+                    extensionPart = ext
+                    break
+                }
+            }
+        }
+
+        var sanitized = baseName.lowercased()
             .replacingOccurrences(of: " ", with: "-")
             .replacingOccurrences(of: "[^a-z0-9-]", with: "", options: .regularExpression)
 
@@ -734,6 +947,10 @@ struct ContentView: View {
             sanitized = "untitled-\(formatter.string(from: Date()))"
         }
 
+        if let ext = extensionPart {
+            sanitized += ".\(ext)"
+        }
+
         return sanitized
     }
 
@@ -745,12 +962,18 @@ struct ContentView: View {
         let rawParts = normalized.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
 
         var parts: [String] = []
-        for part in rawParts {
+        for (index, part) in rawParts.enumerated() {
             if part == "." || part == ".." { continue }
-            let sanitized = sanitizePathComponent(part)
+            let isLastPart = index == rawParts.count - 1
+            let sanitized = sanitizePathComponent(part, preserveExtension: isLastPart)
             if !sanitized.isEmpty { parts.append(sanitized) }
         }
         return parts
+    }
+
+    private func hasValidExtension(_ name: String) -> Bool {
+        let lowercased = name.lowercased()
+        return Self.validExtensions.contains { lowercased.hasSuffix(".\($0)") }
     }
 
     private func scheduleAutoSave() {
@@ -1106,6 +1329,7 @@ struct NoteListView: View {
     var onDeleteNote: ((NoteFile) -> Void)?
     var onShowInFinder: ((NoteFile) -> Void)?
     var onRenameNote: ((NoteFile) -> Void)?
+    var onAddTag: ((NoteFile) -> Void)?
 
     @ObservedObject private var settings = AppSettings.shared
 
@@ -1147,7 +1371,21 @@ struct NoteListView: View {
                                 color: .secondary
                             )
                         }
-                        
+
+                        if !note.tags.isEmpty {
+                            HStack(spacing: 4) {
+                                ForEach(note.tags, id: \.self) { tag in
+                                    Text(tag)
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.blue)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 1)
+                                        .background(Color.blue.opacity(0.1))
+                                        .cornerRadius(3)
+                                }
+                            }
+                        }
+
                         if !note.contentPreview.isEmpty {
                             Text(note.contentPreview.replacingOccurrences(of: "\n", with: " "))
                                 .font(.system(size: 11))
@@ -1157,6 +1395,11 @@ struct NoteListView: View {
                     }
                     .tag(note.id)
                     .contextMenu {
+                        if !note.isUnsaved, let onAddTag = onAddTag {
+                            Button("Add Tags...") {
+                                onAddTag(note)
+                            }
+                        }
                         if !note.isUnsaved, let onRenameNote = onRenameNote {
                             Button("Rename") {
                                 onRenameNote(note)
@@ -1256,6 +1499,7 @@ struct NotificationHandlers: ViewModifier {
     let onToggleSearchField: () -> Void
     let onToggleFileList: () -> Void
     let onToggleLayout: () -> Void
+    let onAddTag: () -> Void
 
     func body(content: Content) -> some View {
         content
@@ -1294,6 +1538,9 @@ struct NotificationHandlers: ViewModifier {
             }
             .onReceive(NotificationCenter.default.publisher(for: .toggleLayout)) { _ in
                 onToggleLayout()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .addTag)) { _ in
+                onAddTag()
             }
     }
 }

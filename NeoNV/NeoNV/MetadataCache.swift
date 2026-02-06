@@ -7,6 +7,24 @@ struct CachedNote: Codable {
     let modificationDate: Date
     let title: String
     let contentPreview: String
+    let tags: [String]
+
+    init(relativePath: String, modificationDate: Date, title: String, contentPreview: String, tags: [String] = []) {
+        self.relativePath = relativePath
+        self.modificationDate = modificationDate
+        self.title = title
+        self.contentPreview = contentPreview
+        self.tags = tags
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        relativePath = try container.decode(String.self, forKey: .relativePath)
+        modificationDate = try container.decode(Date.self, forKey: .modificationDate)
+        title = try container.decode(String.self, forKey: .title)
+        contentPreview = try container.decode(String.self, forKey: .contentPreview)
+        tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
+    }
 }
 
 /// On-disk index of note metadata for instant warm starts.
@@ -61,7 +79,8 @@ struct MetadataCache {
                 relativePath: note.relativePath,
                 modificationDate: note.modificationDate,
                 title: note.title,
-                contentPreview: note.contentPreview
+                contentPreview: note.contentPreview,
+                tags: note.tags
             )
         }
         let envelope = CacheEnvelope(version: formatVersion, folderPath: folderURL.path, notes: cached)

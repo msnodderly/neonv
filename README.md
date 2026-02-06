@@ -4,6 +4,8 @@ A fast, frictionless text capture tool for macOS. Store snippets, thoughts, note
 
 Inspired by [Notational Velocity](https://notational.net/)'s speed and simplicity, built native for modern macOS.
 
+Bug reports are accepted. As of Feb 2026 I consider this project essentially feature-complete. -Matt
+
 ## Philosophy
 
 **Do one thing perfectly:** Capture and retrieve text instantly.

@@ -1,11 +1,11 @@
 ---
-name: releasing
+name: create-release
 description: "Releases a new version of neonv. Use when asked to release, cut a release, publish a version, or ship."
 ---
 
 # Releasing
 
-Releases ONE version. Completes all steps. Stops.
+Creat a Release. Complete all steps. Stop.
 
 ## Context
 
@@ -66,10 +66,13 @@ CI builds universal binary, creates DMG/ZIP, and publishes GitHub Release.
 
 ### 6. Create Release Notes
 
-Gather context:
+Extract commit details directly from git:
 ```bash
-bd list --status closed --limit 20
-bd show <issue-id>  # For each relevant issue
+# Get feature and fix commits
+git log v<PREV_VERSION>..v<VERSION> --oneline --no-merges | grep -E "(feat|fix):"
+
+# Get commit details for each relevant commit
+git show <commit-hash> --stat
 ```
 
 Create `docs/release-notes/v<VERSION>.md`:
