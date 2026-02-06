@@ -1008,6 +1008,9 @@ struct ContentView: View {
                 originalContent = content
                 isDirty = false
                 unsavedNoteIDs.remove(id)
+                if let idx = noteStore.notes.firstIndex(where: { $0.id == id }) {
+                    noteStore.notes[idx].isUnsaved = false
+                }
                 saveError = nil
                 AppDelegate.shared.hasUnsavedChanges = false
             }
