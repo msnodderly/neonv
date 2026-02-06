@@ -244,29 +244,15 @@ struct PlainTextEditor: NSViewRepresentable {
             _ textView: NSTextView,
             rangeForUserCompletion charRange: NSRange
         ) -> NSRange {
-            guard let tv = textView as? CustomTextView, tv.isWikiCompletionActive else {
-                return charRange
-            }
+            guard let tv = textView as? CustomTextView else { return charRange }
 
-            let cursor = textView.selectedRange().location
-            let ns = textView.string as NSString
-            let prefix = ns.substring(to: cursor)
-
-            guard let openRange = prefix.range(of: "[[", options: .backwards) else {
+            guard let range = wikiCompletionRange(in: textView) else {
                 tv.isWikiCompletionActive = false
                 return charRange
             }
 
-            let openIndex = prefix.distance(from: prefix.startIndex, to: openRange.lowerBound)
-            let start = openIndex + 2
-
-            let between = ns.substring(with: NSRange(location: start, length: cursor - start))
-            if between.contains("]]") {
-                tv.isWikiCompletionActive = false
-                return charRange
-            }
-
-            return NSRange(location: start, length: cursor - start)
+            tv.isWikiCompletionActive = true
+            return range
         }
 
         func textView(
@@ -275,12 +261,17 @@ struct PlainTextEditor: NSViewRepresentable {
             forPartialWordRange charRange: NSRange,
             indexOfSelectedItem index: UnsafeMutablePointer<Int>?
         ) -> [String] {
-            guard let tv = textView as? CustomTextView, tv.isWikiCompletionActive else {
+            guard let tv = textView as? CustomTextView else { return words }
+
+            guard let range = wikiCompletionRange(in: textView) else {
+                tv.isWikiCompletionActive = false
                 return words
             }
 
+            tv.isWikiCompletionActive = true
+
             let ns = textView.string as NSString
-            let query = charRange.length > 0 ? ns.substring(with: charRange) : ""
+            let query = range.length > 0 ? ns.substring(with: range) : ""
             let q = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
 
             if q.contains("]") || q.contains("\n") {
@@ -326,6 +317,27 @@ struct PlainTextEditor: NSViewRepresentable {
 
             index?.pointee = 0
             return Array(ranked.prefix(50))
+        }
+
+        private func wikiCompletionRange(in textView: NSTextView) -> NSRange? {
+            let cursor = textView.selectedRange().location
+            let ns = textView.string as NSString
+            guard cursor <= ns.length else { return nil }
+            let prefix = ns.substring(to: cursor)
+
+            guard let openRange = prefix.range(of: "[[", options: .backwards) else {
+                return nil
+            }
+
+            let openIndex = prefix.distance(from: prefix.startIndex, to: openRange.lowerBound)
+            let start = openIndex + 2
+
+            let between = ns.substring(with: NSRange(location: start, length: cursor - start))
+            if between.contains("]]") {
+                return nil
+            }
+
+            return NSRange(location: start, length: cursor - start)
         }
 
         func textStorage(
@@ -585,9 +597,12 @@ class CustomTextView: NSTextView {
                 let ns = string as NSString
                 if ns.substring(with: NSRange(location: loc - 2, length: 2)) == "[[" {
                     isWikiCompletionActive = true
-                    DispatchQueue.main.async { [weak self] in self?.complete(nil) }
                 }
             }
+        }
+
+        if isWikiCompletionActive {
+            DispatchQueue.main.async { [weak self] in self?.complete(nil) }
         }
     }
 
