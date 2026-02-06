@@ -6,6 +6,8 @@ struct MarkdownPreviewView: NSViewRepresentable {
     var fontSize: CGFloat = 13
     var onShiftTab: (() -> Void)?
     var onTypeToEdit: (() -> Void)?
+    var existingNoteNames: Set<String> = []
+    var onWikiLinkClicked: ((String) -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = FocusForwardingScrollView()
@@ -27,6 +29,7 @@ struct MarkdownPreviewView: NSViewRepresentable {
 
         textView.onShiftTab = onShiftTab
         textView.onTypeToEdit = onTypeToEdit
+        textView.delegate = context.coordinator
 
         scrollView.documentView = textView
         scrollView.hasVerticalScroller = true
@@ -44,13 +47,51 @@ struct MarkdownPreviewView: NSViewRepresentable {
 
         textView.onShiftTab = onShiftTab
         textView.onTypeToEdit = onTypeToEdit
+        textView.delegate = context.coordinator
 
         updateContent(textView: textView, content: content, fontSize: fontSize)
     }
 
     private func updateContent(textView: NSTextView, content: String, fontSize: CGFloat) {
-        let attributedString = parseMarkdown(content: content, fontSize: fontSize)
+        let attributedString = parseMarkdown(
+            content: content,
+            fontSize: fontSize,
+            existingNoteNames: existingNoteNames
+        )
         textView.textStorage?.setAttributedString(attributedString)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onWikiLinkClicked: onWikiLinkClicked)
+    }
+
+    private static let wikiLinkScheme = "neonv"
+
+    private static func wikiLinkURL(for name: String) -> URL? {
+        let encoded = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
+        return URL(string: "\(wikiLinkScheme)://wiki/\(encoded)")
+    }
+
+    private static func decodeWikiLinkName(from url: URL) -> String? {
+        guard url.scheme == wikiLinkScheme, url.host == "wiki" else { return nil }
+        let raw = url.path.hasPrefix("/") ? String(url.path.dropFirst()) : url.path
+        return raw.removingPercentEncoding ?? raw
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        var onWikiLinkClicked: ((String) -> Void)?
+
+        init(onWikiLinkClicked: ((String) -> Void)?) {
+            self.onWikiLinkClicked = onWikiLinkClicked
+        }
+
+        func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
+            if let url = link as? URL, let name = MarkdownPreviewView.decodeWikiLinkName(from: url) {
+                onWikiLinkClicked?(name)
+                return true
+            }
+            return false
+        }
     }
 
     private struct HeaderStyle {
@@ -207,7 +248,8 @@ struct MarkdownPreviewView: NSViewRepresentable {
                 boldFont: boldFont,
                 italicFont: italicFont,
                 monoFont: monoFont,
-                codeBackground: codeBackground
+                codeBackground: codeBackground,
+                existingNoteNames: existingNoteNames
             )
 
             // Ensure paragraph style is applied to entire string
@@ -236,7 +278,11 @@ struct MarkdownPreviewView: NSViewRepresentable {
         return result
     }
 
-    private func parseMarkdown(content: String, fontSize: CGFloat) -> NSAttributedString {
+    private func parseMarkdown(
+        content: String,
+        fontSize: CGFloat,
+        existingNoteNames: Set<String>
+    ) -> NSAttributedString {
         let result = NSMutableAttributedString()
         let lines = content.components(separatedBy: "\n")
 
@@ -334,7 +380,8 @@ struct MarkdownPreviewView: NSViewRepresentable {
                 boldFont: boldFont,
                 italicFont: italicFont,
                 monoFont: monoFont,
-                codeBackground: codeBackground
+                codeBackground: codeBackground,
+                existingNoteNames: existingNoteNames
             )
 
             result.append(attributedLine)
@@ -366,7 +413,8 @@ struct MarkdownPreviewView: NSViewRepresentable {
         boldFont: NSFont,
         italicFont: NSFont,
         monoFont: NSFont,
-        codeBackground: NSColor
+        codeBackground: NSColor,
+        existingNoteNames: Set<String>
     ) -> NSAttributedString {
         let result = NSMutableAttributedString()
         var remaining = text
@@ -424,6 +472,31 @@ struct MarkdownPreviewView: NSViewRepresentable {
                 result.append(NSAttributedString(string: italicText, attributes: italicAttrs))
 
                 remaining = String(remaining[italicRange.upperBound...])
+                continue
+            }
+
+            // Wiki links [[note name]]
+            if let wikiRange = remaining.range(of: "\\[\\[[^\\]]+\\]\\]", options: .regularExpression) {
+                let beforeWiki = String(remaining[..<wikiRange.lowerBound])
+                if !beforeWiki.isEmpty {
+                    result.append(NSAttributedString(string: beforeWiki, attributes: currentAttrs))
+                }
+
+                let wikiText = String(remaining[wikiRange])
+                let inner = String(wikiText.dropFirst(2).dropLast(2))
+
+                var wikiAttrs = currentAttrs
+                let exists = existingNoteNames.contains(inner.lowercased())
+                let color = exists ? NSColor.systemBlue : NSColor.systemOrange
+                wikiAttrs[.foregroundColor] = color
+                wikiAttrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
+                wikiAttrs[.underlineColor] = color
+                if let url = Self.wikiLinkURL(for: inner) {
+                    wikiAttrs[.link] = url
+                }
+                result.append(NSAttributedString(string: inner, attributes: wikiAttrs))
+
+                remaining = String(remaining[wikiRange.upperBound...])
                 continue
             }
 

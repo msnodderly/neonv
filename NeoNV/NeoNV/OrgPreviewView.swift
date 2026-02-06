@@ -6,6 +6,8 @@ struct OrgPreviewView: NSViewRepresentable {
     var fontSize: CGFloat = 13
     var onShiftTab: (() -> Void)?
     var onTypeToEdit: (() -> Void)?
+    var existingNoteNames: Set<String> = []
+    var onWikiLinkClicked: ((String) -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = FocusForwardingScrollView()
@@ -27,6 +29,7 @@ struct OrgPreviewView: NSViewRepresentable {
 
         textView.onShiftTab = onShiftTab
         textView.onTypeToEdit = onTypeToEdit
+        textView.delegate = context.coordinator
 
         scrollView.documentView = textView
         scrollView.hasVerticalScroller = true
@@ -44,6 +47,7 @@ struct OrgPreviewView: NSViewRepresentable {
 
         textView.onShiftTab = onShiftTab
         textView.onTypeToEdit = onTypeToEdit
+        textView.delegate = context.coordinator
 
         updateContent(textView: textView, content: content, fontSize: fontSize)
     }
@@ -51,6 +55,39 @@ struct OrgPreviewView: NSViewRepresentable {
     private func updateContent(textView: NSTextView, content: String, fontSize: CGFloat) {
         let attributedString = parseOrg(content: content, fontSize: fontSize)
         textView.textStorage?.setAttributedString(attributedString)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onWikiLinkClicked: onWikiLinkClicked)
+    }
+
+    private static let wikiLinkScheme = "neonv"
+
+    private static func wikiLinkURL(for name: String) -> URL? {
+        let encoded = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
+        return URL(string: "\(wikiLinkScheme)://wiki/\(encoded)")
+    }
+
+    private static func decodeWikiLinkName(from url: URL) -> String? {
+        guard url.scheme == wikiLinkScheme, url.host == "wiki" else { return nil }
+        let raw = url.path.hasPrefix("/") ? String(url.path.dropFirst()) : url.path
+        return raw.removingPercentEncoding ?? raw
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        var onWikiLinkClicked: ((String) -> Void)?
+
+        init(onWikiLinkClicked: ((String) -> Void)?) {
+            self.onWikiLinkClicked = onWikiLinkClicked
+        }
+
+        func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
+            if let url = link as? URL, let name = OrgPreviewView.decodeWikiLinkName(from: url) {
+                onWikiLinkClicked?(name)
+                return true
+            }
+            return false
+        }
     }
 }
 
@@ -619,10 +656,23 @@ extension OrgPreviewView {
             urlText = inner
             displayText = inner
         }
-        linkAttrs[.foregroundColor] = NSColor.linkColor
-        linkAttrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
-        if let url = URL(string: urlText) {
+        let parsedURL = URL(string: urlText)
+        let hasScheme = parsedURL?.scheme != nil
+
+        if hasScheme, let url = parsedURL {
+            linkAttrs[.foregroundColor] = NSColor.linkColor
+            linkAttrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
             linkAttrs[.link] = url
+        } else {
+            let lower = urlText.lowercased()
+            let exists = existingNoteNames.contains(lower)
+            let color = exists ? NSColor.systemBlue : NSColor.systemOrange
+            linkAttrs[.foregroundColor] = color
+            linkAttrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
+            linkAttrs[.underlineColor] = color
+            if let url = Self.wikiLinkURL(for: urlText) {
+                linkAttrs[.link] = url
+            }
         }
         return NSAttributedString(string: displayText, attributes: linkAttrs)
     }

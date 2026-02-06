@@ -52,6 +52,7 @@ struct ContentView: View {
         let content: String
     }
 
+
     private var filteredNotes: [NoteFile] {
         let query = debouncedSearchText
         let baseNotes = query.isEmpty ? noteStore.notes : noteStore.notes.filter { $0.matches(query: query) }
@@ -322,7 +323,9 @@ struct ContentView: View {
                 content: editorContent,
                 fontSize: CGFloat(AppSettings.shared.fontSize),
                 onShiftTab: { focusedField = .noteList },
-                onTypeToEdit: { switchToEditor() }
+                onTypeToEdit: { switchToEditor() },
+                existingNoteNames: wikiLinkNameSet,
+                onWikiLinkClicked: handleWikiLinkClicked
             )
             .focused($focusedField, equals: .preview)
             .frame(minWidth: 300)
@@ -331,7 +334,9 @@ struct ContentView: View {
                 content: editorContent,
                 fontSize: CGFloat(AppSettings.shared.fontSize),
                 onShiftTab: { focusedField = .noteList },
-                onTypeToEdit: { switchToEditor() }
+                onTypeToEdit: { switchToEditor() },
+                existingNoteNames: wikiLinkNameSet,
+                onWikiLinkClicked: handleWikiLinkClicked
             )
             .focused($focusedField, equals: .preview)
             .frame(minWidth: 300)
@@ -428,8 +433,11 @@ struct ContentView: View {
                 cursorPosition: $cursorPosition,
                 focusedField: _focusedField,
                 searchText: debouncedSearchText,
+                existingNoteNames: wikiLinkNameSet,
+                noteNamesForAutocomplete: wikiLinkAutocompleteNames,
                 onShiftTab: { focusedField = settings.isFileListHidden ? .search : .noteList },
-                onEscape: { focusedField = settings.isFileListHidden ? .search : .noteList }
+                onEscape: { focusedField = settings.isFileListHidden ? .search : .noteList },
+                onWikiLinkClicked: handleWikiLinkClicked
             )
             .frame(minWidth: 300)
         }
@@ -909,71 +917,11 @@ struct ContentView: View {
         }
     }
 
+
     private func clearSearch() {
         searchText = ""
         // Don't clear selectedNoteID - let autoSelectTopMatch() handle it
         // This allows it to restore the last manual selection
-    }
-
-    private static let validExtensions: Set<String> = ["md", "txt", "org", "markdown", "text"]
-
-    private func sanitizePathComponent(_ name: String, preserveExtension: Bool = false) -> String {
-        var baseName = name
-        var extensionPart: String?
-
-        if preserveExtension {
-            let lowercased = name.lowercased()
-            for ext in Self.validExtensions {
-                if lowercased.hasSuffix(".\(ext)") {
-                    let extWithDot = ".\(ext)"
-                    baseName = String(name.dropLast(extWithDot.count))
-                    extensionPart = ext
-                    break
-                }
-            }
-        }
-
-        var sanitized = baseName.lowercased()
-            .replacingOccurrences(of: " ", with: "-")
-            .replacingOccurrences(of: "[^a-z0-9-]", with: "", options: .regularExpression)
-
-        if sanitized.count > 100 {
-            sanitized = String(sanitized.prefix(100))
-        }
-
-        if sanitized.isEmpty {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyyMMdd-HHmmss"
-            sanitized = "untitled-\(formatter.string(from: Date()))"
-        }
-
-        if let ext = extensionPart {
-            sanitized += ".\(ext)"
-        }
-
-        return sanitized
-    }
-
-    private func sanitizePathComponents(_ input: String) -> [String] {
-        let normalized = input
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "\\", with: "/")
-
-        let rawParts = normalized.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
-
-        var parts: [String] = []
-        for (index, part) in rawParts.enumerated() {
-            if part == "." || part == ".." { continue }
-            let isLastPart = index == rawParts.count - 1
-            let sanitized = sanitizePathComponent(part, preserveExtension: isLastPart)
-            if !sanitized.isEmpty { parts.append(sanitized) }
-        }
-        return parts
-    }
-
-    private func hasValidExtension(_ name: String) -> Bool {
-        let lowercased = name.lowercased()
-        return Self.validExtensions.contains { lowercased.hasSuffix(".\($0)") }
     }
 
     private func scheduleAutoSave() {
@@ -1464,8 +1412,11 @@ struct EditorView: View {
     @FocusState var focusedField: FocusedField?
     @ObservedObject private var settings = AppSettings.shared
     var searchText: String
+    var existingNoteNames: Set<String> = []
+    var noteNamesForAutocomplete: [String] = []
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
+    var onWikiLinkClicked: ((String) -> Void)?
 
     var body: some View {
         PlainTextEditor(
@@ -1475,8 +1426,11 @@ struct EditorView: View {
             fontFamily: settings.fontFamily,
             showFindBar: showFindBar,
             searchTerms: [],
+            existingNoteNames: existingNoteNames,
+            noteNamesForAutocomplete: noteNamesForAutocomplete,
             onShiftTab: onShiftTab,
-            onEscape: onEscape
+            onEscape: onEscape,
+            onWikiLinkClicked: onWikiLinkClicked
         )
         .focused($focusedField, equals: .editor)
         .onChange(of: showFindBar) { _, newValue in
@@ -1545,6 +1499,200 @@ struct NotificationHandlers: ViewModifier {
             .onReceive(NotificationCenter.default.publisher(for: .addTag)) { _ in
                 onAddTag()
             }
+    }
+}
+
+extension ContentView {
+    static let validExtensions: Set<String> = ["md", "txt", "org", "markdown", "text"]
+
+    func sanitizePathComponent(_ name: String, preserveExtension: Bool = false) -> String {
+        var baseName = name
+        var extensionPart: String?
+
+        if preserveExtension {
+            let lowercased = name.lowercased()
+            for ext in Self.validExtensions {
+                if lowercased.hasSuffix(".\(ext)") {
+                    let extWithDot = ".\(ext)"
+                    baseName = String(name.dropLast(extWithDot.count))
+                    extensionPart = ext
+                    break
+                }
+            }
+        }
+
+        var sanitized = baseName.lowercased()
+            .replacingOccurrences(of: " ", with: "-")
+            .replacingOccurrences(of: "[^a-z0-9-]", with: "", options: .regularExpression)
+
+        if sanitized.count > 100 {
+            sanitized = String(sanitized.prefix(100))
+        }
+
+        if sanitized.isEmpty {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyyMMdd-HHmmss"
+            sanitized = "untitled-\(formatter.string(from: Date()))"
+        }
+
+        if let ext = extensionPart {
+            sanitized += ".\(ext)"
+        }
+
+        return sanitized
+    }
+
+    func sanitizePathComponents(_ input: String) -> [String] {
+        let normalized = input
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\\", with: "/")
+
+        let rawParts = normalized.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
+
+        var parts: [String] = []
+        for (index, part) in rawParts.enumerated() where part != "." && part != ".." {
+            let isLastPart = index == rawParts.count - 1
+            let sanitized = sanitizePathComponent(part, preserveExtension: isLastPart)
+            if !sanitized.isEmpty { parts.append(sanitized) }
+        }
+        return parts
+    }
+
+    func hasValidExtension(_ name: String) -> Bool {
+        let lowercased = name.lowercased()
+        return Self.validExtensions.contains { lowercased.hasSuffix(".\($0)") }
+    }
+
+    var wikiLinkNameSet: Set<String> {
+        var names = Set<String>()
+        for note in noteStore.notes where !note.isUnsaved {
+            let title = note.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if !title.isEmpty {
+                names.insert(title)
+            }
+            let display = note.displayTitle.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if !display.isEmpty {
+                names.insert(display)
+            }
+            let relative = note.relativePath.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if !relative.isEmpty {
+                names.insert(relative)
+            }
+            let fileName = note.url.lastPathComponent.lowercased()
+            let baseName = note.url.deletingPathExtension().lastPathComponent.lowercased()
+            names.insert(fileName)
+            names.insert(baseName)
+        }
+        return names
+    }
+
+    var wikiLinkAutocompleteNames: [String] {
+        var seen = Set<String>()
+        var results: [String] = []
+        for note in noteStore.notes where !note.isUnsaved {
+            let candidates = [
+                note.displayTitle,
+                note.url.deletingPathExtension().lastPathComponent
+            ]
+            for candidate in candidates {
+                let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else { continue }
+                let lower = trimmed.lowercased()
+                guard !seen.contains(lower) else { continue }
+                seen.insert(lower)
+                results.append(trimmed)
+            }
+        }
+        return results.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
+    func handleWikiLinkClicked(_ rawName: String) {
+        let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+
+        if let existing = findNoteForWikiLink(name) {
+            selectedNoteID = existing.id
+            focusedField = showPreview ? .preview : .editor
+            return
+        }
+
+        createNoteFromWikiLink(name)
+    }
+
+    func findNoteForWikiLink(_ name: String) -> NoteFile? {
+        let target = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !target.isEmpty else { return nil }
+
+        return noteStore.notes.first { note in
+            guard !note.isUnsaved else { return false }
+            let title = note.title.lowercased()
+            let display = note.displayTitle.lowercased()
+            let relative = note.relativePath.lowercased()
+            let fileName = note.url.lastPathComponent.lowercased()
+            let baseName = note.url.deletingPathExtension().lastPathComponent.lowercased()
+            return target == title
+                || target == display
+                || target == relative
+                || target == fileName
+                || target == baseName
+        }
+    }
+
+    func createNoteFromWikiLink(_ name: String) {
+        guard let folderURL = noteStore.selectedFolderURL else { return }
+
+        let parts = sanitizePathComponents(name)
+        guard !parts.isEmpty else { return }
+
+        let directoryParts = parts.dropLast()
+        let baseName = parts.last!
+
+        var dirURL = folderURL
+        for part in directoryParts {
+            dirURL = dirURL.appendingPathComponent(part, isDirectory: true)
+        }
+
+        let fileName: String
+        if hasValidExtension(baseName) {
+            fileName = baseName
+        } else {
+            let ext = AppSettings.shared.defaultExtension.rawValue
+            fileName = "\(baseName).\(ext)"
+        }
+        let fileURL = dirURL.appendingPathComponent(fileName)
+        let initialContent = name + "\n\n"
+
+        Task {
+            do {
+                let fm = FileManager.default
+                try fm.createDirectory(
+                    at: fileURL.deletingLastPathComponent(),
+                    withIntermediateDirectories: true
+                )
+
+                noteStore.markAsSavedLocally(fileURL, content: initialContent)
+                try await atomicWrite(content: initialContent, to: fileURL)
+
+                await noteStore.discoverFiles()
+
+                await MainActor.run {
+                    if let newNote = noteStore.notes.first(where: { $0.url == fileURL }) {
+                        pendingCursorAtEnd = true
+                        selectedNoteID = newNote.id
+                        focusedField = showPreview ? .preview : .editor
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    let alert = NSAlert()
+                    alert.messageText = "Failed to Create Note"
+                    alert.informativeText = "Could not create new note: \(error.localizedDescription)"
+                    alert.alertStyle = .warning
+                    alert.addButton(withTitle: "OK")
+                    alert.runModal()
+                }
+            }
+        }
     }
 }
 
