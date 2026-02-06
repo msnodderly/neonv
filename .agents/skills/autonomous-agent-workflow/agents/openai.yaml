@@ -1,0 +1,4 @@
+interface:
+  display_name: "Autonomous Agent Workflow"
+  short_description: "Run a single-task agent workflow"
+  default_prompt: "Use $autonomous-agent-workflow to run a one-task agent session end to end."
