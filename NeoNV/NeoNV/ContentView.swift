@@ -40,6 +40,7 @@ struct ContentView: View {
     @State private var showKeyboardShortcuts = false
     @State private var noteToTag: NoteFile?
     @State private var tagText: String = ""
+    @StateObject private var navHistory = NavigationHistory()
     @FocusState private var focusedField: FocusedField?
 
     struct ExternalConflict: Identifiable {
@@ -139,6 +140,9 @@ struct ContentView: View {
             }
         }
         .onChange(of: selectedNoteID) { _, newID in
+            if let newID = newID {
+                navHistory.push(newID)
+            }
             loadSelectedNote(id: newID)
         }
         .onChange(of: editorContent) { _, _ in
@@ -314,6 +318,16 @@ struct ContentView: View {
                       !note.isUnsaved else { return }
                 tagText = note.tags.joined(separator: ", ")
                 noteToTag = note
+            },
+            onNavigateBack: {
+                if let target = navHistory.goBack(current: selectedNoteID) {
+                    selectedNoteID = target
+                }
+            },
+            onNavigateForward: {
+                if let target = navHistory.goForward(current: selectedNoteID) {
+                    selectedNoteID = target
+                }
             }
         ))
         .sheet(isPresented: $showHelp) {
@@ -1600,6 +1614,8 @@ struct NotificationHandlers: ViewModifier {
     let onToggleFileList: () -> Void
     let onToggleLayout: () -> Void
     let onAddTag: () -> Void
+    let onNavigateBack: () -> Void
+    let onNavigateForward: () -> Void
 
     func body(content: Content) -> some View {
         content
@@ -1641,6 +1657,12 @@ struct NotificationHandlers: ViewModifier {
             }
             .onReceive(NotificationCenter.default.publisher(for: .addTag)) { _ in
                 onAddTag()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .navigateBack)) { _ in
+                onNavigateBack()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .navigateForward)) { _ in
+                onNavigateForward()
             }
     }
 }
