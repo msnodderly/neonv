@@ -1168,8 +1168,10 @@ private func atomicWrite(content: String, to url: URL) async throws {
     try Task.checkCancellation()
 
     let data = content.data(using: .utf8)!
-    let tempURL = url.deletingLastPathComponent()
-        .appendingPathComponent(".\(url.lastPathComponent).tmp")
+    let dir = url.deletingLastPathComponent()
+    let tempURL = dir.appendingPathComponent(".neonv-\(UUID().uuidString).tmp")
+
+    defer { try? FileManager.default.removeItem(at: tempURL) }
 
     try data.write(to: tempURL, options: .atomic)
 
