@@ -28,8 +28,8 @@ struct NoteFile: Identifiable, Equatable {
     private(set) var searchPreview: String = ""
     private(set) var searchTags: String = ""
 
-    init(url: URL, relativePath: String, modificationDate: Date, title: String, contentPreview: String = "", isUnsaved: Bool = false, tags: [String] = []) {
-        self.id = UUID()
+    init(id: UUID = UUID(), url: URL, relativePath: String, modificationDate: Date, title: String, contentPreview: String = "", isUnsaved: Bool = false, tags: [String] = []) {
+        self.id = id
         self.url = url
         self.relativePath = relativePath
         self.modificationDate = modificationDate
@@ -359,6 +359,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         let modDate = resourceValues?.contentModificationDate ?? note.modificationDate
 
         let renamed = NoteFile(
+            id: note.id,
             url: newURL,
             relativePath: relativePath,
             modificationDate: modDate,
