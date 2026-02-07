@@ -168,3 +168,5 @@ fix-collision/
 fix-autosave/
 # bd worktree
 fix-rename-race/
+# bd worktree
+neonv-7wi/
