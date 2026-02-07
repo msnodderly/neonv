@@ -123,12 +123,19 @@ struct ContentView: View {
                 }
             }
             ToolbarItem(placement: .automatic) {
-                Button(action: togglePreview) { Image(systemName: showPreview ? "eye.fill" : "eye") }
-                    .help(showPreview ? "Hide preview (⌘P)" : "Show preview (⌘P)")
+                Button(action: togglePreview) {
+                    Label(showPreview ? "Hide preview" : "Show preview",
+                          systemImage: showPreview ? "eye.fill" : "eye")
+                }
+                .labelStyle(.iconOnly)
+                .help(showPreview ? "Hide preview (⌘P)" : "Show preview (⌘P)")
             }
             ToolbarItem(placement: .automatic) {
-                Button(action: noteStore.selectFolder) { Image(systemName: "folder") }
-                    .help("Select notes folder")
+                Button(action: noteStore.selectFolder) {
+                    Label("Select notes folder", systemImage: "folder")
+                }
+                .labelStyle(.iconOnly)
+                .help("Select notes folder")
             }
         }
         .onChange(of: selectedNoteID) { _, newID in
