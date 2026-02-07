@@ -1019,10 +1019,21 @@ struct ContentView: View {
         }
 
         let content = editorContent
+        let isFirstSave = note.isUnsaved
 
         do {
-            noteStore.markAsSavedLocally(note.url, content: content)
-            try await atomicWrite(content: content, to: note.url)
+            // If the destination already exists on first save, reassign to a new unique name
+            // so neither the existing file nor the new content is lost.
+            let saveURL: URL
+            if isFirstSave, let newURL = noteStore.resolveFirstSaveCollision(id: id) {
+                saveURL = newURL
+                selectedNoteURL = newURL
+            } else {
+                saveURL = note.url
+            }
+
+            noteStore.markAsSavedLocally(saveURL, content: content)
+            try await atomicWrite(content: content, to: saveURL)
             await MainActor.run {
                 originalContent = content
                 isDirty = false
