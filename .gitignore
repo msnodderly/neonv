@@ -180,3 +180,5 @@ trash-delete/
 read-only-indicator/
 # bd worktree
 file-read-error/
+# bd worktree
+cursor-position/
