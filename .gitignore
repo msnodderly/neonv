@@ -176,3 +176,5 @@ fix-rename-watcher/
 fix-atomic-write/
 # bd worktree
 trash-delete/
+# bd worktree
+read-only-indicator/
