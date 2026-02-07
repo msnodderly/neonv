@@ -1000,8 +1000,18 @@ struct ContentView: View {
         }
 
         let content = editorContent
+        let isFirstSave = note.isUnsaved
 
         do {
+            // Prevent overwriting an existing file on first save of an unsaved note
+            if isFirstSave && FileManager.default.fileExists(atPath: note.url.path) {
+                throw NSError(
+                    domain: "NeoNV",
+                    code: 3,
+                    userInfo: [NSLocalizedDescriptionKey: "A file already exists at \"\(note.url.lastPathComponent)\". Save aborted to prevent data loss."]
+                )
+            }
+
             noteStore.markAsSavedLocally(note.url, content: content)
             try await atomicWrite(content: content, to: note.url)
             await MainActor.run {

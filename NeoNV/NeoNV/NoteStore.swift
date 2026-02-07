@@ -388,18 +388,27 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         formatter.dateFormat = "yyyyMMdd-HHmmss"
         let timestamp = formatter.string(from: Date())
         let ext = AppSettings.shared.defaultExtension.rawValue
-        let fileName = "untitled-\(timestamp).\(ext)"
-        let fileURL = folderURL.appendingPathComponent(fileName)
-        
+        let suffix = UUID().uuidString.prefix(6)
+        let fileName = "untitled-\(timestamp)-\(suffix).\(ext)"
+        var fileURL = folderURL.appendingPathComponent(fileName)
+
+        // Ensure in-memory uniqueness (extremely unlikely but defensive)
+        while notes.contains(where: { $0.url == fileURL }) {
+            let retrySuffix = UUID().uuidString.prefix(6)
+            let retryName = "untitled-\(timestamp)-\(retrySuffix).\(ext)"
+            fileURL = folderURL.appendingPathComponent(retryName)
+        }
+
+        let relativePath = fileURL.lastPathComponent
         let note = NoteFile(
             url: fileURL,
-            relativePath: fileName,
+            relativePath: relativePath,
             modificationDate: Date(),
             title: "",
             contentPreview: "",
             isUnsaved: true
         )
-        
+
         notes.insert(note, at: 0)
         return note
     }
