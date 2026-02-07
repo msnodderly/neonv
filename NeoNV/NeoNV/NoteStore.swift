@@ -193,6 +193,22 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
     /// URLs of files recently saved by this app (short-lived, for quick filtering).
     private var recentlySavedURLs: Set<URL> = []
 
+    /// Marks both the old and new URLs as recently-saved so the file watcher
+    /// ignores the rename event, and transfers the content hash to the new URL.
+    func markAsRenamedLocally(oldURL: URL, newURL: URL) {
+        recentlySavedURLs.insert(oldURL)
+        recentlySavedURLs.insert(newURL)
+        if let hash = lastSavedContentHash[oldURL] {
+            lastSavedContentHash[newURL] = hash
+            lastSavedContentHash.removeValue(forKey: oldURL)
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3))
+            self.recentlySavedURLs.remove(oldURL)
+            self.recentlySavedURLs.remove(newURL)
+        }
+    }
+
     func markAsSavedLocally(_ url: URL, content: String? = nil) {
         recentlySavedURLs.insert(url)
         if let content = content {
@@ -346,6 +362,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             throw NSError(domain: "NoteStore", code: 2, userInfo: [NSLocalizedDescriptionKey: "A file named \"\(newFileName)\" already exists."])
         }
 
+        markAsRenamedLocally(oldURL: note.url, newURL: newURL)
         try FileManager.default.moveItem(at: note.url, to: newURL)
 
         let relativePath: String
