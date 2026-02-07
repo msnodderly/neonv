@@ -162,3 +162,5 @@ unsaved-notes-fix/
 rtt-wikilinks/
 # bd worktree
 fix-overwrite/
+# bd worktree
+fix-collision/
