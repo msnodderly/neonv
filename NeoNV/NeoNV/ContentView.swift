@@ -30,6 +30,7 @@ struct ContentView: View {
     @State private var externalConflict: ExternalConflict?
     @State private var externalToastMessage: String?
     @State private var selectedNoteURL: URL?
+    @State private var isReadOnly = false
     @State private var showFindBar = false
     @State private var showHelp = false
     @State private var cursorPosition = 0
@@ -109,24 +110,23 @@ struct ContentView: View {
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {
-                if isDirty {
-                    Circle()
-                        .fill(.orange)
-                        .frame(width: 8, height: 8)
-                        .help("Unsaved changes")
+                if isReadOnly {
+                    Text("Read Only").font(.system(size: 11)).foregroundColor(.secondary)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Color.secondary.opacity(0.15)).cornerRadius(4)
+                } else if isDirty {
+                    Circle().fill(.orange).frame(width: 8, height: 8).help("Unsaved changes")
                 }
             }
             ToolbarItem(placement: .automatic) {
                 Button(action: togglePreview) {
                     Image(systemName: showPreview ? "eye.fill" : "eye")
-                }
-                .help(showPreview ? "Hide preview (⌘P)" : "Show preview (⌘P)")
+                }.help(showPreview ? "Hide preview (⌘P)" : "Show preview (⌘P)")
             }
             ToolbarItem(placement: .automatic) {
                 Button(action: noteStore.selectFolder) {
                     Image(systemName: "folder")
-                }
-                .help("Select notes folder")
+                }.help("Select notes folder")
             }
         }
         .onChange(of: selectedNoteID) { _, newID in
@@ -428,6 +428,7 @@ struct ContentView: View {
                 cursorPosition: $cursorPosition,
                 focusedField: _focusedField,
                 searchText: debouncedSearchText,
+                isEditable: !isReadOnly,
                 onShiftTab: { focusedField = settings.isFileListHidden ? .search : .noteList },
                 onEscape: { focusedField = settings.isFileListHidden ? .search : .noteList }
             )
@@ -818,9 +819,11 @@ struct ContentView: View {
             editorContent = ""
             cursorPosition = 0
             isDirty = false
+            isReadOnly = false
             return
         }
         selectedNoteURL = note.url
+        isReadOnly = note.isReadOnly
         // Skip file loading for unsaved notes - file doesn't exist on disk yet
         if unsavedNoteIDs.contains(id) {
             originalContent = ""
@@ -1518,6 +1521,7 @@ struct EditorView: View {
     @FocusState var focusedField: FocusedField?
     @ObservedObject private var settings = AppSettings.shared
     var searchText: String
+    var isEditable: Bool = true
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
 
@@ -1527,6 +1531,7 @@ struct EditorView: View {
             cursorPosition: $cursorPosition,
             fontSize: CGFloat(settings.fontSize),
             fontFamily: settings.fontFamily,
+            isEditable: isEditable,
             showFindBar: showFindBar,
             searchTerms: [],
             onShiftTab: onShiftTab,
