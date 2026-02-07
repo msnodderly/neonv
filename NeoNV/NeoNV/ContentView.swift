@@ -806,6 +806,11 @@ struct ContentView: View {
     }
 
     private func loadSelectedNote(id: UUID?) {
+        if isDirty, let previousID = selectedNoteID {
+            saveTask?.cancel()
+            let content = editorContent
+            Task { await performSave(noteID: previousID, content: content) }
+        }
         guard let id = id,
               let note = noteStore.notes.first(where: { $0.id == id }) else {
             selectedNoteURL = nil
@@ -816,7 +821,6 @@ struct ContentView: View {
             return
         }
         selectedNoteURL = note.url
-
         // Skip file loading for unsaved notes - file doesn't exist on disk yet
         if unsavedNoteIDs.contains(id) {
             originalContent = ""
@@ -825,7 +829,6 @@ struct ContentView: View {
             isDirty = false
             return
         }
-
         let noteID = id
         Task {
             do {
@@ -1016,35 +1019,29 @@ struct ContentView: View {
 
     private func scheduleAutoSave() {
         guard let selectedID = selectedNoteID else { return }
-        guard editorContent != originalContent else { return }
-        
+        saveTask?.cancel()
+        guard editorContent != originalContent else {
+            isDirty = false
+            return
+        }
         isDirty = true
         unsavedNoteIDs.insert(selectedID)
         AppDelegate.shared.hasUnsavedChanges = true
-
-        saveTask?.cancel()
+        let (capturedID, capturedContent) = (selectedID, editorContent)
         saveTask = Task {
             try? await Task.sleep(for: .milliseconds(500))
-            guard !Task.isCancelled else { return }
-            await performSave()
+            guard !Task.isCancelled, selectedNoteID == capturedID else { return }
+            await performSave(noteID: capturedID, content: capturedContent)
         }
     }
     
-    private func performSave() async {
+    private func performSave(noteID: UUID, content: String) async {
         guard externalConflict == nil else { return }
-        guard let id = selectedNoteID,
-              let note = noteStore.notes.first(where: { $0.id == id }) else {
-            return
-        }
-
-        let content = editorContent
+        guard let note = noteStore.notes.first(where: { $0.id == noteID }) else { return }
         let isFirstSave = note.isUnsaved
-
         do {
-            // If the destination already exists on first save, reassign to a new unique name
-            // so neither the existing file nor the new content is lost.
             let saveURL: URL
-            if isFirstSave, let newURL = noteStore.resolveFirstSaveCollision(id: id) {
+            if isFirstSave, let newURL = noteStore.resolveFirstSaveCollision(id: noteID) {
                 saveURL = newURL
                 selectedNoteURL = newURL
             } else {
@@ -1054,14 +1051,16 @@ struct ContentView: View {
             noteStore.markAsSavedLocally(saveURL, content: content)
             try await atomicWrite(content: content, to: saveURL)
             await MainActor.run {
-                originalContent = content
-                isDirty = false
-                unsavedNoteIDs.remove(id)
-                if let idx = noteStore.notes.firstIndex(where: { $0.id == id }) {
+                if selectedNoteID == noteID {
+                    originalContent = content
+                    isDirty = false
+                }
+                unsavedNoteIDs.remove(noteID)
+                if let idx = noteStore.notes.firstIndex(where: { $0.id == noteID }) {
                     noteStore.notes[idx].isUnsaved = false
                 }
                 saveError = nil
-                AppDelegate.shared.hasUnsavedChanges = false
+                AppDelegate.shared.hasUnsavedChanges = !isDirty
             }
         } catch is CancellationError {
             return
