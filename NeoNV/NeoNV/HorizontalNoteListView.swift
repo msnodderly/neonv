@@ -121,7 +121,7 @@ struct HorizontalNoteListView: View {
                             }
                         }
                         if let onDeleteNote = onDeleteNote {
-                            Button("Delete", role: .destructive) {
+                            Button("Move to Trash", role: .destructive) {
                                 onDeleteNote(note)
                             }
                         }
