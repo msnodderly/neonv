@@ -172,3 +172,5 @@ fix-rename-race/
 neonv-7wi/
 # bd worktree
 fix-rename-watcher/
+# bd worktree
+fix-atomic-write/
