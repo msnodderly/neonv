@@ -174,3 +174,5 @@ neonv-7wi/
 fix-rename-watcher/
 # bd worktree
 fix-atomic-write/
+# bd worktree
+trash-delete/
