@@ -204,21 +204,21 @@ struct ContentView: View {
             }
         }
         .disabled(saveError != nil || externalConflict != nil)
-        .alert("Delete Note", isPresented: Binding(
+        .alert("Move to Trash", isPresented: Binding(
             get: { noteToDelete != nil },
             set: { if !$0 { noteToDelete = nil } }
         )) {
             Button("Cancel", role: .cancel) {
                 noteToDelete = nil
             }
-            Button("Delete", role: .destructive) {
+            Button("Move to Trash", role: .destructive) {
                 if let note = noteToDelete {
                     deleteNote(note)
                 }
             }
         } message: {
             if let note = noteToDelete {
-                Text("Are you sure you want to delete \"\(note.displayTitle)\"? This action cannot be undone.")
+                Text("Are you sure you want to move \"\(note.displayTitle)\" to the Trash?")
             }
         }
         .alert("Rename Note", isPresented: Binding(
@@ -459,8 +459,8 @@ struct ContentView: View {
             }
         } catch {
             let alert = NSAlert()
-            alert.messageText = "Failed to Delete Note"
-            alert.informativeText = "Could not delete \"\(note.displayTitle)\":\n\n\(error.localizedDescription)"
+            alert.messageText = "Failed to Move to Trash"
+            alert.informativeText = "Could not move \"\(note.displayTitle)\" to the Trash:\n\n\(error.localizedDescription)"
             alert.alertStyle = .warning
             alert.addButton(withTitle: "OK")
             alert.runModal()
@@ -1468,7 +1468,7 @@ struct NoteListView: View {
                             }
                         }
                         if let onDeleteNote = onDeleteNote {
-                            Button("Delete", role: .destructive) {
+                            Button("Move to Trash", role: .destructive) {
                                 onDeleteNote(note)
                             }
                         }

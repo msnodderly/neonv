@@ -128,7 +128,7 @@ struct NeoNVApp: App {
             }
 
             CommandGroup(after: .pasteboard) {
-                Button("Delete Note") {
+                Button("Move to Trash") {
                     NotificationCenter.default.post(name: .deleteNote, object: nil)
                 }
                 .keyboardShortcut(.delete, modifiers: [])

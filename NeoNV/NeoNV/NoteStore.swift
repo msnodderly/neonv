@@ -393,7 +393,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         let note = notes[index]
 
         if !note.isUnsaved {
-            try FileManager.default.removeItem(at: note.url)
+            try FileManager.default.trashItem(at: note.url, resultingItemURL: nil)
         }
 
         notes.remove(at: index)
