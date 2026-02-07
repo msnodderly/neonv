@@ -22,8 +22,13 @@ final class NavigationHistory: ObservableObject {
 
     /// Record that the user navigated to `noteID`.
     /// Clears the forward stack (like a browser).
+    /// When called after goBack()/goForward(), consumes the isNavigating
+    /// flag and skips the push so the stacks stay intact.
     func push(_ noteID: UUID) {
-        guard !isNavigating else { return }
+        if isNavigating {
+            isNavigating = false
+            return
+        }
         // Avoid duplicate adjacent entries
         if backStack.last == noteID { return }
         backStack.append(noteID)
@@ -45,7 +50,6 @@ final class NavigationHistory: ObservableObject {
         while let previous = backStack.popLast() {
             if previous != current {
                 isNavigating = true
-                defer { isNavigating = false }
                 return previous
             }
             // Same as current, push to forward and keep popping
@@ -63,7 +67,6 @@ final class NavigationHistory: ObservableObject {
         while let next = forwardStack.popLast() {
             if next != current {
                 isNavigating = true
-                defer { isNavigating = false }
                 return next
             }
             backStack.append(next)
