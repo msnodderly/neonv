@@ -1050,9 +1050,11 @@ struct ContentView: View {
         let isFirstSave = note.isUnsaved
         do {
             let saveURL: URL
+            var collisionName: String?
             if isFirstSave, let newURL = noteStore.resolveFirstSaveCollision(id: noteID) {
                 saveURL = newURL
                 selectedNoteURL = newURL
+                collisionName = newURL.lastPathComponent
             } else {
                 saveURL = note.url
             }
@@ -1069,6 +1071,9 @@ struct ContentView: View {
                     noteStore.notes[idx].isUnsaved = false
                 }
                 saveError = nil
+                if let name = collisionName {
+                    withAnimation { externalToastMessage = "File already existed — saved as \(name)" }
+                }
                 AppDelegate.shared.hasUnsavedChanges = !isDirty
             }
         } catch is CancellationError {
