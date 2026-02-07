@@ -178,3 +178,5 @@ fix-atomic-write/
 trash-delete/
 # bd worktree
 read-only-indicator/
+# bd worktree
+file-read-error/
