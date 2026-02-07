@@ -20,6 +20,7 @@ struct NoteFile: Identifiable, Equatable {
     var title: String
     var contentPreview: String
     var isUnsaved: Bool = false
+    var isReadOnly: Bool = false
     var tags: [String] = []
 
     /// Pre-computed lowercased strings for fast search matching
@@ -28,7 +29,8 @@ struct NoteFile: Identifiable, Equatable {
     private(set) var searchPreview: String = ""
     private(set) var searchTags: String = ""
 
-    init(id: UUID = UUID(), url: URL, relativePath: String, modificationDate: Date, title: String, contentPreview: String = "", isUnsaved: Bool = false, tags: [String] = []) {
+    // swiftlint:disable:next line_length
+    init(id: UUID = UUID(), url: URL, relativePath: String, modificationDate: Date, title: String, contentPreview: String = "", isUnsaved: Bool = false, isReadOnly: Bool = false, tags: [String] = []) {
         self.id = id
         self.url = url
         self.relativePath = relativePath
@@ -36,6 +38,7 @@ struct NoteFile: Identifiable, Equatable {
         self.title = title
         self.contentPreview = contentPreview
         self.isUnsaved = isUnsaved
+        self.isReadOnly = isReadOnly
         self.tags = tags
         self.searchTitle = title.lowercased()
         self.searchPath = relativePath.lowercased()
@@ -308,8 +311,10 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
                 contentPreview = rawContent.trimmingCharacters(in: .whitespacesAndNewlines)
             }
 
+            let writable = FileManager.default.isWritableFile(atPath: url.path)
             if let index = notes.firstIndex(where: { $0.url == url }) {
                 notes[index].updateContent(title: title, contentPreview: contentPreview, modificationDate: modDate, tags: tags)
+                notes[index].isReadOnly = !writable
             } else {
                 let note = NoteFile(
                     url: url,
@@ -317,6 +322,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
                     modificationDate: modDate,
                     title: title,
                     contentPreview: contentPreview,
+                    isReadOnly: !writable,
                     tags: tags
                 )
                 notes.append(note)
@@ -588,12 +594,14 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
                     contentPreview = rawContent.trimmingCharacters(in: .whitespacesAndNewlines)
                 }
 
+                let writable = fileManager.isWritableFile(atPath: fileURL.path)
                 let note = NoteFile(
                     url: fileURL,
                     relativePath: relativePath,
                     modificationDate: modDate,
                     title: title,
                     contentPreview: contentPreview,
+                    isReadOnly: !writable,
                     tags: tags
                 )
                 result.append(note)

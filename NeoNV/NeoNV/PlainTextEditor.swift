@@ -6,6 +6,7 @@ struct PlainTextEditor: NSViewRepresentable {
     @Binding var cursorPosition: Int
     var fontSize: CGFloat = 13
     var fontFamily: String = ""
+    var isEditable: Bool = true
     var showFindBar: Bool = false
     var searchTerms: [String] = []
     var onShiftTab: (() -> Void)?
@@ -26,7 +27,7 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.font = resolvedFont()
         textView.textColor = NSColor.textColor
         textView.backgroundColor = NSColor.textBackgroundColor
-        textView.isEditable = true
+        textView.isEditable = isEditable
         textView.isSelectable = true
         textView.autoresizingMask = [.width, .height]
         textView.isVerticallyResizable = true
@@ -99,6 +100,7 @@ struct PlainTextEditor: NSViewRepresentable {
             textView.font = expectedFont
         }
 
+        textView.isEditable = isEditable
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
 
