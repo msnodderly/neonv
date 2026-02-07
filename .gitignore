@@ -170,3 +170,5 @@ fix-autosave/
 fix-rename-race/
 # bd worktree
 neonv-7wi/
+# bd worktree
+fix-rename-watcher/
