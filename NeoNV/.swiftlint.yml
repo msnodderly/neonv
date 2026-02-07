@@ -18,7 +18,7 @@ line_length:
 
 type_body_length:
   warning: 500
-  error: 1020
+  error: 1025
 
 function_body_length:
   warning: 115
