@@ -166,3 +166,5 @@ fix-overwrite/
 fix-collision/
 # bd worktree
 fix-autosave/
+# bd worktree
+fix-rename-race/
