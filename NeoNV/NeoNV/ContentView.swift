@@ -1019,9 +1019,18 @@ struct ContentView: View {
     private func performSave(noteID: UUID, content: String) async {
         guard externalConflict == nil else { return }
         guard let note = noteStore.notes.first(where: { $0.id == noteID }) else { return }
+        let isFirstSave = note.isUnsaved
         do {
-            noteStore.markAsSavedLocally(note.url, content: content)
-            try await atomicWrite(content: content, to: note.url)
+            let saveURL: URL
+            if isFirstSave, let newURL = noteStore.resolveFirstSaveCollision(id: noteID) {
+                saveURL = newURL
+                selectedNoteURL = newURL
+            } else {
+                saveURL = note.url
+            }
+
+            noteStore.markAsSavedLocally(saveURL, content: content)
+            try await atomicWrite(content: content, to: saveURL)
             await MainActor.run {
                 if selectedNoteID == noteID {
                     originalContent = content
@@ -1034,6 +1043,8 @@ struct ContentView: View {
                 saveError = nil
                 AppDelegate.shared.hasUnsavedChanges = !isDirty
             }
+        } catch is CancellationError {
+            return
         } catch {
             await MainActor.run {
                 saveError = SaveError(fileURL: note.url, error: error, content: content)
@@ -1042,23 +1053,6 @@ struct ContentView: View {
         }
     }
     
-    private func atomicWrite(content: String, to url: URL) async throws {
-        try await Task.detached(priority: .userInitiated) {
-            let data = content.data(using: .utf8)!
-            let tempURL = url.deletingLastPathComponent()
-                .appendingPathComponent(".\(url.lastPathComponent).tmp")
-
-            try data.write(to: tempURL, options: .atomic)
-
-            let fileManager = FileManager.default
-            if fileManager.fileExists(atPath: url.path) {
-                _ = try fileManager.replaceItemAt(url, withItemAt: tempURL)
-            } else {
-                try fileManager.moveItem(at: tempURL, to: url)
-            }
-        }.value
-    }
-
     private func retrySave(error: SaveError) async {
         do {
             noteStore.markAsSavedLocally(error.fileURL, content: error.content)
@@ -1148,6 +1142,25 @@ struct ContentView: View {
 
     private func showInFinder(error: SaveError) {
         NSWorkspace.shared.selectFile(error.fileURL.path, inFileViewerRootedAtPath: error.fileURL.deletingLastPathComponent().path)
+    }
+}
+
+private func atomicWrite(content: String, to url: URL) async throws {
+    try Task.checkCancellation()
+
+    let data = content.data(using: .utf8)!
+    let tempURL = url.deletingLastPathComponent()
+        .appendingPathComponent(".\(url.lastPathComponent).tmp")
+
+    try data.write(to: tempURL, options: .atomic)
+
+    try Task.checkCancellation()
+
+    let fileManager = FileManager.default
+    if fileManager.fileExists(atPath: url.path) {
+        _ = try fileManager.replaceItemAt(url, withItemAt: tempURL)
+    } else {
+        try fileManager.moveItem(at: tempURL, to: url)
     }
 }
 
