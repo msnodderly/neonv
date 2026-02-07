@@ -413,6 +413,37 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         return note
     }
     
+    /// If the note's URL already exists on disk, reassign it to a unique filename.
+    /// Returns the new URL if reassigned, or nil if no conflict.
+    func resolveFirstSaveCollision(id: UUID) -> URL? {
+        guard let idx = notes.firstIndex(where: { $0.id == id }) else { return nil }
+        let note = notes[idx]
+        guard FileManager.default.fileExists(atPath: note.url.path) else { return nil }
+
+        let dir = note.url.deletingLastPathComponent()
+        let ext = note.url.pathExtension
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let timestamp = formatter.string(from: Date())
+        var candidate: URL
+        repeat {
+            let suffix = UUID().uuidString.prefix(3).lowercased()
+            candidate = dir.appendingPathComponent("untitled-\(timestamp)-\(suffix).\(ext)")
+        } while FileManager.default.fileExists(atPath: candidate.path)
+            || notes.contains(where: { $0.url == candidate })
+
+        let relativePath = selectedFolderURL.map {
+            candidate.path.replacingOccurrences(of: $0.path + "/", with: "")
+        } ?? candidate.lastPathComponent
+
+        notes[idx] = NoteFile(
+            url: candidate, relativePath: relativePath,
+            modificationDate: Date(), title: note.title,
+            contentPreview: note.contentPreview, isUnsaved: true
+        )
+        return candidate
+    }
+
     func selectFolder() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
