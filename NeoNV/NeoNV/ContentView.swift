@@ -875,17 +875,25 @@ struct ContentView: View {
         let fileURL = dirURL.appendingPathComponent(fileName)
         let initialContent = searchText + "\n\n"
 
+        // If the file already exists, open it instead of overwriting
+        if let existingNote = noteStore.notes.first(where: { $0.url == fileURL }) {
+            searchText = ""
+            selectedNoteID = existingNote.id
+            focusedField = .editor
+            return
+        }
+
         Task {
             do {
                 let fm = FileManager.default
-                try fm.createDirectory(
-                    at: fileURL.deletingLastPathComponent(),
-                    withIntermediateDirectories: true
-                )
+                try fm.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
 
+                // Use .withoutOverwriting to prevent silently replacing existing files.
+                // This also guards against a TOCTOU race where the file is created
+                // between the in-memory check above and this write.
+                let data = initialContent.data(using: .utf8)!
+                try data.write(to: fileURL, options: .withoutOverwriting)
                 noteStore.markAsSavedLocally(fileURL, content: initialContent)
-                try await atomicWrite(content: initialContent, to: fileURL)
-
                 await noteStore.discoverFiles()
 
                 await MainActor.run {
@@ -893,6 +901,17 @@ struct ContentView: View {
                     if let newNote = noteStore.notes.first(where: { $0.url == fileURL }) {
                         pendingCursorAtEnd = true
                         selectedNoteID = newNote.id
+                        focusedField = .editor
+                    }
+                }
+            } catch let error as NSError
+                where error.domain == NSCocoaErrorDomain && error.code == NSFileWriteFileExistsError {
+                // File appeared between our check and the write — open it instead
+                await noteStore.discoverFiles()
+                await MainActor.run {
+                    searchText = ""
+                    if let note = noteStore.notes.first(where: { $0.url == fileURL }) {
+                        selectedNoteID = note.id
                         focusedField = .editor
                     }
                 }
