@@ -35,6 +35,7 @@ struct ContentView: View {
     @State private var showFindBar = false
     @State private var showHelp = false
     @State private var cursorPosition = 0
+    @State private var cursorPositionMap: [UUID: Int] = [:]
     @State private var pendingCursorAtEnd = false
     @State private var showKeyboardShortcuts = false
     @State private var noteToTag: NoteFile?
@@ -804,6 +805,10 @@ struct ContentView: View {
     }
 
     private func loadSelectedNote(id: UUID?) {
+        // Save cursor position for the note we're leaving
+        if let previousID = selectedNoteID {
+            cursorPositionMap[previousID] = cursorPosition
+        }
         if isDirty, let previousID = selectedNoteID {
             saveTask?.cancel()
             let content = editorContent
@@ -826,7 +831,7 @@ struct ContentView: View {
         if unsavedNoteIDs.contains(id) {
             originalContent = ""
             editorContent = ""
-            cursorPosition = 0
+            cursorPosition = cursorPositionMap[id] ?? 0
             isDirty = false
             loadError = nil
             return
@@ -842,7 +847,8 @@ struct ContentView: View {
                         cursorPosition = content.count
                         pendingCursorAtEnd = false
                     } else {
-                        cursorPosition = 0
+                        let saved = cursorPositionMap[noteID] ?? 0
+                        cursorPosition = min(saved, content.count)
                     }
                     isDirty = false
                     unsavedNoteIDs.remove(noteID)
