@@ -151,23 +151,14 @@ auto-mkdir/
 swiftlint-orgpreview/
 swiftlint-thresholds/
 fix-editor-flicker/
-# bd worktree
 preview-typing/
-# bd worktree
-cmd-ctrl-l-layout-toggle/
-# bd worktree
 enter-creates-file/
-# bd worktree
 tagging-support/
-# bd worktree
 org-extension-fix/
-# bd worktree
 org-tags-display/
-# bd worktree
 org-tags-prepopulate/
-# bd worktree
 tags-sync-fix/
-# bd worktree
 unsaved-notes-fix/
-# bd worktree
 rtt-wikilinks/
+# bd worktree
+fix-overwrite/
