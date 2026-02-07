@@ -124,12 +124,19 @@ struct ContentView: View {
                 }
             }
             ToolbarItem(placement: .automatic) {
-                Button(action: togglePreview) { Image(systemName: showPreview ? "eye.fill" : "eye") }
-                    .help(showPreview ? "Hide preview (⌘P)" : "Show preview (⌘P)")
+                Button(action: togglePreview) {
+                    Label(showPreview ? "Hide preview" : "Show preview",
+                          systemImage: showPreview ? "eye.fill" : "eye")
+                }
+                .labelStyle(.iconOnly)
+                .help(showPreview ? "Hide preview (⌘P)" : "Show preview (⌘P)")
             }
             ToolbarItem(placement: .automatic) {
-                Button(action: noteStore.selectFolder) { Image(systemName: "folder") }
-                    .help("Select notes folder")
+                Button(action: noteStore.selectFolder) {
+                    Label("Select notes folder", systemImage: "folder")
+                }
+                .labelStyle(.iconOnly)
+                .help("Select notes folder")
             }
         }
         .onChange(of: selectedNoteID) { _, newID in
@@ -1064,9 +1071,11 @@ struct ContentView: View {
         let isFirstSave = note.isUnsaved
         do {
             let saveURL: URL
+            var collisionName: String?
             if isFirstSave, let newURL = noteStore.resolveFirstSaveCollision(id: noteID) {
                 saveURL = newURL
                 selectedNoteURL = newURL
+                collisionName = newURL.lastPathComponent
             } else {
                 saveURL = note.url
             }
@@ -1083,6 +1092,9 @@ struct ContentView: View {
                     noteStore.notes[idx].isUnsaved = false
                 }
                 saveError = nil
+                if let name = collisionName {
+                    withAnimation { externalToastMessage = "File already existed — saved as \(name)" }
+                }
                 AppDelegate.shared.hasUnsavedChanges = !isDirty
             }
         } catch is CancellationError {
