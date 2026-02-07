@@ -19,6 +19,7 @@ struct ContentView: View {
     @State private var isDirty = false
     @State private var saveTask: Task<Void, Never>?
     @State private var saveError: SaveError?
+    @State private var loadError: LoadError?
     @State private var unsavedNoteIDs: Set<UUID> = []
     @State private var debouncedSearchText = ""
     @State private var searchDebounceTask: Task<Void, Never>?
@@ -53,6 +54,12 @@ struct ContentView: View {
         let content: String
     }
 
+    struct LoadError: Identifiable {
+        let id = UUID()
+        let fileURL: URL
+        let error: Error
+    }
+
     private var filteredNotes: [NoteFile] {
         let query = debouncedSearchText
         let baseNotes = query.isEmpty ? noteStore.notes : noteStore.notes.filter { $0.matches(query: query) }
@@ -84,15 +91,11 @@ struct ContentView: View {
                     onClearSearch: clearSearch
                 )
 
-                CollapsibleSearchDivider(
-                    isSearchHidden: $settings.isSearchFieldHidden,
-                    onHide: { focusedField = .editor }
-                )
+                CollapsibleSearchDivider(isSearchHidden: $settings.isSearchFieldHidden,
+                    onHide: { focusedField = .editor })
             } else {
-                ExpandableSearchDivider(
-                    isSearchHidden: $settings.isSearchFieldHidden,
-                    onExpand: { focusedField = .search }
-                )
+                ExpandableSearchDivider(isSearchHidden: $settings.isSearchFieldHidden,
+                    onExpand: { focusedField = .search })
             }
 
             if noteStore.selectedFolderURL == nil {
@@ -119,14 +122,12 @@ struct ContentView: View {
                 }
             }
             ToolbarItem(placement: .automatic) {
-                Button(action: togglePreview) {
-                    Image(systemName: showPreview ? "eye.fill" : "eye")
-                }.help(showPreview ? "Hide preview (⌘P)" : "Show preview (⌘P)")
+                Button(action: togglePreview) { Image(systemName: showPreview ? "eye.fill" : "eye") }
+                    .help(showPreview ? "Hide preview (⌘P)" : "Show preview (⌘P)")
             }
             ToolbarItem(placement: .automatic) {
-                Button(action: noteStore.selectFolder) {
-                    Image(systemName: "folder")
-                }.help("Select notes folder")
+                Button(action: noteStore.selectFolder) { Image(systemName: "folder") }
+                    .help("Select notes folder")
             }
         }
         .onChange(of: selectedNoteID) { _, newID in
@@ -413,26 +414,22 @@ struct ContentView: View {
 
     @ViewBuilder
     private var editorOrPreviewPane: some View {
-        if filteredNotes.isEmpty {
-            ContentEmptyStateView(
-                hasNotes: !noteStore.notes.isEmpty,
-                searchText: searchText
-            )
-            .frame(minWidth: 300)
+        if let error = loadError {
+            FileLoadErrorView(fileURL: error.fileURL, error: error.error,
+                onShowInFinder: { NSWorkspace.shared.activateFileViewerSelecting([error.fileURL]) })
+                .frame(minWidth: 300)
+        } else if filteredNotes.isEmpty {
+            ContentEmptyStateView(hasNotes: !noteStore.notes.isEmpty, searchText: searchText)
+                .frame(minWidth: 300)
         } else if showPreview {
             previewPane
         } else {
-            EditorView(
-                content: $editorContent,
-                showFindBar: $showFindBar,
-                cursorPosition: $cursorPosition,
-                focusedField: _focusedField,
-                searchText: debouncedSearchText,
-                isEditable: !isReadOnly,
+            EditorView(content: $editorContent, showFindBar: $showFindBar,
+                cursorPosition: $cursorPosition, focusedField: _focusedField,
+                searchText: debouncedSearchText, isEditable: !isReadOnly,
                 onShiftTab: { focusedField = settings.isFileListHidden ? .search : .noteList },
-                onEscape: { focusedField = settings.isFileListHidden ? .search : .noteList }
-            )
-            .frame(minWidth: 300)
+                onEscape: { focusedField = settings.isFileListHidden ? .search : .noteList })
+                .frame(minWidth: 300)
         }
     }
 
@@ -820,6 +817,7 @@ struct ContentView: View {
             cursorPosition = 0
             isDirty = false
             isReadOnly = false
+            loadError = nil
             return
         }
         selectedNoteURL = note.url
@@ -830,6 +828,7 @@ struct ContentView: View {
             editorContent = ""
             cursorPosition = 0
             isDirty = false
+            loadError = nil
             return
         }
         let noteID = id
@@ -847,12 +846,13 @@ struct ContentView: View {
                     }
                     isDirty = false
                     unsavedNoteIDs.remove(noteID)
+                    loadError = nil
                 }
             } catch {
-                let errorContent = "Error loading file: \(error.localizedDescription)"
                 await MainActor.run {
-                    originalContent = errorContent
-                    editorContent = errorContent
+                    loadError = LoadError(fileURL: note.url, error: error)
+                    originalContent = ""
+                    editorContent = ""
                     cursorPosition = 0
                     isDirty = false
                     unsavedNoteIDs.remove(noteID)
@@ -1213,6 +1213,26 @@ struct ContentEmptyStateView: View {
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct FileLoadErrorView: View {
+    var fileURL: URL
+    var error: Error
+    var onShowInFinder: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle").font(.system(size: 48)).foregroundColor(.orange)
+            Text("Couldn't Read File").font(.headline)
+            Text(fileURL.lastPathComponent).font(.subheadline).foregroundColor(.secondary)
+            Text(error.localizedDescription).font(.subheadline).foregroundColor(.secondary)
+                .multilineTextAlignment(.center).padding(.horizontal)
+            Text("Check file permissions or iCloud download status").font(.caption)
+                .foregroundColor(.secondary).multilineTextAlignment(.center)
+            Button("Show in Finder", action: onShowInFinder).buttonStyle(.borderedProminent)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
