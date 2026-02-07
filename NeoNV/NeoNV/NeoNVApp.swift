@@ -4,6 +4,28 @@ import AppKit
 class AppDelegate: NSObject, NSApplicationDelegate {
     static var shared = AppDelegate()
     var hasUnsavedChanges = false
+    private var mouseMonitor: Any?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Monitor mouse back/forward buttons (buttons 3 and 4 on multi-button mice).
+        // NSEvent button numbers: 0=left, 1=right, 2=middle, 3=back, 4=forward
+        mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .otherMouseUp) { event in
+            if event.buttonNumber == 3 {
+                NotificationCenter.default.post(name: .navigateBack, object: nil)
+                return nil // consume the event
+            } else if event.buttonNumber == 4 {
+                NotificationCenter.default.post(name: .navigateForward, object: nil)
+                return nil
+            }
+            return event
+        }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        if let monitor = mouseMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
+    }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         if hasUnsavedChanges {
@@ -114,6 +136,20 @@ struct NeoNVApp: App {
                 .hidden()
             }
 
+            CommandGroup(before: .toolbar) {
+                Button("Go Back") {
+                    NotificationCenter.default.post(name: .navigateBack, object: nil)
+                }
+                .keyboardShortcut("[", modifiers: .command)
+
+                Button("Go Forward") {
+                    NotificationCenter.default.post(name: .navigateForward, object: nil)
+                }
+                .keyboardShortcut("]", modifiers: .command)
+
+                Divider()
+            }
+
             CommandGroup(replacing: .printItem) { }
 
             CommandGroup(replacing: .help) {
@@ -155,4 +191,6 @@ extension Notification.Name {
     static let toggleFileList = Notification.Name("toggleFileList")
     static let toggleLayout = Notification.Name("toggleLayout")
     static let addTag = Notification.Name("addTag")
+    static let navigateBack = Notification.Name("navigateBack")
+    static let navigateForward = Notification.Name("navigateForward")
 }

@@ -15,7 +15,10 @@ struct KeyboardShortcutsView: View {
                 Shortcut(key: "→", description: "Move to editor from list"),
                 Shortcut(key: "↑", description: "Move to search from list (first item)"),
                 Shortcut(key: "Return", description: "Confirm action / navigate"),
-                Shortcut(key: "Escape", description: "Cancel / go back")
+                Shortcut(key: "Escape", description: "Cancel / go back"),
+                Shortcut(key: "⌘[", description: "Go back to previous note"),
+                Shortcut(key: "⌘]", description: "Go forward to next note"),
+                Shortcut(key: "Mouse Back", description: "Go back to previous note")
             ]
         ),
         ShortcutCategory(
