@@ -318,28 +318,28 @@ class CustomTextView: NSTextView {
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
 
-    override func keyDown(with event: NSEvent) {
-        // Cmd+Shift+D or Cmd+Period to insert date
-        if event.modifierFlags.contains([.command, .shift]),
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if flags == [.command, .shift],
            let chars = event.charactersIgnoringModifiers, chars.lowercased() == "d" {
             insertCurrentDate()
-            return
+            return true
         }
-        
-        // Cmd+Period (keyCode 47) as alternate shortcut for insert date
-        if event.keyCode == 47 && event.modifierFlags.contains(.command) &&
-           !event.modifierFlags.contains(.shift) && !event.modifierFlags.contains(.option) {
+        if flags == [.command],
+           event.keyCode == 47 {
             insertCurrentDate()
-            return
+            return true
         }
+        return super.performKeyEquivalent(with: event)
+    }
 
+    override func keyDown(with event: NSEvent) {
         if event.keyCode == 48 && event.modifierFlags.contains(.shift) {
             onShiftTab?()
             return
         }
 
         if event.keyCode == 53 {
-            // If the find bar is visible, dismiss it
             if let scrollView = enclosingScrollView, scrollView.isFindBarVisible {
                 let menuItem = NSMenuItem()
                 menuItem.tag = Int(NSTextFinder.Action.hideFindInterface.rawValue)
@@ -355,20 +355,9 @@ class CustomTextView: NSTextView {
 
     private func insertCurrentDate() {
         let formatter = DateFormatter()
-        // Org-mode inactive timestamp format: [YYYY-MM-DD Day HH:MM]
         formatter.dateFormat = "[yyyy-MM-dd EEE HH:mm]"
         formatter.locale = Locale(identifier: "en_US_POSIX")
         let dateString = formatter.string(from: Date())
-        
-        if let undoManager = undoManager {
-            undoManager.registerUndo(withTarget: self) { _ in
-                // Simple undo implementation: delete the inserted text
-                // In a real app, we rely on the text view's native undo grouping,
-                // but explicit registration helps ensure the action is atomic.
-                // However, insertText handles undo automatically.
-            }
-        }
-        
         insertText(dateString, replacementRange: selectedRange())
     }
 

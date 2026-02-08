@@ -443,15 +443,22 @@ struct ContentView: View {
         } else if filteredNotes.isEmpty {
             ContentEmptyStateView(hasNotes: !noteStore.notes.isEmpty, searchText: searchText)
                 .frame(minWidth: 300)
-        } else if showPreview {
-            previewPane
         } else {
-            EditorView(content: $editorContent, showFindBar: $showFindBar,
-                cursorPosition: $cursorPosition, focusedField: _focusedField,
-                searchText: debouncedSearchText, isEditable: !isReadOnly,
-                onShiftTab: { focusedField = settings.isFileListHidden ? .search : .noteList },
-                onEscape: { focusedField = settings.isFileListHidden ? .search : .noteList })
-                .frame(minWidth: 300)
+            ZStack {
+                EditorView(content: $editorContent, showFindBar: $showFindBar,
+                    cursorPosition: $cursorPosition, focusedField: _focusedField,
+                    searchText: debouncedSearchText, isEditable: !isReadOnly,
+                    onShiftTab: { focusedField = settings.isFileListHidden ? .search : .noteList },
+                    onEscape: { focusedField = settings.isFileListHidden ? .search : .noteList })
+                    .opacity(showPreview ? 0 : 1)
+                    .allowsHitTesting(!showPreview)
+                    .accessibilityHidden(showPreview)
+
+                if showPreview {
+                    previewPane
+                }
+            }
+            .frame(minWidth: 300)
         }
     }
 
