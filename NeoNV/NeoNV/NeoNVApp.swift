@@ -7,6 +7,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var mouseMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if let window = NSApp.windows.first {
+            window.setFrameAutosaveName("NeoNVMainWindow")
+        }
+
         // Monitor mouse back/forward buttons (buttons 3 and 4 on multi-button mice).
         // NSEvent button numbers: 0=left, 1=right, 2=middle, 3=back, 4=forward
         mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .otherMouseUp) { event in
