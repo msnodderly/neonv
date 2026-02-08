@@ -1220,10 +1220,10 @@ private func atomicWrite(content: String, to url: URL) async throws {
     try Task.checkCancellation()
 
     let fileManager = FileManager.default
-    if fileManager.fileExists(atPath: url.path) {
-        _ = try fileManager.replaceItemAt(url, withItemAt: tempURL)
-    } else {
+    do {
         try fileManager.moveItem(at: tempURL, to: url)
+    } catch CocoaError.fileWriteFileExists {
+        _ = try fileManager.replaceItemAt(url, withItemAt: tempURL)
     }
 }
 
