@@ -192,3 +192,5 @@ a11y-labels/
 preserve-undo/
 # bd worktree
 toctou-fix/
+# bd worktree
+sha256-hash/
