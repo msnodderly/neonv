@@ -190,3 +190,5 @@ mouse-back-nav/
 a11y-labels/
 # bd worktree
 preserve-undo/
+# bd worktree
+toctou-fix/
