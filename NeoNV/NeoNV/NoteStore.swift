@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import CoreServices
+import CryptoKit
 import os
 
 /// Thread-safe cancellation flag for bridging structured concurrency to GCD
@@ -191,7 +192,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
     /// Content hashes of files last written by this app, keyed by URL.
     /// Used to detect whether an FSEvent represents a genuine external change
     /// or just cloud sync services (Dropbox, iCloud) re-touching the file.
-    private var lastSavedContentHash: [URL: Int] = [:]
+    private var lastSavedContentHash: [URL: String] = [:]
 
     /// URLs of files recently saved by this app (short-lived, for quick filtering).
     private var recentlySavedURLs: Set<URL> = []
@@ -214,8 +215,8 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
 
     func markAsSavedLocally(_ url: URL, content: String? = nil) {
         recentlySavedURLs.insert(url)
-        if let content = content {
-            lastSavedContentHash[url] = content.hashValue
+        if let content = content, let data = content.data(using: .utf8) {
+            lastSavedContentHash[url] = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
         }
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(3))
@@ -229,11 +230,11 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             // No record of saving this file — treat as external
             return true
         }
-        guard let data = try? Data(contentsOf: url),
-              let currentContent = String(data: data, encoding: .utf8) else {
+        guard let data = try? Data(contentsOf: url) else {
             return true
         }
-        return currentContent.hashValue != savedHash
+        let currentHash = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        return currentHash != savedHash
     }
 
     private func handleFileChanges(_ events: [FileChangeEvent]) {
