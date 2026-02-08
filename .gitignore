@@ -194,3 +194,5 @@ preserve-undo/
 toctou-fix/
 # bd worktree
 sha256-hash/
+# bd worktree
+window-position/
