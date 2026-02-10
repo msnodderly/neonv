@@ -299,7 +299,6 @@ struct ContentView: View {
                 showFindBar = true
             },
             onDeleteNote: {
-                guard focusedField == .noteList else { return }
                 if let id = selectedNoteID,
                    let note = noteStore.notes.first(where: { $0.id == id }) {
                     noteToDelete = note
@@ -1563,6 +1562,14 @@ struct NoteListView: View {
                     if press.key == .upArrow {
                         if let firstNote = notes.first, selectedNoteID == firstNote.id {
                             onUpArrowToSearch()
+                            return .handled
+                        }
+                    }
+                    if press.key == .delete {
+                        if let id = selectedNoteID,
+                           let note = notes.first(where: { $0.id == id }),
+                           let onDeleteNote = onDeleteNote {
+                            onDeleteNote(note)
                             return .handled
                         }
                     }

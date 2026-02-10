@@ -29,7 +29,7 @@ struct KeyboardShortcutsView: View {
                 Shortcut(key: "⌘⇧J / ⌃⌘L", description: "Toggle layout orientation"),
                 Shortcut(key: "⌘G", description: "Open in external editor"),
                 Shortcut(key: "⌘⇧D", description: "Insert timestamp"),
-                Shortcut(key: "Delete", description: "Delete selected note"),
+                Shortcut(key: "Delete / ⌘⌫", description: "Move selected note to Trash"),
                 Shortcut(key: "⌘,", description: "Open settings"),
                 Shortcut(key: "⌘K", description: "Show keyboard shortcuts")
             ]

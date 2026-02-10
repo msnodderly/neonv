@@ -171,7 +171,7 @@ struct NeoNVApp: App {
                 Button("Move to Trash") {
                     NotificationCenter.default.post(name: .deleteNote, object: nil)
                 }
-                .keyboardShortcut(.delete, modifiers: [])
+                .keyboardShortcut(.delete, modifiers: .command)
             }
         }
 
