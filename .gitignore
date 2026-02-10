@@ -200,3 +200,5 @@ window-position/
 verify-delete/
 # bd worktree
 suppress-autoselect/
+# bd worktree
+rename-dialog/
