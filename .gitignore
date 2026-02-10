@@ -204,3 +204,5 @@ suppress-autoselect/
 rename-dialog/
 # bd worktree
 scroll-position/
+# bd worktree
+load-error-safety/
