@@ -206,3 +206,5 @@ rename-dialog/
 scroll-position/
 # bd worktree
 load-error-safety/
+# bd worktree
+file-pane-width/
