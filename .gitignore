@@ -202,3 +202,5 @@ verify-delete/
 suppress-autoselect/
 # bd worktree
 rename-dialog/
+# bd worktree
+scroll-position/
