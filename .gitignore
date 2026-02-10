@@ -196,3 +196,5 @@ toctou-fix/
 sha256-hash/
 # bd worktree
 window-position/
+# bd worktree
+verify-delete/
