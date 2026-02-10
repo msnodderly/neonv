@@ -366,7 +366,7 @@ struct ContentView: View {
         HSplitView {
             if !settings.isFileListHidden {
                 noteListPane
-                    .frame(minWidth: 150, idealWidth: 200, maxWidth: 350)
+                    .frame(minWidth: 150, idealWidth: 250, maxWidth: 350)
             }
             editorOrPreviewPane
         }
