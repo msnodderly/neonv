@@ -198,3 +198,5 @@ sha256-hash/
 window-position/
 # bd worktree
 verify-delete/
+# bd worktree
+suppress-autoselect/
