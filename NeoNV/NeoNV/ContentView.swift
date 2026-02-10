@@ -238,7 +238,7 @@ struct ContentView: View {
             get: { noteToRename != nil },
             set: { if !$0 { noteToRename = nil; renameError = nil } }
         )) {
-            TextField("New filename", text: $renameText)
+            TextField("New name", text: $renameText)
             Button("Cancel", role: .cancel) {
                 noteToRename = nil
                 renameError = nil
@@ -252,7 +252,7 @@ struct ContentView: View {
             if let error = renameError {
                 Text(error)
             } else if let note = noteToRename {
-                Text("Enter a new filename for \"\(note.displayTitle)\"")
+                Text("The extension \".\(note.url.pathExtension)\" will be added automatically.")
             }
         }
         .alert("Add Tags", isPresented: Binding(
