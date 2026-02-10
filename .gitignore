@@ -208,3 +208,5 @@ scroll-position/
 load-error-safety/
 # bd worktree
 file-pane-width/
+# bd worktree
+integration-test/
