@@ -823,8 +823,9 @@ struct ContentView: View {
                 lastManualSelection = currentID
             }
 
-            // Auto-select the first match
-            if let firstMatch = filteredNotes.first {
+            // Only auto-select when the user is typing in the search field.
+            // If the list has focus, the user is navigating manually — don't override.
+            if focusedField != .noteList, let firstMatch = filteredNotes.first {
                 selectedNoteID = firstMatch.id
             }
 
