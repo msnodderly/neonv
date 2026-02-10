@@ -4,6 +4,8 @@ import AppKit
 struct PlainTextEditor: NSViewRepresentable {
     @Binding var text: String
     @Binding var cursorPosition: Int
+    @Binding var scrollFraction: CGFloat
+    var restoreScrollFraction: CGFloat?
     var fontSize: CGFloat = 13
     var fontFamily: String = ""
     var isEditable: Bool = true
@@ -68,6 +70,15 @@ struct PlainTextEditor: NSViewRepresentable {
         let safePosition = min(cursorPosition, text.count)
         textView.setSelectedRange(NSRange(location: safePosition, length: 0))
 
+        // Observe scroll position changes to keep scrollFraction up to date
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.scrollViewDidScroll(_:)),
+            name: NSView.boundsDidChangeNotification,
+            object: scrollView.contentView
+        )
+
         return scrollView
     }
 
@@ -113,6 +124,18 @@ struct PlainTextEditor: NSViewRepresentable {
         // Apply full done-styling only when switching to a new document
         if textChanged {
             context.coordinator.applyDoneAttributesFullDocument()
+        }
+
+        // Restore scroll position when returning from preview
+        if let fraction = restoreScrollFraction, fraction >= 0 {
+            let documentHeight = textView.frame.height
+            let visibleHeight = scrollView.contentView.bounds.height
+            let maxScroll = documentHeight - visibleHeight
+            if maxScroll > 0 {
+                let targetY = fraction * maxScroll
+                scrollView.contentView.scroll(to: NSPoint(x: 0, y: targetY))
+                scrollView.reflectScrolledClipView(scrollView.contentView)
+            }
         }
 
         if showFindBar {
@@ -181,21 +204,23 @@ struct PlainTextEditor: NSViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, cursorPosition: $cursorPosition)
+        Coordinator(text: $text, cursorPosition: $cursorPosition, scrollFraction: $scrollFraction)
     }
 
     class Coordinator: NSObject, NSTextViewDelegate, NSTextStorageDelegate {
         var text: Binding<String>
         var cursorPosition: Binding<Int>
+        var scrollFraction: Binding<CGFloat>
         var lastSearchTerms: [String] = []
         weak var textView: NSTextView?
         private var isApplyingDoneAttributes = false
         private var pendingDoneRange: NSRange?
         private var scheduledDoneApply = false
 
-        init(text: Binding<String>, cursorPosition: Binding<Int>) {
+        init(text: Binding<String>, cursorPosition: Binding<Int>, scrollFraction: Binding<CGFloat>) {
             self.text = text
             self.cursorPosition = cursorPosition
+            self.scrollFraction = scrollFraction
         }
 
         func textDidChange(_ notification: Notification) {
@@ -203,6 +228,18 @@ struct PlainTextEditor: NSViewRepresentable {
             let newText = textView.string
             if text.wrappedValue != newText {
                 text.wrappedValue = newText
+            }
+        }
+
+        @objc func scrollViewDidScroll(_ notification: Notification) {
+            guard let clipView = notification.object as? NSClipView,
+                  let scrollView = clipView.superview as? NSScrollView,
+                  let documentView = scrollView.documentView else { return }
+            let documentHeight = documentView.frame.height
+            let visibleHeight = clipView.bounds.height
+            let maxScroll = documentHeight - visibleHeight
+            if maxScroll > 0 {
+                scrollFraction.wrappedValue = clipView.bounds.origin.y / maxScroll
             }
         }
 
@@ -378,6 +415,7 @@ class CustomTextView: NSTextView {
 }
 
 #Preview {
-    PlainTextEditor(text: .constant("Hello, neonv!\n\nThis is plain text."), cursorPosition: .constant(0))
+    PlainTextEditor(text: .constant("Hello, neonv!\n\nThis is plain text."),
+                    cursorPosition: .constant(0), scrollFraction: .constant(0))
         .frame(width: 400, height: 300)
 }

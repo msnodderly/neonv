@@ -40,6 +40,9 @@ struct ContentView: View {
     @State private var showKeyboardShortcuts = false
     @State private var noteToTag: NoteFile?
     @State private var tagText: String = ""
+    @State private var editorScrollFraction: CGFloat = 0
+    @State private var previewScrollFraction: CGFloat = 0
+    @State private var restoreEditorScrollFraction: CGFloat?
     @StateObject private var navHistory = NavigationHistory()
     @FocusState private var focusedField: FocusedField?
 
@@ -343,6 +346,8 @@ struct ContentView: View {
             OrgPreviewView(
                 content: editorContent,
                 fontSize: CGFloat(AppSettings.shared.fontSize),
+                initialScrollFraction: editorScrollFraction,
+                scrollFraction: $previewScrollFraction,
                 onShiftTab: { focusedField = .noteList },
                 onTypeToEdit: { switchToEditor() }
             )
@@ -352,6 +357,8 @@ struct ContentView: View {
             MarkdownPreviewView(
                 content: editorContent,
                 fontSize: CGFloat(AppSettings.shared.fontSize),
+                initialScrollFraction: editorScrollFraction,
+                scrollFraction: $previewScrollFraction,
                 onShiftTab: { focusedField = .noteList },
                 onTypeToEdit: { switchToEditor() }
             )
@@ -445,7 +452,10 @@ struct ContentView: View {
         } else {
             ZStack {
                 EditorView(content: $editorContent, showFindBar: $showFindBar,
-                    cursorPosition: $cursorPosition, focusedField: _focusedField,
+                    cursorPosition: $cursorPosition,
+                    scrollFraction: $editorScrollFraction,
+                    restoreScrollFraction: restoreEditorScrollFraction,
+                    focusedField: _focusedField,
                     searchText: debouncedSearchText, isEditable: !isReadOnly,
                     onShiftTab: { focusedField = settings.isFileListHidden ? .search : .noteList },
                     onEscape: { focusedField = settings.isFileListHidden ? .search : .noteList })
@@ -673,17 +683,17 @@ struct ContentView: View {
 
     private func togglePreview() {
         let wasFocusedInEditorOrPreview = (focusedField == .editor || focusedField == .preview)
+        if showPreview { restoreEditorScrollFraction = previewScrollFraction }
         showPreview.toggle()
-
         if wasFocusedInEditorOrPreview {
-            // Delay focus change to allow view swapping to complete.
-            // When we swap between editor and preview, the view being focused is
-            // removed and a new one is added. SwiftUI needs time to create and
-            // attach the new view before it can accept focus.
             let target: FocusedField = showPreview ? .preview : .editor
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 focusedField = target
+                // Clear restore trigger after it's been applied
+                if !showPreview { restoreEditorScrollFraction = nil }
             }
+        } else if !showPreview {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { restoreEditorScrollFraction = nil }
         }
     }
 
@@ -724,10 +734,11 @@ struct ContentView: View {
     }
 
     private func switchToEditor() {
+        restoreEditorScrollFraction = previewScrollFraction
         showPreview = false
-        // Delay focus change to allow view swapping to complete
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             focusedField = .editor
+            restoreEditorScrollFraction = nil
         }
     }
 
@@ -837,6 +848,9 @@ struct ContentView: View {
         if let previousID = selectedNoteID {
             cursorPositionMap[previousID] = cursorPosition
         }
+        // Reset scroll fractions when switching notes
+        editorScrollFraction = 0
+        previewScrollFraction = 0
         if isDirty, let previousID = selectedNoteID {
             saveTask?.cancel()
             let content = editorContent
@@ -1585,6 +1599,8 @@ struct EditorView: View {
     @Binding var content: String
     @Binding var showFindBar: Bool
     @Binding var cursorPosition: Int
+    @Binding var scrollFraction: CGFloat
+    var restoreScrollFraction: CGFloat?
     @FocusState var focusedField: FocusedField?
     @ObservedObject private var settings = AppSettings.shared
     var searchText: String
@@ -1596,6 +1612,8 @@ struct EditorView: View {
         PlainTextEditor(
             text: $content,
             cursorPosition: $cursorPosition,
+            scrollFraction: $scrollFraction,
+            restoreScrollFraction: restoreScrollFraction,
             fontSize: CGFloat(settings.fontSize),
             fontFamily: settings.fontFamily,
             isEditable: isEditable,
