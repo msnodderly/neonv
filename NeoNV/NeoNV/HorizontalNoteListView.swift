@@ -159,6 +159,14 @@ struct HorizontalNoteListView: View {
                             return .handled
                         }
                     }
+                    if press.key == .delete {
+                        if let id = selectedNoteID,
+                           let note = notes.first(where: { $0.id == id }),
+                           let onDeleteNote = onDeleteNote {
+                            onDeleteNote(note)
+                            return .handled
+                        }
+                    }
                     return .ignored
                 }
             }
