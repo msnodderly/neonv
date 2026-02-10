@@ -4,6 +4,8 @@ import AppKit
 struct MarkdownPreviewView: NSViewRepresentable {
     var content: String
     var fontSize: CGFloat = 13
+    var initialScrollFraction: CGFloat = 0
+    @Binding var scrollFraction: CGFloat
     var onShiftTab: (() -> Void)?
     var onTypeToEdit: (() -> Void)?
 
@@ -36,7 +38,36 @@ struct MarkdownPreviewView: NSViewRepresentable {
 
         updateContent(textView: textView, content: content, fontSize: fontSize)
 
+        // Restore scroll position after layout completes
+        let fraction = initialScrollFraction
+        if fraction > 0 {
+            DispatchQueue.main.async {
+                guard let documentView = scrollView.documentView else { return }
+                let documentHeight = documentView.frame.height
+                let visibleHeight = scrollView.contentView.bounds.height
+                let maxScroll = documentHeight - visibleHeight
+                if maxScroll > 0 {
+                    let targetY = fraction * maxScroll
+                    scrollView.contentView.scroll(to: NSPoint(x: 0, y: targetY))
+                    scrollView.reflectScrolledClipView(scrollView.contentView)
+                }
+            }
+        }
+
+        // Observe scroll position changes to keep scrollFraction up to date
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.scrollViewDidScroll(_:)),
+            name: NSView.boundsDidChangeNotification,
+            object: scrollView.contentView
+        )
+
         return scrollView
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(scrollFraction: $scrollFraction)
     }
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
@@ -46,6 +77,26 @@ struct MarkdownPreviewView: NSViewRepresentable {
         textView.onTypeToEdit = onTypeToEdit
 
         updateContent(textView: textView, content: content, fontSize: fontSize)
+    }
+
+    class Coordinator: NSObject {
+        var scrollFraction: Binding<CGFloat>
+
+        init(scrollFraction: Binding<CGFloat>) {
+            self.scrollFraction = scrollFraction
+        }
+
+        @objc func scrollViewDidScroll(_ notification: Notification) {
+            guard let clipView = notification.object as? NSClipView,
+                  let scrollView = clipView.superview as? NSScrollView,
+                  let documentView = scrollView.documentView else { return }
+            let documentHeight = documentView.frame.height
+            let visibleHeight = clipView.bounds.height
+            let maxScroll = documentHeight - visibleHeight
+            if maxScroll > 0 {
+                scrollFraction.wrappedValue = clipView.bounds.origin.y / maxScroll
+            }
+        }
     }
 
     private func updateContent(textView: NSTextView, content: String, fontSize: CGFloat) {
@@ -593,6 +644,6 @@ class PreviewTextView: NSTextView {
     | Code | Done | `inline` too |
 
     Regular paragraph text continues here.
-    """)
+    """, scrollFraction: .constant(0))
     .frame(width: 400, height: 500)
 }
