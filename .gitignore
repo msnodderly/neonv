@@ -160,56 +160,29 @@ org-tags-prepopulate/
 tags-sync-fix/
 unsaved-notes-fix/
 rtt-wikilinks/
-# bd worktree
 fix-overwrite/
-# bd worktree
 fix-collision/
-# bd worktree
 fix-autosave/
-# bd worktree
 fix-rename-race/
-# bd worktree
 neonv-7wi/
-# bd worktree
 fix-rename-watcher/
-# bd worktree
 fix-atomic-write/
-# bd worktree
 trash-delete/
-# bd worktree
 read-only-indicator/
-# bd worktree
 file-read-error/
-# bd worktree
 cursor-position/
-# bd worktree
 collision-toast/
-# bd worktree
 mouse-back-nav/
-# bd worktree
-a11y-labels/
-# bd worktree
 preserve-undo/
-# bd worktree
 toctou-fix/
-# bd worktree
 sha256-hash/
-# bd worktree
 window-position/
-# bd worktree
 verify-delete/
-# bd worktree
 suppress-autoselect/
-# bd worktree
 rename-dialog/
-# bd worktree
 scroll-position/
-# bd worktree
 load-error-safety/
-# bd worktree
 file-pane-width/
-# bd worktree
 integration-test/
 tab-focus-regression/
-# bd worktree
 tab-focus-cycle-fix/

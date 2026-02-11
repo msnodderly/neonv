@@ -9,6 +9,7 @@ struct PlainTextEditor: NSViewRepresentable {
     var fontSize: CGFloat = 13
     var fontFamily: String = ""
     var isEditable: Bool = true
+    var isHiddenFromFocus: Bool = false
     var showFindBar: Bool = false
     var searchTerms: [String] = []
     var onShiftTab: (() -> Void)?
@@ -54,6 +55,9 @@ struct PlainTextEditor: NSViewRepresentable {
             height: CGFloat.greatestFiniteMagnitude
         )
         textView.textContainer?.widthTracksTextView = true
+
+        textView.refusesFocus = isHiddenFromFocus
+        scrollView.refusesFocus = isHiddenFromFocus
 
         scrollView.documentView = textView
         scrollView.hasVerticalScroller = true
@@ -114,6 +118,14 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.isEditable = isEditable
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
+
+        textView.refusesFocus = isHiddenFromFocus
+        if let focusScroll = scrollView as? FocusForwardingScrollView {
+            focusScroll.refusesFocus = isHiddenFromFocus
+        }
+        if isHiddenFromFocus, textView.window?.firstResponder === textView {
+            textView.window?.makeFirstResponder(nil)
+        }
 
         // Only re-apply highlighting if text or search terms changed
         if textChanged || context.coordinator.lastSearchTerms != searchTerms {
@@ -342,8 +354,14 @@ struct PlainTextEditor: NSViewRepresentable {
 }
 
 private class FocusForwardingScrollView: NSScrollView {
-    override var acceptsFirstResponder: Bool { true }
+    var refusesFocus: Bool = false
+    override var acceptsFirstResponder: Bool { !refusesFocus }
+    override var nextKeyView: NSView? {
+        get { nil }
+        set { }
+    }
     override func becomeFirstResponder() -> Bool {
+        if refusesFocus { return false }
         if let docView = documentView {
             return window?.makeFirstResponder(docView) ?? false
         }
@@ -354,6 +372,16 @@ private class FocusForwardingScrollView: NSScrollView {
 class CustomTextView: NSTextView {
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
+    var refusesFocus: Bool = false
+
+    override var acceptsFirstResponder: Bool {
+        refusesFocus ? false : super.acceptsFirstResponder
+    }
+
+    override var nextKeyView: NSView? {
+        get { nil }
+        set { }
+    }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
@@ -372,6 +400,7 @@ class CustomTextView: NSTextView {
 
     override func keyDown(with event: NSEvent) {
         if event.keyCode == 48 && event.modifierFlags.contains(.shift) {
+            window?.makeFirstResponder(nil)
             onShiftTab?()
             return
         }
@@ -383,6 +412,7 @@ class CustomTextView: NSTextView {
                 performTextFinderAction(menuItem)
                 return
             }
+            window?.makeFirstResponder(nil)
             onEscape?()
             return
         }

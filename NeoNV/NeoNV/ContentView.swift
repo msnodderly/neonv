@@ -8,6 +8,7 @@ enum FocusedField: Hashable {
     case preview
 }
 
+
 struct ContentView: View {
     @ObservedObject var noteStore: NoteStore
     @State private var searchText = ""
@@ -116,6 +117,7 @@ struct ContentView: View {
         .onAppear {
             focusedField = .search
         }
+
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 if isReadOnly {
@@ -458,6 +460,7 @@ struct ContentView: View {
                     restoreScrollFraction: restoreEditorScrollFraction,
                     focusedField: _focusedField,
                     searchText: debouncedSearchText, isEditable: !isReadOnly,
+                    isHiddenFromFocus: showPreview,
                     onShiftTab: navigateToList,
                     onEscape: navigateToList)
                     .opacity(showPreview ? 0 : 1)
@@ -472,12 +475,8 @@ struct ContentView: View {
         }
     }
 
-    private func focusSearch() { if settings.isSearchFieldHidden { settings.isSearchFieldHidden = false }; focusedField = .search }
-
-    private func focusEditor() {
-        if showPreview { showPreview = false; DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { focusedField = .editor } }
-        else { focusedField = .editor }
-    }
+    private func focusSearch() { if settings.isSearchFieldHidden { settings.isSearchFieldHidden = false }; NSApp.keyWindow?.makeFirstResponder(nil); focusedField = .search }
+    private func focusEditor() { if showPreview { showPreview = false; DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { focusedField = .editor } } else { focusedField = .editor } }
 
     private func deleteNote(_ note: NoteFile) {
         let notes = filteredNotes
@@ -922,6 +921,7 @@ struct ContentView: View {
     private func navigateToList() {
         if settings.isFileListHidden { settings.isFileListHidden = false }
         if selectedNoteID == nil, let firstNote = filteredNotes.first { selectedNoteID = firstNote.id }
+        NSApp.keyWindow?.makeFirstResponder(nil)
         focusedField = .noteList
     }
 
@@ -1600,6 +1600,7 @@ struct EditorView: View {
     @ObservedObject private var settings = AppSettings.shared
     var searchText: String
     var isEditable: Bool = true
+    var isHiddenFromFocus: Bool = false
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
 
@@ -1612,6 +1613,7 @@ struct EditorView: View {
             fontSize: CGFloat(settings.fontSize),
             fontFamily: settings.fontFamily,
             isEditable: isEditable,
+            isHiddenFromFocus: isHiddenFromFocus,
             showFindBar: showFindBar,
             searchTerms: [],
             onShiftTab: onShiftTab,
