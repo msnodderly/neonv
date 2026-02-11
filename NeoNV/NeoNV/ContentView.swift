@@ -91,7 +91,7 @@ struct ContentView: View {
                     focusedField: _focusedField,
                     matchCount: filteredNotes.count,
                     onNavigateToList: navigateToList,
-                    onNavigateToEditor: { focusedField = .editor },
+                    onNavigateToEditor: focusEditor,
                     onCreateNote: createNewNote,
                     onClearSearch: clearSearch
                 )
@@ -389,9 +389,9 @@ struct ContentView: View {
                     focusedField: _focusedField,
                     isLoading: noteStore.isLoading,
                     searchText: debouncedSearchText,
-                    onTabToEditor: { focusedField = .editor },
-                    onShiftTabToSearch: { focusedField = .search },
-                    onEnterToEditor: { focusedField = .editor },
+                    onTabToEditor: focusEditor,
+                    onShiftTabToSearch: focusSearch,
+                    onEnterToEditor: focusEditor,
                     onEscapeToSearch: { focusedField = .search },
                     onUpArrowToSearch: { focusedField = .search },
                     onDeleteNote: { note in noteToDelete = note },
@@ -421,9 +421,9 @@ struct ContentView: View {
             focusedField: _focusedField,
             isLoading: noteStore.isLoading,
             searchText: debouncedSearchText,
-            onTabToEditor: { focusedField = .editor },
-            onShiftTabToSearch: { focusedField = .search },
-            onEnterToEditor: { focusedField = .editor },
+            onTabToEditor: focusEditor,
+            onShiftTabToSearch: focusSearch,
+            onEnterToEditor: focusEditor,
             onEscapeToSearch: { focusedField = .search },
             onUpArrowToSearch: { focusedField = .search },
             onDeleteNote: { note in noteToDelete = note },
@@ -458,8 +458,8 @@ struct ContentView: View {
                     restoreScrollFraction: restoreEditorScrollFraction,
                     focusedField: _focusedField,
                     searchText: debouncedSearchText, isEditable: !isReadOnly,
-                    onShiftTab: { focusedField = settings.isFileListHidden ? .search : .noteList },
-                    onEscape: { focusedField = settings.isFileListHidden ? .search : .noteList })
+                    onShiftTab: navigateToList,
+                    onEscape: navigateToList)
                     .opacity(showPreview ? 0 : 1)
                     .allowsHitTesting(!showPreview)
                     .accessibilityHidden(showPreview)
@@ -472,8 +472,11 @@ struct ContentView: View {
         }
     }
 
-    private func focusSearch() {
-        focusedField = .search
+    private func focusSearch() { if settings.isSearchFieldHidden { settings.isSearchFieldHidden = false }; focusedField = .search }
+
+    private func focusEditor() {
+        if showPreview { showPreview = false; DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { focusedField = .editor } }
+        else { focusedField = .editor }
     }
 
     private func deleteNote(_ note: NoteFile) {
@@ -917,9 +920,8 @@ struct ContentView: View {
     }
     
     private func navigateToList() {
-        if selectedNoteID == nil, let firstNote = filteredNotes.first {
-            selectedNoteID = firstNote.id
-        }
+        if settings.isFileListHidden { settings.isFileListHidden = false }
+        if selectedNoteID == nil, let firstNote = filteredNotes.first { selectedNoteID = firstNote.id }
         focusedField = .noteList
     }
 
