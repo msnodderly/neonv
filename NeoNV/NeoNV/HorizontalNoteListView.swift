@@ -130,6 +130,13 @@ struct HorizontalNoteListView: View {
                 .listStyle(.sidebar)
                 .focusable()
                 .focused($focusedField, equals: .noteList)
+                .onDeleteCommand {
+                    if let id = selectedNoteID,
+                       let note = notes.first(where: { $0.id == id }),
+                       let onDeleteNote = onDeleteNote {
+                        onDeleteNote(note)
+                    }
+                }
                 .onKeyPress { press in
                     if press.key == .tab && press.modifiers.contains(.shift) {
                         onShiftTabToSearch()
@@ -156,14 +163,6 @@ struct HorizontalNoteListView: View {
                     if press.key == .upArrow {
                         if let firstNote = notes.first, selectedNoteID == firstNote.id {
                             onUpArrowToSearch()
-                            return .handled
-                        }
-                    }
-                    if press.key == .delete {
-                        if let id = selectedNoteID,
-                           let note = notes.first(where: { $0.id == id }),
-                           let onDeleteNote = onDeleteNote {
-                            onDeleteNote(note)
                             return .handled
                         }
                     }
