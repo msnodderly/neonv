@@ -211,3 +211,5 @@ file-pane-width/
 # bd worktree
 integration-test/
 tab-focus-regression/
+# bd worktree
+tab-focus-cycle-fix/
