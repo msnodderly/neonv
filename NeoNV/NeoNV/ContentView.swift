@@ -1070,7 +1070,7 @@ struct ContentView: View {
     }
 
     private func scheduleAutoSave() {
-        guard let selectedID = selectedNoteID else { return }
+        guard loadError == nil, let selectedID = selectedNoteID else { return }
         saveTask?.cancel()
         guard editorContent != originalContent else {
             isDirty = false
@@ -1088,8 +1088,8 @@ struct ContentView: View {
     }
     
     private func performSave(noteID: UUID, content: String) async {
-        guard externalConflict == nil else { return }
-        guard let note = noteStore.notes.first(where: { $0.id == noteID }) else { return }
+        guard loadError == nil, externalConflict == nil,
+              let note = noteStore.notes.first(where: { $0.id == noteID }) else { return }
         let isFirstSave = note.isUnsaved
         do {
             let saveURL: URL
