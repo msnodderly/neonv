@@ -144,22 +144,47 @@ If `br` is not found, update `PATH` to include your install location (typically 
 
 ## Session Completion
 
-### 1. Finalize
+### 1. Update Task Status
+
+**IMPORTANT:** Always update the task tracker before ending the session. Document what was accomplished, even if incomplete.
+
+**Option A - Task Completed:**
+```bash
+br close <id> --reason "Brief summary of what was completed"
+```
+
+**Option B - Task In Progress (partial work done):**
+```bash
+br update <id> --notes "
+Session progress $(date +%Y-%m-%d):
+- ✅ What was completed
+- ⚠️ What's partially done
+- 📋 What remains
+- Issues/blockers encountered
+
+Next steps: ...
+PR: (if applicable)
+"
+```
+
+**Why this matters:** Task history helps future agents understand what was tried, what worked, and what didn't. A well-documented task prevents duplicated effort.
+
+### 2. Finalize Build & Sync
 
 ```bash
 xcodebuild -scheme NeoNV -destination 'platform=macOS' build  # If code changes
-br close <id> --reason "Completed"
-git stash --include-untracked && br sync --flush-only && git add .beads/ && git commit -m "br sync: Update issues" && git push && git stash pop
+cd /Users/mds/src/neonv  # Main directory, not worktree
+git add .beads/ && git commit -m "br sync: Update/close <id>" && git pull --rebase && git push
 ```
 
-### 2. Push & PR
+### 3. Push & PR
 
 ```bash
 git push -u origin task/<branch-name>
 gh pr create --title "feat: Description" --body "..."
 ```
 
-### 3. Cleanup (after merge)
+### 4. Cleanup (after merge)
 
 ```bash
 gh pr merge --squash --delete-branch
