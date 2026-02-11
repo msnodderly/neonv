@@ -115,6 +115,17 @@ git stash pop
 
 Run sync: before ending sessions, after closing/updating tasks, before pushing feature branches.
 
+**Important:** When working in a worktree, beads changes must be committed to `main`, not the feature branch:
+
+1. `br close <id>` or `br update <id>` modifies the shared database
+2. `br` auto-flushes changes to `.beads/issues.jsonl` (see "Auto-flush complete" in output)
+3. Switch to main repo directory: `cd /Users/mds/src/neonv` (not the worktree)
+4. Commit beads changes: `git add .beads/ && git commit -m "br sync: ..."`
+5. Push to main: `git pull --rebase && git push`
+6. Return to worktree for code changes: `cd /path/to/worktree`
+
+The beads database is shared across all worktrees - changes made in any worktree affect the same `.beads/` directory.
+
 ### Agent-Safe Defaults
 
 Use machine-readable output when scripting or driving agents:
