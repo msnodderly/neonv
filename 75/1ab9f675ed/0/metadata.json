@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "751ab9f675ed",
+  "session_id": "1e96cd54-a8a8-4009-a297-b0a83b08725f",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-11T06:34:43.505069Z",
+  "branch": "task/neonv-0ghx-reduce-warnings",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "AGENTS.md",
+    "NeoNV/.swiftlint.yml",
+    "NeoNV/NeoNV/ContentView+PathSanitization.swift",
+    "NeoNV/NeoNV/ContentView.swift",
+    "NeoNV/NeoNV/ContentViewTypes.swift"
+  ],
+  "agent": "Claude Code",
+  "token_usage": {
+    "input_tokens": 610,
+    "cache_creation_tokens": 77876,
+    "cache_read_tokens": 4996629,
+    "output_tokens": 8780,
+    "api_call_count": 76
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-11T06:34:43.422395Z",
+    "agent_lines": 67,
+    "human_added": 38,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 105,
+    "agent_percentage": 63.8095238095238
+  }
+}

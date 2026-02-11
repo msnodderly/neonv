@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "751ab9f675ed",
+  "strategy": "manual-commit",
+  "branch": "task/neonv-0ghx-reduce-warnings",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "AGENTS.md",
+    "NeoNV/.swiftlint.yml",
+    "NeoNV/NeoNV/ContentView+PathSanitization.swift",
+    "NeoNV/NeoNV/ContentView.swift",
+    "NeoNV/NeoNV/ContentViewTypes.swift"
+  ],
+  "sessions": [
+    {
+      "metadata": "/75/1ab9f675ed/0/metadata.json",
+      "transcript": "/75/1ab9f675ed/0/full.jsonl",
+      "context": "/75/1ab9f675ed/0/context.md",
+      "content_hash": "/75/1ab9f675ed/0/content_hash.txt",
+      "prompt": "/75/1ab9f675ed/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 610,
+    "cache_creation_tokens": 77876,
+    "cache_read_tokens": 4996629,
+    "output_tokens": 8780,
+    "api_call_count": 76
+  }
+}
