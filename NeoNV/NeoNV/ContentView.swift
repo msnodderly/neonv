@@ -8,7 +8,6 @@ enum FocusedField: Hashable {
     case preview
 }
 
-
 struct ContentView: View {
     @ObservedObject var noteStore: NoteStore
     @State private var searchText = ""
@@ -475,8 +474,24 @@ struct ContentView: View {
         }
     }
 
-    private func focusSearch() { if settings.isSearchFieldHidden { settings.isSearchFieldHidden = false }; NSApp.keyWindow?.makeFirstResponder(nil); focusedField = .search }
-    private func focusEditor() { if showPreview { showPreview = false; DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { focusedField = .editor } } else { focusedField = .editor } }
+    private func focusSearch() {
+        if settings.isSearchFieldHidden {
+            settings.isSearchFieldHidden = false
+        }
+        NSApp.keyWindow?.makeFirstResponder(nil)
+        focusedField = .search
+    }
+
+    private func focusEditor() {
+        if showPreview {
+            showPreview = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                focusedField = .editor
+            }
+        } else {
+            focusedField = .editor
+        }
+    }
 
     private func deleteNote(_ note: NoteFile) {
         let notes = filteredNotes
@@ -1018,13 +1033,11 @@ struct ContentView: View {
 
         if preserveExtension {
             let lowercased = name.lowercased()
-            for ext in Self.validExtensions {
-                if lowercased.hasSuffix(".\(ext)") {
-                    let extWithDot = ".\(ext)"
-                    baseName = String(name.dropLast(extWithDot.count))
-                    extensionPart = ext
-                    break
-                }
+            for ext in Self.validExtensions where lowercased.hasSuffix(".\(ext)") {
+                let extWithDot = ".\(ext)"
+                baseName = String(name.dropLast(extWithDot.count))
+                extensionPart = ext
+                break
             }
         }
 
