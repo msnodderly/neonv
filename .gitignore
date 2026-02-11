@@ -210,3 +210,4 @@ load-error-safety/
 file-pane-width/
 # bd worktree
 integration-test/
+tab-focus-regression/
