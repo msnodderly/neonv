@@ -115,6 +115,17 @@ git stash pop
 
 Run sync: before ending sessions, after closing/updating tasks, before pushing feature branches.
 
+**Important:** When working in a worktree, beads changes must be committed to `main`, not the feature branch:
+
+1. `br close <id>` or `br update <id>` modifies the shared database
+2. `br` auto-flushes changes to `.beads/issues.jsonl` (see "Auto-flush complete" in output)
+3. Switch to main repo directory: `cd /Users/mds/src/neonv` (not the worktree)
+4. Commit beads changes: `git add .beads/ && git commit -m "br sync: ..."`
+5. Push to main: `git pull --rebase && git push`
+6. Return to worktree for code changes: `cd /path/to/worktree`
+
+The beads database is shared across all worktrees - changes made in any worktree affect the same `.beads/` directory.
+
 ### Agent-Safe Defaults
 
 Use machine-readable output when scripting or driving agents:
@@ -468,4 +479,32 @@ class CustomKeyTextView: NSTextView {
         super.keyDown(with: event)
     }
 }
+```
+
+### Refactoring Large Swift Files
+
+When reducing SwiftLint violations by extracting code:
+
+**File Extraction Challenges:**
+- **New files must be added to Xcode project**: Creating a `.swift` file in the filesystem doesn't automatically add it to the build target. Use Xcode or edit `project.pbxproj` directly.
+- **Extensions need base type**: `extension ContentView` in a separate file requires ContentView to be compiled first. Swift files compile in parallel, which can cause issues if the extension file compiles before the base type.
+- **Circular dependencies**: Extracting types that reference each other can create build issues if not done carefully.
+
+**Pragmatic Approach:**
+1. **Start with formatting fixes**: Fix obvious violations (line length, for-where, etc.) first
+2. **Accept temporary threshold adjustments**: Improving code formatting (expanding single-line functions) can increase line counts. Temporarily adjust thresholds while documenting the need for further extraction.
+3. **Extract self-contained components**: Move complete, independent views/types to separate files rather than splitting tightly coupled code
+4. **Use // MARK: comments**: Organize code within large files using section markers while planning extraction
+5. **Iterative approach**: "Reduce warnings **toward** defaults" - it's a gradual process, not all-at-once
+
+**SwiftLint Threshold Management:**
+Document threshold changes in `.swiftlint.yml` header comments with:
+- Current max value in codebase
+- Target value (SwiftLint defaults)
+- What needs extraction to reach target
+
+Example:
+```yaml
+# - type_body_length: 500/1100 (target: 250/350) - ContentView at ~1091
+#   Next: extract file operations, save operations into separate types
 ```
