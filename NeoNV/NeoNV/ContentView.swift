@@ -472,12 +472,12 @@ struct ContentView: View {
         }
     }
 
-    private func focusSearch() { if settings.isSearchFieldHidden { settings.isSearchFieldHidden = false }; focusedField = .search }
-
-    private func focusEditor() {
-        if showPreview { showPreview = false; DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { focusedField = .editor } }
-        else { focusedField = .editor }
+    private func setFocus(_ field: FocusedField, after delay: TimeInterval = 0) {
+        if delay > 0 { DispatchQueue.main.asyncAfter(deadline: .now() + delay) { focusedField = field }; return }
+        DispatchQueue.main.async { focusedField = field }
     }
+    private func focusSearch() { if settings.isSearchFieldHidden { settings.isSearchFieldHidden = false }; setFocus(.search) }
+    private func focusEditor() { if showPreview { showPreview = false; setFocus(.editor, after: 0.1) } else { setFocus(.editor) } }
 
     private func deleteNote(_ note: NoteFile) {
         let notes = filteredNotes
@@ -922,7 +922,7 @@ struct ContentView: View {
     private func navigateToList() {
         if settings.isFileListHidden { settings.isFileListHidden = false }
         if selectedNoteID == nil, let firstNote = filteredNotes.first { selectedNoteID = firstNote.id }
-        focusedField = .noteList
+        setFocus(.noteList)
     }
 
     private func createNewNote() {

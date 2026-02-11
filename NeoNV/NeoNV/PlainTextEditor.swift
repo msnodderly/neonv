@@ -390,6 +390,18 @@ class CustomTextView: NSTextView {
         super.keyDown(with: event)
     }
 
+    override func insertBacktab(_ sender: Any?) {
+        onShiftTab?()
+    }
+
+    override func doCommand(by selector: Selector) {
+        if selector == #selector(insertBacktab(_:)) {
+            onShiftTab?()
+            return
+        }
+        super.doCommand(by: selector)
+    }
+
     private func insertCurrentDate() {
         let formatter = DateFormatter()
         formatter.dateFormat = "[yyyy-MM-dd EEE HH:mm]"
