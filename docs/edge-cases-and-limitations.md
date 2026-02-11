@@ -314,7 +314,7 @@ If distributed via Mac App Store with sandbox:
 | **Cmd-F** | Find in note |
 | **Cmd-R** | Show in Finder |
 | **Cmd-Shift-J** | Toggle vertical/horizontal layout |
-| **Delete** | Delete selected note (with confirmation) |
+| **Delete / ⌘⌫** | Move selected note to Trash (with confirmation) |
 | **Tab** / **Shift-Tab** | Navigate between panes (Search → List → Editor) |
 | **Escape** | Return to search from editor/list |
 | **Down Arrow** (in search) | Move to note list |
@@ -364,8 +364,8 @@ Auto-save overwrites the file directly. Use Time Machine or git for versioning.
 ### No Encryption
 Files stored as plain text. Use macOS FileVault or encrypted volume for sensitive content.
 
-### No Trash Integration
-Deleted files are permanently removed via `FileManager.removeItem()`, not moved to Trash.
+### ~~No Trash Integration~~ (Fixed in v0.11.0)
+Notes are moved to Trash via `FileManager.trashItem()`. Delete key works from the note list; ⌘⌫ works from any context via the menu.
 
 ### 100-Character Filename Limit
 Generated filenames truncated at 100 characters (filesystem limit is 255 bytes).

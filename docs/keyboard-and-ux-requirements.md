@@ -51,7 +51,7 @@ This document tracks keyboard navigation and UX requirements. Originally written
 | **Cmd-Z** | Undo (standard macOS) | ✅ |
 | **Cmd-Shift-Z** | Redo (standard macOS) | ✅ |
 | **Cmd-A** | Select all in current pane | ✅ |
-| **Delete** | Delete selected note | ✅ |
+| **Delete / ⌘⌫** | Move selected note to Trash | ✅ |
 | **Escape** | Return to search from editor/list | ✅ |
 | **Tab/Shift-Tab** | Navigate panes | ✅ |
 | **Enter** (in list) | Open selected note | ✅ |
