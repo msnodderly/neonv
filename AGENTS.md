@@ -23,61 +23,56 @@ When making UI or keyboard-related changes, include step-by-step testing instruc
 
 ---
 
-## Task Tracking with `bd`
+## Task Tracking with `br`
 
-Use 'bd' for task tracking.
+Use 'br' for task tracking.
 
 ```
-bd ready                      # List tasks with no open blockers
-bd create "Title" -p 0        # Create a P0 task
-bd show <id>                  # View task details
-bd update <id> --status in_progress
-bd close <id> --reason "..."
-bd dep add <child> <parent>   # Link tasks
-bd sync --full                # Export/commit/push to main
+br ready                      # List tasks with no open blockers
+br create "Title" -p 0        # Create a P0 task
+br show <id>                  # View task details
+br update <id> --status in_progress
+br close <id> --reason "..."
+br dep add <child> <parent>   # Link tasks
+br sync --flush-only          # Export DB changes to .beads/issues.jsonl
 ```
 
-**WARNING:** Do not use `bd edit` — it opens an interactive editor. Use `bd update` with flags instead:
+Issue IDs follow your configured prefix (for this repo: `neonv-*`). Do not assume IDs start with `br-`.
+
+**WARNING:** Avoid interactive editor flows for issue updates. Use `br update` with flags instead:
 
 ```bash
-bd update <id> --description "new description"
-bd update <id> --title "new title"
-bd update <id> --design "design notes"
-bd update <id> --notes "additional notes"
-bd update <id> --acceptance "acceptance criteria"
+br update <id> --description "new description"
+br update <id> --title "new title"
+br update <id> --design "design notes"
+br update <id> --notes "additional notes"
+br update <id> --acceptance "acceptance criteria"
 ```
 
 ---
 
 ## Worktree Workflow
 
-Multiple agents can work simultaneously using separate git worktrees. **Always use `bd worktree` instead of `git worktree`** — it automatically configures beads to share the database.
+Multiple agents can work simultaneously using separate git worktrees. `br` does not provide worktree commands, so use `git worktree` directly.
 
 ### Setup
 
 ```bash
-bd worktree create <name> --branch task/<id>-short-description
-
-# IMPORTANT: Commit .gitignore before leaving main
-git add .gitignore && git commit -m "chore: Update .gitignore for <name> worktree"
-git push
+git worktree add -b task/<id>-short-description <name> main
 cd <name>
 ```
-
-**Why commit .gitignore?** `bd worktree create` adds the worktree directory to `.gitignore` (to prevent accidentally committing worktree contents). If you don't commit this change before switching to the worktree, main will be left with a dirty working directory, causing `git pull` to fail later.
 ### Commands
 
 ```bash
-bd worktree list    # Show all worktrees with beads status
-bd worktree info    # Show current worktree details
-bd worktree remove <name>  # Cleanup after merge (includes safety checks)
+git worktree list    # Show all worktrees
+git worktree remove <name> # Cleanup after merge
 ```
 
 ### Cleaning Up Worktrees
 
 Check status of all worktrees:
 ```bash
-bd worktree list
+git worktree list
 # For each worktree, check git status and unpushed commits:
 git -C <worktree-path> status --short
 git -C <worktree-path> log origin/main..HEAD --oneline
@@ -90,8 +85,8 @@ gh pr list --state all --json headRefName,state,title
 
 Remove worktrees:
 ```bash
-bd worktree remove <name>          # Safe removal (checks for unpushed work)
-bd worktree remove <name> --force  # Force removal (discards local work)
+git worktree remove <name>          # Safe removal
+git worktree remove --force <name>  # Force removal (discards local work)
 ```
 
 ---
@@ -100,28 +95,52 @@ bd worktree remove <name> --force  # Force removal (discards local work)
 
 The `.beads/issues.jsonl` file is tracked in git and pushes directly to `main` (no PR required).
 
-- `bd sync` — Export only (no commit/push)
-- `bd sync --full` — Full sync: export, pull, merge, commit, push
+- `br sync --flush-only` — Export DB changes to JSONL
+- `br sync --import-only` — Import JSONL changes into local DB
+- `br sync --status` — Show sync status only
 
-**Always use `bd sync --full`** when you need changes shared.
+`br` never runs git commands automatically, so commit/push remains explicit.
 
 ### Sync Workflow
 
 ```bash
 git stash --include-untracked
-bd sync --full
+br sync --flush-only
+git add .beads/
+git commit -m "br sync: Update issues"
+git pull --rebase
+git push
 git stash pop
 ```
 
 Run sync: before ending sessions, after closing/updating tasks, before pushing feature branches.
 
-### Git Hooks (one-time setup)
+### Agent-Safe Defaults
+
+Use machine-readable output when scripting or driving agents:
 
 ```bash
-bd hooks install  # Installs pre-commit, post-merge, pre-push, post-checkout hooks
+br ready --json
+br show <id> --json
+br list --json
 ```
 
----
+Recommended preflight checks:
+
+```bash
+br doctor
+br sync --status
+```
+
+### Install & Verify `br`
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/Dicklesworthstone/beads_rust/main/install.sh?$(date +%s)" | bash
+which br
+br --version
+```
+
+If `br` is not found, update `PATH` to include your install location (typically `~/.local/bin`).
 
 ## Session Completion
 
@@ -129,8 +148,8 @@ bd hooks install  # Installs pre-commit, post-merge, pre-push, post-checkout hoo
 
 ```bash
 xcodebuild -scheme NeoNV -destination 'platform=macOS' build  # If code changes
-bd close <id> --reason "Completed"
-git stash --include-untracked && bd sync --full && git stash pop
+br close <id> --reason "Completed"
+git stash --include-untracked && br sync --flush-only && git add .beads/ && git commit -m "br sync: Update issues" && git push && git stash pop
 ```
 
 ### 2. Push & PR
@@ -144,8 +163,8 @@ gh pr create --title "feat: Description" --body "..."
 
 ```bash
 gh pr merge --squash --delete-branch
-git checkout main && git pull && bd sync
-bd worktree remove <name>  # If using worktree
+git checkout main && git pull && br sync --import-only
+git worktree remove <name>  # If using worktree
 ```
 
 ---
@@ -154,7 +173,7 @@ bd worktree remove <name>  # If using worktree
 
 ```bash
 git checkout --theirs .beads/issues.jsonl
-bd import -i .beads/issues.jsonl
+br sync --import-only
 ```
 
 ---
@@ -425,4 +444,3 @@ class CustomKeyTextView: NSTextView {
     }
 }
 ```
-

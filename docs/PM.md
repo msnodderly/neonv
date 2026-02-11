@@ -6,20 +6,20 @@ Break down tasks into items suitable for execution by parallel coding agents.
 
 ## Issue Tracking System
 
-This project uses **bd (beads)** for issue tracking. 
+This project uses **br (beads)** for issue tracking. 
 
 ### Key Commands
 
 ```bash
-bd ready              # Find issues ready to work (no blockers)
-bd list --status=open # All open issues
-bd blocked            # Show blocked issues
-bd show <id>          # Detailed issue view
-bd create --title="..." --type=task|bug|feature|epic --priority=0-4
-bd update <id> --description="..." --status=...
-bd close <id>         # Complete an issue
-bd dep add <issue> <depends-on>  # Add dependency
-bd stats              # Project statistics
+br ready              # Find issues ready to work (no blockers)
+br list --status=open # All open issues
+br blocked            # Show blocked issues
+br show <id>          # Detailed issue view
+br create --title="..." --type=task|bug|feature|epic --priority=0-4
+br update <id> --description="..." --status=...
+br close <id>         # Complete an issue
+br dep add <issue> <depends-on>  # Add dependency
+br stats              # Project statistics
 ```
 
 ## Grooming Process
@@ -30,10 +30,10 @@ Start each grooming session by:
 
 ```bash
 git checkout -b pm-grooming-YYYY-MM-DD
-bd ready              # See what's unblocked
-bd list               # Review all issues
-bd blocked            # Check blocked issues
-bd stats              # Get project health metrics
+br ready              # See what's unblocked
+br list               # Review all issues
+br blocked            # Check blocked issues
+br stats              # Get project health metrics
 ```
 
 ### 2. Review Criteria
@@ -66,7 +66,7 @@ For each issue, verify:
 #### Adding Descriptions
 
 ```bash
-bd update <id> --description "Clear description of what needs to be done.
+br update <id> --description "Clear description of what needs to be done.
 
 Requirements:
 - Specific requirement 1
@@ -91,18 +91,18 @@ For tasks too large to complete in ~10 minutes:
 Example:
 ```bash
 # Create subtasks
-bd create --title "Subtask 1: Foundation" --type task --priority 2 --description "..."
-bd create --title "Subtask 2: Core logic" --type task --priority 2 --description "..."
-bd create --title "Subtask 3: Integration" --type task --priority 2 --description "..."
+br create --title "Subtask 1: Foundation" --type task --priority 2 --description "..."
+br create --title "Subtask 2: Core logic" --type task --priority 2 --description "..."
+br create --title "Subtask 3: Integration" --type task --priority 2 --description "..."
 
 # Add dependencies (parent depends on children)
-bd dep add parent-id subtask1-id
-bd dep add parent-id subtask2-id
-bd dep add parent-id subtask3-id
+br dep add parent-id subtask1-id
+br dep add parent-id subtask2-id
+br dep add parent-id subtask3-id
 
 # Sequential dependencies if needed
-bd dep add subtask2-id subtask1-id
-bd dep add subtask3-id subtask2-id
+br dep add subtask2-id subtask1-id
+br dep add subtask3-id subtask2-id
 ```
 
 #### Marking Issues Not Ready
@@ -150,8 +150,8 @@ Epic: Multi-threading Support
 
 **Check dependencies:**
 ```bash
-bd blocked           # See what's blocked
-bd show <id>         # See specific dependencies
+br blocked           # See what's blocked
+br show <id>         # See specific dependencies
 ```
 
 ### 6. Identifying Questions
@@ -191,9 +191,9 @@ After grooming:
 
 1. **Verify work:**
    ```bash
-   bd ready          # Should see well-groomed, unblocked tasks
-   bd blocked        # Review blockers make sense
-   bd stats          # Sanity check numbers
+   br ready          # Should see well-groomed, unblocked tasks
+   br blocked        # Review blockers make sense
+   br stats          # Sanity check numbers
    ```
 
 2. **Document decisions:**
@@ -266,7 +266,7 @@ Design: Architecture for X
 1. **Start small**: Groom 5-10 issues first session
 2. **Ask questions**: Add to questions.md when unsure
 3. **Check "ready"**: Best metric for grooming quality
-4. **Use bd prime**: Shows workflow context
+4. **Use `br --help`**: Shows workflow context
 5. **Trust the system**: Dependencies prevent premature work
 6. **Document decisions**: Future you will thank you
 
@@ -281,47 +281,47 @@ This section captures practical insights from real grooming sessions. Read this 
 **How to spot duplicates:**
 ```bash
 # Search issue titles for similar keywords
-bd list | grep -i "edit\|buffer"
+br list | grep -i "edit\|buffer"
 
-# When reviewing an issue, check "RELATED" section in bd show output
-bd show agent-on1  # Showed relationship to agent-lbb
+# When reviewing an issue, check "RELATED" section in br show output
+br show agent-on1  # Showed relationship to agent-lbb
 
 # Look for closed issues on same topic
-bd list --status=all | grep -i "skill"  # Found agent-d35 was closed, agent-3cd still open
+br list --status=all | grep -i "skill"  # Found agent-d35 was closed, agent-3cd still open
 ```
 
 **How to handle duplicates:**
 1. Choose which issue to keep (usually the one with more detail or subtasks)
-2. Remove dependencies: `bd dep remove <issue> <depends-on>`
-3. Close with clear reason: `bd close <duplicate-id> --reason "Duplicate of agent-xyz. Consolidated under xyz."`
+2. Remove dependencies: `br dep remove <issue> <depends-on>`
+3. Close with clear reason: `br close <duplicate-id> --reason "Duplicate of agent-xyz. Consolidated under xyz."`
 4. Update remaining issue to capture any unique info from duplicate
 
 **Mistake to avoid:** Don't force-close blocked issues. Remove dependencies first, or you'll leave orphaned references.
 
-### Understanding bd Dependencies (Direction Matters!)
+### Understanding br Dependencies (Direction Matters!)
 
-**Critical concept:** `bd dep add A B` means "A depends on B" (B blocks A).
+**Critical concept:** `br dep add A B` means "A depends on B" (B blocks A).
 
 **This was confusing at first!**
 
 ```bash
 # WRONG mental model:
-bd dep add parent-task subtask  # "parent has child subtask"
+br dep add parent-task subtask  # "parent has child subtask"
 
 # CORRECT mental model:
-bd dep add parent-task subtask  # "parent DEPENDS ON subtask" (subtask must finish first)
+br dep add parent-task subtask  # "parent DEPENDS ON subtask" (subtask must finish first)
 ```
 
 **Visualization:**
 ```
-bd dep add agent-lbb.1 agent-99b
+br dep add agent-lbb.1 agent-99b
 
 Result:
   agent-lbb.1 (parent, BLOCKED)
      ↓ depends on
   agent-99b (child, must complete first)
 
-bd show output:
+br show output:
   agent-lbb.1:
     DEPENDS ON → agent-99b (blocks are listed here)
 
@@ -329,7 +329,7 @@ bd show output:
     BLOCKS ← agent-lbb.1 (reverse relationship shown)
 ```
 
-**Pro tip:** Use `bd show <id>` to verify dependency direction after adding. If you see "DEPENDS ON" pointing wrong way, fix it immediately.
+**Pro tip:** Use `br show <id>` to verify dependency direction after adding. If you see "DEPENDS ON" pointing wrong way, fix it immediately.
 
 ### When to Create Design Tasks vs. Just Add Notes
 
@@ -338,13 +338,13 @@ bd show output:
 **Answer:** Create a design task when:
 1. Multiple implementation tasks are blocked waiting for the decision
 2. The decision requires research/prototyping (not just a quick call)
-3. You want to track that design work in bd stats/velocity
+3. You want to track that design work in br stats/velocity
 4. An agent could actually work on researching/documenting options
 
 **Example from this session:**
 - Created **agent-0wg** (Design: Multi-agent architecture) as P1 task
 - It blocks **agent-ppw**, **agent-9m5**, and ultimately **agent-2jm** epic
-- This shows up in `bd blocked` making the blocker visible
+- This shows up in `br blocked` making the blocker visible
 - Someone can claim agent-0wg and work on the design doc
 
 **Just use questions.md when:**
@@ -365,7 +365,7 @@ bd show output:
 ```
 
 **Why this works:**
-- Common prefix (`/edit:`) groups them visually in `bd list`
+- Common prefix (`/edit:`) groups them visually in `br list`
 - Verb starts each step (Parse, Open, Parse, Merge)
 - Clear progression even without seeing dependencies
 - Easy to tell which part you're working on
@@ -392,12 +392,12 @@ agent-9m5: Advanced feature - P2 (depends on basic)
 ```
 
 **Why P1 for design tasks:**
-- They appear higher in `bd ready` list
+- They appear higher in `br ready` list
 - Signals "start here" to implementers
 - Makes architectural decisions visible as critical path
 - Even if the epic is P2, design blockers should be P1
 
-**Pro tip:** After grooming, run `bd ready`. The P1 tasks should be the right starting points.
+**Pro tip:** After grooming, run `br ready`. The P1 tasks should be the right starting points.
 
 ### Checking Related/Closed Issues Before Grooming
 
@@ -406,14 +406,14 @@ agent-9m5: Advanced feature - P2 (depends on basic)
 **Always do this:**
 ```bash
 # When grooming an issue, search for related closed issues
-bd list --status=all | grep "keyword"
+br list --status=all | grep "keyword"
 
-# Example: Grooming "add bd skill"
-bd list --status=all | grep -i "skill"
+# Example: Grooming "add br skill"
+br list --status=all | grep -i "skill"
 # Found: agent-d35 (closed), agent-3cd (open, related), agent-3fj (different but related)
 
 # Check the closed issue for context
-bd show agent-d35
+br show agent-d35
 # Saw it was "related" to agent-3cd, gave context on why work was already attempted
 ```
 
@@ -465,16 +465,16 @@ bd show agent-d35
 **Example from this session:**
 ```bash
 # Creating 4 related subtasks - do in one command block
-bd create --title "Subtask 1" --type task --priority 2 --description "..." && \
-bd create --title "Subtask 2" --type task --priority 2 --description "..." && \
-bd create --title "Subtask 3" --type task --priority 2 --description "..." && \
-bd create --title "Subtask 4" --type task --priority 2 --description "..."
+br create --title "Subtask 1" --type task --priority 2 --description "..." && \
+br create --title "Subtask 2" --type task --priority 2 --description "..." && \
+br create --title "Subtask 3" --type task --priority 2 --description "..." && \
+br create --title "Subtask 4" --type task --priority 2 --description "..."
 
 # Then copy all the IDs and batch the dependencies
-bd dep add parent-id subtask1-id && \
-bd dep add parent-id subtask2-id && \
-bd dep add parent-id subtask3-id && \
-bd dep add parent-id subtask4-id
+br dep add parent-id subtask1-id && \
+br dep add parent-id subtask2-id && \
+br dep add parent-id subtask3-id && \
+br dep add parent-id subtask4-id
 ```
 
 
@@ -506,9 +506,9 @@ Then write your dep commands referencing the file.
 
 **Don't:** Try to force epics into perfect non-overlapping boxes. Real features have fuzzy boundaries.
 
-### Git + bd Workflow Quirks
+### Git + br Workflow Quirks
 
-**Challenge:** bd sync modifies `.beads/issues.jsonl` which causes git commit issues.
+**Challenge:** `br` does not run git operations for you. Sync export/import is explicit.
 
 **The workflow that works:**
 ```bash
@@ -516,8 +516,8 @@ Then write your dep commands referencing the file.
 # 2. Stage your non-beads files first
 git add docs/PM.md docs/questions.md
 
-# 3. Run bd sync (it will modify .beads/issues.jsonl)
-bd sync
+# 3. Export DB to JSONL
+br sync --flush-only
 
 # 4. Stage beads changes
 git add .beads/
@@ -525,47 +525,39 @@ git add .beads/
 # 5. Commit everything together
 git commit -m "Your message"
 
-# 6. Run bd sync AGAIN after commit
-bd sync
-
-# 7. If .beads/ changed again, commit again
-git add .beads/
-git commit -m "bd sync: Update issue database"
-
-# 8. Push
+# 6. Push
 git push
 ```
 
-**Why this is annoying:** bd sync synchronizes with remote state, which can modify the JSONL file even after you've committed.
+If you need to hydrate local DB from pulled JSONL changes, run:
 
-**Pro tip:** Expect 2-3 commits per grooming session:
-1. Your actual grooming work
-2. bd sync reconciliation
-3. Maybe another bd sync after that
+```bash
+br sync --import-only
+```
 
-**Don't stress about it.** The bd tool is managing distributed state. Just follow the workflow above.
+Keep sync explicit: export with `--flush-only`, import with `--import-only`.
 
 ### Validating Your Grooming Work
 
 **Before you PR:** Run these commands and sanity-check the output.
 
 ```bash
-bd ready          # Should show well-defined, unblocked tasks
-bd blocked        # Blocked tasks should have good reasons (design dependencies, etc.)
-bd stats          # Check that "Ready to Work" increased
-bd list | head -20  # Scan titles - do they make sense?
+br ready          # Should show well-defined, unblocked tasks
+br blocked        # Blocked tasks should have good reasons (design dependencies, etc.)
+br stats          # Check that "Ready to Work" increased
+br list | head -20  # Scan titles - do they make sense?
 ```
 
 **Good signs after grooming:**
-- `bd ready` shows 10-20 actionable tasks
-- Tasks in `bd ready` have clear descriptions (spot-check with `bd show`)
-- `bd blocked` shows tasks waiting on design or prerequisites (not random blocks)
-- `bd stats` shows total issues increased (you broke things down) but ready work also increased
+- `br ready` shows 10-20 actionable tasks
+- Tasks in `br ready` have clear descriptions (spot-check with `br show`)
+- `br blocked` shows tasks waiting on design or prerequisites (not random blocks)
+- `br stats` shows total issues increased (you broke things down) but ready work also increased
 
 **Bad signs (need more grooming):**
-- `bd ready` has <5 tasks
-- Tasks in `bd ready` are actually blocked but dependencies weren't set
-- `bd blocked` has weird circular dependencies
+- `br ready` has <5 tasks
+- Tasks in `br ready` are actually blocked but dependencies weren't set
+- `br blocked` has weird circular dependencies
 - You see tasks like "TBD" or "Figure out X"
 
 ### The Value of questions.md
@@ -612,9 +604,9 @@ Recommendation: [your suggestion] OR "Needs owner decision"
 
 **Learned these by almost making them:**
 
-1. **Not checking bd show before adding dependencies**
+1. **Not checking br show before adding dependencies**
    - Added a dep, then realized it was backwards
-   - Fix: Always `bd show <id>` after `bd dep add` to verify
+   - Fix: Always `br show <id>` after `br dep add` to verify
 
 2. **Writing descriptions in questions.md instead of the issue**
    - Questions.md is for *questions*, not requirements
@@ -646,28 +638,28 @@ Use this for your first time:
 
 **Before you start:**
 - [ ] Read this entire PM.md document
-- [ ] Run `bd prime` to understand bd workflow
-- [ ] Run `bd ready` and `bd stats` to see current state
+- [ ] Run `br --help` to understand br workflow
+- [ ] Run `br ready` and `br stats` to see current state
 - [ ] Create your grooming branch: `git checkout -b pm-grooming-YYYY-MM-DD`
 
 **During grooming (repeat for each issue):**
-- [ ] Run `bd show <id>` to see full details
-- [ ] Check for duplicates: `bd list --status=all | grep <keyword>`
+- [ ] Run `br show <id>` to see full details
+- [ ] Check for duplicates: `br list --status=all | grep <keyword>`
 - [ ] Does it have a clear description? If not, add one
 - [ ] Does it have acceptance criteria? If not, add them
 - [ ] Is it <15 minutes of work? If not, break it down
-- [ ] Are dependencies correct? Use `bd show` to verify
+- [ ] Are dependencies correct? Use `br show` to verify
 - [ ] Are there architectural questions? Add to questions.md
 
 **After grooming 8-12 issues:**
-- [ ] Run `bd ready` - do tasks look implementable?
-- [ ] Run `bd blocked` - do blocks make sense?
-- [ ] Run `bd stats` - did ready work increase?
+- [ ] Run `br ready` - do tasks look implementable?
+- [ ] Run `br blocked` - do blocks make sense?
+- [ ] Run `br stats` - did ready work increase?
 - [ ] Update questions.md with any architectural decisions needed
 - [ ] Commit: `git add .beads/ docs/`
 - [ ] Commit: `git commit -m "PM grooming: <what you did>"`
-- [ ] Run `bd sync` (might modify .beads again)
-- [ ] Commit again if needed: `git add .beads/ && git commit -m "bd sync"`
+- [ ] Run `br sync --flush-only` to export issue updates
+- [ ] Commit if needed: `git add .beads/ && git commit -m "br sync"`
 - [ ] Push: `git push -u origin HEAD`
 - [ ] PR: `gh pr create --title "PM Grooming: <date>"`
 
@@ -677,7 +669,7 @@ Use this for your first time:
 
 ## References
 
-- `bd prime` - Full bd workflow documentation
+- `br --help` - Full br command reference
 - `.claude/CLAUDE.md` - Project-specific instructions
 - `docs/questions.md` - Open architectural questions
 - `.beads/issues.jsonl` - Raw issue database

@@ -8,7 +8,8 @@ How to release a new version of neonv.
 
 ```bash
 # 1. Ensure main is clean and synced
-git checkout main && git pull && bd sync --full
+git checkout main && git pull && br sync --flush-only
+git add .beads/ && git commit -m "br sync: Update issues" && git push
 
 # 2. Tag and push (triggers CI release)
 git tag v0.2.0
@@ -26,18 +27,21 @@ CI builds the artifacts and creates the GitHub Release automatically.
 1. **Verify main is stable**
    - All PRs merged
    - Build passes: `xcodebuild -project NeoNV/NeoNV.xcodeproj -scheme NeoNV -destination 'platform=macOS' build`
-   - No open P0 issues: `bd ready`
+   - No open P0 issues: `br ready`
 
 2. **Sync issues**
    ```bash
-   bd sync --full
+   br sync --flush-only
+   git add .beads/
+   git commit -m "br sync: Update issues"
+   git push
    ```
 
 3. **Clean up worktrees** (if any)
    ```bash
-   bd worktree list
+   git worktree list
    # Remove merged worktrees
-   bd worktree remove <name>
+   git worktree remove <name>
    ```
 
 ### Create the Release
@@ -164,7 +168,7 @@ Delete the release and tag from GitHub, then re-push the tag.
 
 ## Writing Release Notes
 
-CI auto-generates notes from raw commits, but **you must replace them** with a curated summary. Users don't care about worktree updates, bd syncs, or chore commits—they want to know what changed for them.
+CI auto-generates notes from raw commits, but **you must replace them** with a curated summary. Users don't care about worktree updates, br syncs, or chore commits—they want to know what changed for them.
 
 ### Gathering Content
 
@@ -172,8 +176,8 @@ Review both BD issues and commits for context:
 
 ```bash
 # BD issues contain user-facing descriptions and acceptance criteria
-bd list --status closed --limit 20
-bd show <issue-id>  # Get full context for relevant issues
+br list --status closed --limit 20
+br show <issue-id>  # Get full context for relevant issues
 
 # Commits provide implementation details
 git log v0.1.0..HEAD --oneline --no-merges

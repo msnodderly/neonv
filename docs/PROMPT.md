@@ -14,35 +14,28 @@ Do not start additional tasks after completing your assigned work.
 
 1. **Read context**:
    - `docs/neonv-product-spec.md` (product spec)
-   - `AGENTS.md` (patterns, procedures, `bd` reference)
+   - `AGENTS.md` (patterns, procedures, `br` reference)
 
-2. **Pick task**: Run `bd ready` and select the SINGLE highest priority item that is NOT already `in_progress`
+2. **Pick task**: Run `br ready` and select the SINGLE highest priority item that is NOT already `in_progress`
    
    **IMPORTANT:** Tasks with status `in_progress` are being worked on by another agent. Skip them to avoid conflicts.
 
-3. **Claim task**: Run `bd update <id> --status in_progress` to reserve it before starting work
+3. **Claim task**: Run `br update <id> --status in_progress` to reserve it before starting work
 
-4. **Create worktree**: Use `bd worktree` to create an isolated working directory
+4. **Create worktree**: Use `git worktree` to create an isolated working directory
    ```bash
-   bd worktree create <feature-name> --branch task/<id>-short-description
-
-   # IMPORTANT: Commit the .gitignore change before leaving main
-   git add .gitignore && git commit -m "chore: Update .gitignore for <feature-name> worktree"
-   git push
-
+   git worktree add -b task/<id>-short-description <feature-name> main
    cd <feature-name>
    ```
 
-   **Why worktrees?** Multiple agents can work in parallel on different tasks. Each agent gets an isolated working directory without branch-switching conflicts. Using `bd worktree` (instead of `git worktree`) automatically configures beads to share the database across all worktrees.
-
-   **Why commit .gitignore?** `bd worktree create` adds the worktree directory to `.gitignore`. If you don't commit this before switching to the worktree, main is left dirty and `git pull` will fail later.
+   **Why worktrees?** Multiple agents can work in parallel on different tasks. Each agent gets an isolated working directory without branch-switching conflicts.
 
 ---
 
 ## Implementation
 
 ### Before Coding
-- Read the task description fully: `bd show <id>`
+- Read the task description fully: `br show <id>`
 - Check `docs/implement_plan.md` for planning guidance
 - For complex features: create a design doc in `docs/plans/` before writing code
 
@@ -63,11 +56,15 @@ Do not start additional tasks after completing your assigned work.
 When the task is complete, follow the "Session Completion Procedure" in `AGENTS.md`:
 
 1. Build passes: `xcodebuild -scheme NeoNV -destination 'platform=macOS' build`
-2. Close task: `bd close <id> --reason "Completed"`
+2. Close task: `br close <id> --reason "Completed"`
 3. **Sync beads to main**:
    ```bash
    git stash --include-untracked
-   bd sync --full
+   br sync --flush-only
+   git add .beads/
+   git commit -m "br sync: Update issues"
+   git pull --rebase
+   git push
    git stash pop
    ```
 4. **Push code branch**: `git push -u origin <branch-name>` (your feature branch)
@@ -83,7 +80,7 @@ When the task is complete, follow the "Session Completion Procedure" in `AGENTS.
 Before creating the PR, confirm:
 
 - [ ] `xcodebuild build` succeeds with no errors
-- [ ] `bd show <id>` shows task closed
-- [ ] `bd sync --full` completed successfully (beads pushed to `main`)
+- [ ] `br show <id>` shows task closed
+- [ ] `br sync --flush-only` completed and sync commit pushed to `main`
 - [ ] `git status` shows no uncommitted `.beads/` changes
 - [ ] `AGENTS.md` updated if patterns/gotchas discovered

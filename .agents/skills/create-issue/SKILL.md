@@ -1,16 +1,16 @@
 ---
 name: create-issue
-description: "Creates issues using bd CLI and syncs to GitHub. Use when asked to create an issue, file a bug, add a task, or track new work."
+description: "Creates issues using br CLI and syncs to GitHub. Use when asked to create an issue, file a bug, add a task, or track new work."
 ---
 
 # Creating Issues
 
-Create ONE issue using `bd`, sync it, then stop. Do NOT implement the issue.
+Create ONE issue using `br`, sync it, then stop. Do NOT implement the issue.
 
 ## Context
 
 Read these files first if needed:
-- `AGENTS.md` — Contains `bd` command reference and sync procedures
+- `AGENTS.md` — Contains `br` command reference and sync procedures
 - `docs/neonv-product-spec.md` — Product guidance for issue scoping
 
 ## Workflow
@@ -27,7 +27,7 @@ Read these files first if needed:
 ### 2. Create Issue
 
 ```bash
-bd create \
+br create \
   --title "Your specific title here" \
   --type task \
   --priority 2 \
@@ -45,7 +45,7 @@ Save the issue ID from output (e.g., `neonv-abc`).
 ### 3. Verify
 
 ```bash
-bd show <id>
+br show <id>
 ```
 
 ### 4. Sync to GitHub
@@ -54,11 +54,14 @@ Stash any uncommitted work first:
 
 ```bash
 git stash --include-untracked
-bd sync --full
+br sync --flush-only
+git add .beads/issues.jsonl
+git commit -m "br sync: Update issue database"
+git push
 git stash pop
 ```
 
-`bd sync --full` exports, pulls, merges, commits, and pushes.
+`br sync --flush-only` exports database changes to JSONL. Git commit/push is explicit.
 
 ### 5. Verify Sync
 
@@ -69,7 +72,7 @@ git log origin/main -1 --oneline
 
 Expected:
 - No uncommitted `.beads/` changes
-- Recent commit with `bd sync: <timestamp>`
+- Recent commit with `br sync: ...`
 
 ### 6. STOP
 
@@ -84,14 +87,17 @@ If sync fails with "cannot pull with rebase: You have unstaged changes":
 
 ```bash
 git stash --include-untracked
-bd sync --full
+br sync --flush-only
+git add .beads/issues.jsonl
+git commit -m "br sync: Update issue database"
+git push
 git stash pop
 ```
 
 ## Checklist
 
-- [ ] `bd show <id>` displays issue correctly
-- [ ] `bd sync --full` completed
+- [ ] `br show <id>` displays issue correctly
+- [ ] `br sync --flush-only` completed
 - [ ] `git status` shows no uncommitted `.beads/` changes
 - [ ] `git log origin/main -1` shows sync commit
 - [ ] NOT started implementing

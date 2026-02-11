@@ -11,7 +11,7 @@ Creat a Release. Complete all steps. Stop.
 
 Read for additional details:
 - `docs/RELEASE.md` — Full release manager's guide
-- `AGENTS.md` — bd command reference
+- `AGENTS.md` — br command reference
 
 ## Workflow
 
@@ -20,8 +20,9 @@ Read for additional details:
 ```bash
 git checkout main && git pull
 git status  # Must be clean
-bd sync --full
-bd ready | grep "P0"  # Must return empty
+br sync --status
+br sync --flush-only
+br ready | grep "P0"  # Must return empty
 ```
 
 ### 2. Verify Build
@@ -37,7 +38,7 @@ Must show `** BUILD SUCCEEDED **`.
 ```bash
 git tag --sort=-v:refname | head -1  # Current version
 git log $(git tag --sort=-v:refname | head -1)..HEAD --oneline --no-merges
-bd list --status closed --limit 20
+br list --status closed --limit 20
 ```
 
 | Changes | Bump | Example |
