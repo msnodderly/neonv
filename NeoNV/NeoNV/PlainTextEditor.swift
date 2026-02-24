@@ -86,6 +86,23 @@ struct PlainTextEditor: NSViewRepresentable {
         return scrollView
     }
 
+    static func dismantleNSView(_ scrollView: NSScrollView, coordinator: Coordinator) {
+        NotificationCenter.default.removeObserver(
+            coordinator,
+            name: NSView.boundsDidChangeNotification,
+            object: scrollView.contentView
+        )
+
+        if let textView = scrollView.documentView as? CustomTextView {
+            textView.delegate = nil
+            textView.textStorage?.delegate = nil
+            textView.onShiftTab = nil
+            textView.onEscape = nil
+        }
+
+        coordinator.textView = nil
+    }
+
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? CustomTextView else { return }
 

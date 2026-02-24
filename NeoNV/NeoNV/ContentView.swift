@@ -144,11 +144,11 @@ struct ContentView: View {
                 .help("Select notes folder")
             }
         }
-        .onChange(of: selectedNoteID) { _, newID in
+        .onChange(of: selectedNoteID) { oldID, newID in
             if let newID = newID {
                 navHistory.push(newID)
             }
-            loadSelectedNote(id: newID)
+            loadSelectedNote(previousID: oldID, id: newID)
         }
         .onChange(of: editorContent) { _, _ in
             scheduleAutoSave()
@@ -846,15 +846,15 @@ struct ContentView: View {
         }
     }
 
-    private func loadSelectedNote(id: UUID?) {
-        // Save cursor position for the note we're leaving
-        if let previousID = selectedNoteID {
+    private func loadSelectedNote(previousID: UUID?, id: UUID?) {
+        // Save cursor position for the note we're leaving.
+        if let previousID {
             cursorPositionMap[previousID] = cursorPosition
         }
         // Reset scroll fractions when switching notes
         editorScrollFraction = 0
         previewScrollFraction = 0
-        if isDirty, let previousID = selectedNoteID {
+        if isDirty, let previousID {
             saveTask?.cancel()
             let content = editorContent
             Task { await performSave(noteID: previousID, content: content) }

@@ -70,6 +70,19 @@ struct MarkdownPreviewView: NSViewRepresentable {
         Coordinator(scrollFraction: $scrollFraction)
     }
 
+    static func dismantleNSView(_ scrollView: NSScrollView, coordinator: Coordinator) {
+        NotificationCenter.default.removeObserver(
+            coordinator,
+            name: NSView.boundsDidChangeNotification,
+            object: scrollView.contentView
+        )
+
+        if let textView = scrollView.documentView as? PreviewTextView {
+            textView.onShiftTab = nil
+            textView.onTypeToEdit = nil
+        }
+    }
+
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? PreviewTextView else { return }
 
