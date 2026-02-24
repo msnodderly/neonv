@@ -92,8 +92,7 @@ struct ContentView: View {
                     focusedField: _focusedField,
                     matchCount: filteredNotes.count,
                     onNavigateToList: navigateToList,
-                    onNavigateToEditor: focusEditor,
-                    onCreateNote: createNewNote,
+                    onSubmitSearch: handleSearchSubmit,
                     onClearSearch: clearSearch
                 )
 
@@ -474,9 +473,6 @@ struct ContentView: View {
             .frame(minWidth: 300)
         }
     }
-
-    private func focusSearch() { if settings.isSearchFieldHidden { settings.isSearchFieldHidden = false }; NSApp.keyWindow?.makeFirstResponder(nil); focusedField = .search }
-    private func focusEditor() { if showPreview { showPreview = false; DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { focusedField = .editor } } else { focusedField = .editor } }
 
     private func deleteNote(_ note: NoteFile) {
         let notes = filteredNotes
@@ -918,13 +914,6 @@ struct ContentView: View {
         }.value
     }
     
-    private func navigateToList() {
-        if settings.isFileListHidden { settings.isFileListHidden = false }
-        if selectedNoteID == nil, let firstNote = filteredNotes.first { selectedNoteID = firstNote.id }
-        NSApp.keyWindow?.makeFirstResponder(nil)
-        focusedField = .noteList
-    }
-
     private func createNewNote() {
         guard let folderURL = noteStore.selectedFolderURL, !searchText.isEmpty else {
             return
@@ -1223,6 +1212,44 @@ struct ContentView: View {
     }
 }
 
+private extension ContentView {
+    func focusSearch() {
+        if settings.isSearchFieldHidden { settings.isSearchFieldHidden = false }
+        NSApp.keyWindow?.makeFirstResponder(nil)
+        focusedField = .search
+    }
+
+    func focusEditor() {
+        if showPreview {
+            showPreview = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { focusedField = .editor }
+        } else {
+            focusedField = .editor
+        }
+    }
+
+    func navigateToList() {
+        if settings.isFileListHidden { settings.isFileListHidden = false }
+        if selectedNoteID == nil, let firstNote = filteredNotes.first { selectedNoteID = firstNote.id }
+        NSApp.keyWindow?.makeFirstResponder(nil)
+        focusedField = .noteList
+    }
+
+    func handleSearchSubmit() {
+        guard !searchText.isEmpty else {
+            if filteredNotes.count == 1 { focusEditor() }
+            else if filteredNotes.count > 1 { navigateToList() }
+            return
+        }
+        if let exactTitleMatch = findExactTitleMatch(in: noteStore.notes, for: searchText) {
+            selectedNoteID = exactTitleMatch.id
+            focusEditor()
+            return
+        }
+        createNewNote()
+    }
+}
+
 private func atomicWrite(content: String, to url: URL) async throws {
     try Task.checkCancellation()
 
@@ -1242,6 +1269,31 @@ private func atomicWrite(content: String, to url: URL) async throws {
     } catch CocoaError.fileWriteFileExists {
         _ = try fileManager.replaceItemAt(url, withItemAt: tempURL)
     }
+}
+
+private func findExactTitleMatch(in notes: [NoteFile], for query: String) -> NoteFile? {
+    let normalizedQuery = normalizeTitleForExactMatch(query)
+    guard !normalizedQuery.isEmpty else { return nil }
+
+    return notes.first { note in
+        normalizeTitleForExactMatch(note.title) == normalizedQuery
+    }
+}
+
+private func normalizeTitleForExactMatch(_ text: String) -> String {
+    var normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    if normalized.hasPrefix("#") {
+        normalized = normalized.drop(while: { $0 == "#" || $0 == " " }).description
+    }
+    if normalized.hasPrefix("- ") || normalized.hasPrefix("* ") || normalized.hasPrefix("+ ") {
+        normalized = String(normalized.dropFirst(2))
+    }
+    if normalized.hasPrefix("> ") {
+        normalized = String(normalized.dropFirst(2))
+    }
+
+    return normalized.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 }
 
 struct ContentEmptyStateView: View {
@@ -1322,8 +1374,7 @@ struct SearchBar: View {
     @FocusState var focusedField: FocusedField?
     var matchCount: Int
     var onNavigateToList: () -> Void
-    var onNavigateToEditor: () -> Void
-    var onCreateNote: () -> Void
+    var onSubmitSearch: () -> Void
     var onClearSearch: () -> Void
 
     var body: some View {
@@ -1363,13 +1414,7 @@ struct SearchBar: View {
                     return .handled
                 }
                 .onKeyPress(.return) {
-                    if matchCount == 1 {
-                        onNavigateToEditor()
-                    } else if matchCount > 1 {
-                        onNavigateToList()
-                    } else if !text.isEmpty {
-                        onCreateNote()
-                    }
+                    onSubmitSearch()
                     return .handled
                 }
                 .onKeyPress(.escape) {
