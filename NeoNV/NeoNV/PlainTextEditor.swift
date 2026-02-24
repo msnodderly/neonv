@@ -356,10 +356,7 @@ struct PlainTextEditor: NSViewRepresentable {
 private class FocusForwardingScrollView: NSScrollView {
     var refusesFocus: Bool = false
     override var acceptsFirstResponder: Bool { !refusesFocus }
-    override var nextKeyView: NSView? {
-        get { nil }
-        set { }
-    }
+    override var canBecomeKeyView: Bool { !refusesFocus && super.canBecomeKeyView }
     override func becomeFirstResponder() -> Bool {
         if refusesFocus { return false }
         if let docView = documentView {
@@ -378,9 +375,8 @@ class CustomTextView: NSTextView {
         refusesFocus ? false : super.acceptsFirstResponder
     }
 
-    override var nextKeyView: NSView? {
-        get { nil }
-        set { }
+    override var canBecomeKeyView: Bool {
+        !refusesFocus && super.canBecomeKeyView
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
