@@ -1,6 +1,6 @@
 # neonv
 
-A fast, frictionless text capture tool for macOS. Store snippets, thoughts, notes, and random text, find them instantly, and never think about saving.
+A fast, low friction text capture tool for macOS. Store snippets, thoughts, notes, and random text, find them instantly, never think about saving.
 
 Inspired by [Notational Velocity](https://notational.net/)'s speed and simplicity, built native for modern macOS.
 
