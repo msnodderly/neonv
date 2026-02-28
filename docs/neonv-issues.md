@@ -86,7 +86,6 @@ Initialize Xcode project configured for macOS app with universal binary support 
 **Technical Notes:**
 - Use SwiftUI App lifecycle, not AppKit AppDelegate (can add later if needed)
 - Verify universal binary: `lipo -info` on built executable should show both architectures
-- **Prototype exists:** `neonvPrototype/` has a working Xcode project for reference
 - **Critical:** macOS 14+ is required to use `.onKeyPress` for keyboard navigation
 
 ---
@@ -133,10 +132,9 @@ Create the main window with the foundational three-pane layout: search bar at to
 - [x] **Search box focused on app launch** (user can start typing immediately)
 
 **Technical Notes:**
-- Use `HSplitView` for pane layout (prototype validated this works well)
+- Use `HSplitView` for pane layout
 - Use `@FocusState` for programmatic focus management
 - Consider `NSWindow` state restoration for position memory
-- Prototype code in `neonvPrototype/ContentView.swift` shows working layout
 
 **UI Mockup:**
 ```
@@ -240,10 +238,7 @@ Display discovered files in left pane, sorted by modification time (most recent 
 **Technical Notes:**
 - Use SwiftUI `List` with selection binding
 - File model should include: path, content (or first line), modification date
-- Prototype has working markdown stripping code in `FakeNote.stripMarkdownFormatting()`
-- SwiftUI `List` felt responsive in prototype with 10 items
-
-**Display Format (Updated from prototype):**
+**Display Format:**
 ```
 Meeting with design team          ← first line, stripped, ~50 chars
   work/meeting-notes.md           ← path + filename, muted
@@ -460,7 +455,6 @@ My new note content here
 
 **Technical Notes:**
 - Track `saved` boolean on note model
-- Prototype has working style in `ContentView.swift` lines 140-142
 
 ---
 
@@ -986,7 +980,7 @@ Create and submit Homebrew Cask formula.
 
 **Acceptance Criteria:**
 - [ ] Cask formula written and tested locally
-- [ ] `brew install --cask ./alt-nv.rb` works
+- [ ] `brew install --cask ./neonv.rb` works
 - [ ] PR submitted to homebrew-cask (or personal tap)
 - [ ] Formula approved and merged
 
@@ -1168,7 +1162,7 @@ VALIDATE-* ─► DIST-001 ─► DIST-002 ─► DIST-003 ─► DIST-004 ─�
 For an agent beginning implementation, start here:
 
 ### Priority Order (MVP)
-1. **SETUP-002** - Create Xcode project (or use existing `neonvPrototype/` as reference)
+1. **SETUP-002** - Create Xcode project
 2. **MVP-001** - Three-pane layout with search focus on launch
 3. **MVP-012** - Keyboard navigation (do this early, "every beep is a bug")
 4. **MVP-002** - Text editor
@@ -1183,10 +1177,8 @@ For an agent beginning implementation, start here:
 13. **MVP-011** - Unsaved indicator
 
 ### Key Files to Reference
-- `alt-nv-product-spec.md` - Full product specification
+- `neonv-product-spec.md` - Full product specification
 - `keyboard-and-ux-requirements.md` - Detailed keyboard navigation specs
-- `prototype-learnings.md` - What worked and what didn't in prototype
-- `neonvPrototype/neonvPrototype/ContentView.swift` - Working SwiftUI code for layout/keyboard
 
 ### Technical Decisions Already Made
 - **Language:** Swift + SwiftUI (with AppKit fallbacks if needed)

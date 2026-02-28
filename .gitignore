@@ -187,5 +187,8 @@ integration-test/
 tab-focus-regression/
 tab-focus-cycle-fix/
 
+# Beads issue tracker
+.beads/
+
 # Local Entire tool state
 .entire/

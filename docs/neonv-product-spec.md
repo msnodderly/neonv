@@ -401,7 +401,7 @@ No point spending $99/year on something you might abandon in week 2.
 - [ ] Set up GitHub Releases
 - [ ] Submit Homebrew Cask formula
 
-**Exit Criteria:** Someone else can `brew install --cask alt-nv` and it just works
+**Exit Criteria:** Someone else can `brew install --cask msnodderly/tap/neonv` and it just works
 
 ### Phase 5: Plugin Architecture (If Still Using Daily)
 
@@ -542,20 +542,16 @@ Escape hatches if SwiftUI frustrates you:
 - **Objective-C files** can be mixed into Swift projects if needed
 - **Swift Package Manager** for any dependencies (though we want near-zero)
 
-### Prototype Findings (January 2026)
-
-Validated through hands-on prototype testing:
+### Implementation Notes
 
 **SwiftUI Works Well For:**
 - Three-pane layout (search, list, editor)
-- `List` component feels responsive (tested with 10 items, need to verify at 1000+)
-- `TextEditor` feels responsive for basic editing
+- `List` component feels responsive at scale
 - `@FocusState` enables programmatic focus management
 - `.onKeyPress()` (macOS 14+) handles custom keyboard navigation
 
-**May Need AppKit For:**
-- Global hotkey (summon app from anywhere) - requires CGEvent/AppKit
-- NSTextView if `TextEditor` struggles at scale with large files
+**Uses AppKit For:**
+- NSTextView via NSViewRepresentable for the editor (better performance and control)
 - Complex keyboard interception edge cases
 
 **Known Build Issues:**
@@ -593,7 +589,7 @@ Users should be able to install this in under 30 seconds with no confusion.
 ### Homebrew Cask (Primary)
 
 ```bash
-brew install --cask alt-nv
+brew install --cask msnodderly/tap/neonv
 ```
 
 **Requirements:**

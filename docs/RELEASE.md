@@ -8,12 +8,11 @@ How to release a new version of neonv.
 
 ```bash
 # 1. Ensure main is clean and synced
-git checkout main && git pull && br sync --flush-only
-git add .beads/ && git commit -m "br sync: Update issues" && git push
+git checkout main && git pull
 
 # 2. Tag and push (triggers CI release)
-git tag v0.2.0
-git push origin v0.2.0
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 CI builds the artifacts and creates the GitHub Release automatically.
@@ -29,15 +28,7 @@ CI builds the artifacts and creates the GitHub Release automatically.
    - Build passes: `xcodebuild -project NeoNV/NeoNV.xcodeproj -scheme NeoNV -destination 'platform=macOS' build`
    - No open P0 issues: `br ready`
 
-2. **Sync issues**
-   ```bash
-   br sync --flush-only
-   git add .beads/
-   git commit -m "br sync: Update issues"
-   git push
-   ```
-
-3. **Clean up worktrees** (if any)
+2. **Clean up worktrees** (if any)
    ```bash
    git worktree list
    # Remove merged worktrees
@@ -47,14 +38,14 @@ CI builds the artifacts and creates the GitHub Release automatically.
 ### Create the Release
 
 1. **Choose version number** (semantic versioning)
-   - `v0.1.0` → `v0.2.0` for new features
-   - `v0.2.0` → `v0.2.1` for bug fixes
-   - `v0.2.1` → `v1.0.0` for major/breaking changes
+   - Patch: bug fixes only (e.g., `v1.0.0` → `v1.0.1`)
+   - Minor: new features (e.g., `v1.0.1` → `v1.1.0`)
+   - Major: breaking changes (e.g., `v1.1.0` → `v2.0.0`)
 
 2. **Tag and push**
    ```bash
-   git tag v0.2.0
-   git push origin v0.2.0
+   git tag v<VERSION>
+   git push origin v<VERSION>
    ```
 
 3. **Monitor CI**
@@ -71,7 +62,7 @@ CI builds the artifacts and creates the GitHub Release automatically.
 4. **Update release notes** (if using custom notes)
    ```bash
    # CI auto-generates notes from commits; replace with custom notes:
-   gh release edit v0.2.0 --notes-file docs/release-notes-v0.2.0.md
+   gh release edit v<VERSION> --notes-file docs/release-notes/v<VERSION>.md
    ```
 
 ### Post-Release
@@ -83,7 +74,7 @@ CI builds the artifacts and creates the GitHub Release automatically.
 2. **Update Homebrew tap** (if maintained)
    ```bash
    # Update SHA in cask formula
-   shasum -a 256 neonv-v0.2.0-macos-universal.dmg
+   shasum -a 256 NeoNV-<VERSION>-macos-universal.dmg
    # Submit PR to homebrew-tap repo
    ```
 
@@ -155,10 +146,10 @@ Users see Gatekeeper warning and must right-click → Open.
 
 ### Tag already exists
 ```bash
-git tag -d v0.2.0           # Delete local
-git push origin :v0.2.0     # Delete remote
-git tag v0.2.0              # Re-create
-git push origin v0.2.0
+git tag -d v<VERSION>           # Delete local
+git push origin :v<VERSION>     # Delete remote
+git tag v<VERSION>              # Re-create
+git push origin v<VERSION>
 ```
 
 ### Need to re-run release
@@ -172,24 +163,16 @@ CI auto-generates notes from raw commits, but **you must replace them** with a c
 
 ### Gathering Content
 
-Review both BD issues and commits for context:
-
 ```bash
-# BD issues contain user-facing descriptions and acceptance criteria
-br list --status closed --limit 20
-br show <issue-id>  # Get full context for relevant issues
-
-# Commits provide implementation details
-git log v0.1.0..HEAD --oneline --no-merges
+# Review commits since last release
+git log v<PREV_VERSION>..HEAD --oneline --no-merges
 ```
-
-BD issue descriptions often contain better user-facing language than commit messages. Use the issue's "What" and "Why" to understand changes from the user's perspective.
 
 ### Creating the Notes
 
 ```bash
 # 1. Create release notes file (use previous version as template)
-cp docs/release-notes/v0.1.0.md docs/release-notes/v0.2.0.md
+cp docs/release-notes/v<PREV_VERSION>.md docs/release-notes/v<VERSION>.md
 
 # 2. Edit to summarize meaningful changes:
 #    - New features (what users can now do)
@@ -198,7 +181,7 @@ cp docs/release-notes/v0.1.0.md docs/release-notes/v0.2.0.md
 #    - Internal improvements (brief, optional)
 
 # 3. Update the GitHub release after CI creates it
-gh release edit v0.2.0 --notes-file docs/release-notes/v0.2.0.md
+gh release edit v<VERSION> --notes-file docs/release-notes/v<VERSION>.md
 ```
 
 **Guidelines:**
@@ -211,6 +194,5 @@ gh release edit v0.2.0 --notes-file docs/release-notes/v0.2.0.md
 
 ## Related Docs
 
-- [Packaging, Release & CI/CD Design](plans/packaging-release-cicd.md) — full design rationale
 - [scripts/build-release.sh](../scripts/build-release.sh) — local build script
 - [.github/workflows/ci.yml](../.github/workflows/ci.yml) — CI workflow
