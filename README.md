@@ -14,8 +14,8 @@ Bug reports are accepted, preferably in the form of an agent prompt to fix it. A
 
 - **Instant Capture** — One text box, always ready. Auto-saves continuously.
 - **Instant Search** — Fuzzy full-text search as you type. Results appear immediately.
-- **Zero Friction Storage** — Point at any folder. Files are plain `.txt`, `.md`, or `.org`. No database, no lock-in.
-- **Wiki Links** — Obsidian-style `[[target]]` and `[[target|label]]` links in editor and preview.
+- **Zero Friction Storage** — Point at any folder with text files in it.. Files are plain `.txt`, `.md`, or `.org`. No databases.
+- **Wiki Links** — Wiki-style `[[target]]` and `[[target|label]]` links in editor and preview.
 - **Wiki Navigation + Create Flow** — Cmd-click in editor (or click in preview) opens links, prompts to create missing notes, and shows a picker for ambiguous targets.
 - **Tab-Based Wiki Autocomplete** — Inside `[[...]]`, `Tab` completes unique matches; ambiguous matches open a suggestion list (`Tab` or `Down Arrow`), `Enter`/`Tab` commits, `Esc` cancels.
 - **Native Performance** — macOS-native Swift/SwiftUI. Optimized for Apple Silicon. Instant everything.
