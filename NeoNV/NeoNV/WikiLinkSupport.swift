@@ -112,6 +112,12 @@ enum WikiLinkParser {
             if closedBeforeCursor.location != NSNotFound {
                 return nil
             }
+            // Wiki-link targets are single-line. If cursor moved to a later line,
+            // do not treat this as an active completion context.
+            let newlineBeforeCursor = text.range(of: "\n", options: [], range: preCursorRange)
+            if newlineBeforeCursor.location != NSNotFound {
+                return nil
+            }
         }
 
         let fromContentToEnd = NSRange(location: contentStart, length: text.length - contentStart)

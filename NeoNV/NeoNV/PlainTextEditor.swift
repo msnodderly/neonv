@@ -439,7 +439,9 @@ struct PlainTextEditor: NSViewRepresentable {
             isApplyingCompletion = true
             defer { isApplyingCompletion = false }
 
-            textView.shouldChangeText(in: context.replacementRange, replacementString: selected)
+            guard textView.shouldChangeText(in: context.replacementRange, replacementString: selected) else {
+                return false
+            }
             textView.textStorage?.replaceCharacters(in: context.replacementRange, with: selected)
             textView.didChangeText()
 
@@ -538,7 +540,9 @@ struct PlainTextEditor: NSViewRepresentable {
             isApplyingCompletion = true
             defer { isApplyingCompletion = false }
 
-            textView.shouldChangeText(in: context.replacementRange, replacementString: selected)
+            guard textView.shouldChangeText(in: context.replacementRange, replacementString: selected) else {
+                return
+            }
             textView.textStorage?.replaceCharacters(in: context.replacementRange, with: selected)
             textView.didChangeText()
 
