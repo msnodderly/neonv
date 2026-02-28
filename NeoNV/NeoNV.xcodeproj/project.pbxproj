@@ -6,8 +6,9 @@
 	objectVersion = 56;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		A0HORIZONTAL002 /* HorizontalNoteListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0HORIZONTAL001 /* HorizontalNoteListView.swift */; };
+	/* Begin PBXBuildFile section */
+			A0WIKILINK002 /* WikiLinkSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0WIKILINK001 /* WikiLinkSupport.swift */; };
+			A0HORIZONTAL002 /* HorizontalNoteListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0HORIZONTAL001 /* HorizontalNoteListView.swift */; };
 		A01234560000000000000001 /* NeoNVApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01234560000000000000011 /* NeoNVApp.swift */; };
 		A01234560000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01234560000000000000012 /* ContentView.swift */; };
 		A01234560000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A01234560000000000000013 /* Assets.xcassets */; };
@@ -26,8 +27,9 @@
 		A0123456000000000000000F /* NavigationHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0123456000000000000001F /* NavigationHistory.swift */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXFileReference section */
-		A0HORIZONTAL001 /* HorizontalNoteListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HorizontalNoteListView.swift; sourceTree = "<group>"; };
+	/* Begin PBXFileReference section */
+			A0WIKILINK001 /* WikiLinkSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikiLinkSupport.swift; sourceTree = "<group>"; };
+			A0HORIZONTAL001 /* HorizontalNoteListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HorizontalNoteListView.swift; sourceTree = "<group>"; };
 		A01234560000000000000010 /* NeoNV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NeoNV.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A01234560000000000000011 /* NeoNVApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeoNVApp.swift; sourceTree = "<group>"; };
 		A01234560000000000000012 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -82,9 +84,10 @@
 				A0123456000000000000001C /* KeyboardShortcutsView.swift */,
 				A0123456000000000000001D /* HighlightedText.swift */,
 				A0123456000000000000001E /* HelpView.swift */,
-				A0123456000000000000001F /* NavigationHistory.swift */,
-				A01234560000000000000013 /* Assets.xcassets */,
-				A01234560000000000000014 /* NeoNV.entitlements */,
+					A0123456000000000000001F /* NavigationHistory.swift */,
+					A0WIKILINK001 /* WikiLinkSupport.swift */,
+					A01234560000000000000013 /* Assets.xcassets */,
+					A01234560000000000000014 /* NeoNV.entitlements */,
 			);
 			path = NeoNV;
 			sourceTree = "<group>";
@@ -203,8 +206,9 @@
 				A0123456000000000000000C /* KeyboardShortcutsView.swift in Sources */,
 				A0123456000000000000000D /* HighlightedText.swift in Sources */,
 				A0123456000000000000000E /* HelpView.swift in Sources */,
-				A0123456000000000000000F /* NavigationHistory.swift in Sources */,
-			);
+					A0123456000000000000000F /* NavigationHistory.swift in Sources */,
+					A0WIKILINK002 /* WikiLinkSupport.swift in Sources */,
+				);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */

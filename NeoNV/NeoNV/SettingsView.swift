@@ -182,8 +182,12 @@ struct EditorSettingsTab: View {
 
             Section {
                 Toggle("Highlight Search Terms", isOn: $settings.searchHighlightingEnabled)
+                Toggle("Wiki Link Autocomplete", isOn: $settings.wikiAutocompleteEnabled)
 
                 Text("Highlight matching search terms in the note list and editor")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text("Disable if large vaults still feel slow while typing wiki links.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }

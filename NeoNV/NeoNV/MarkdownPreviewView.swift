@@ -6,6 +6,8 @@ struct MarkdownPreviewView: NSViewRepresentable {
     var fontSize: CGFloat = 13
     var initialScrollFraction: CGFloat = 0
     @Binding var scrollFraction: CGFloat
+    var resolveWikiLink: (String) -> WikiLinkResolution = { _ in .missing("") }
+    var onOpenWikiLink: (String) -> Void = { _ in }
     var onShiftTab: (() -> Void)?
     var onTypeToEdit: (() -> Void)?
 
@@ -29,6 +31,7 @@ struct MarkdownPreviewView: NSViewRepresentable {
 
         textView.onShiftTab = onShiftTab
         textView.onTypeToEdit = onTypeToEdit
+        textView.onOpenWikiLink = onOpenWikiLink
 
         scrollView.documentView = textView
         scrollView.hasVerticalScroller = true
@@ -75,6 +78,7 @@ struct MarkdownPreviewView: NSViewRepresentable {
 
         textView.onShiftTab = onShiftTab
         textView.onTypeToEdit = onTypeToEdit
+        textView.onOpenWikiLink = onOpenWikiLink
 
         updateContent(textView: textView, content: content, fontSize: fontSize)
     }
@@ -478,6 +482,42 @@ struct MarkdownPreviewView: NSViewRepresentable {
                 continue
             }
 
+            // Wiki links [[target]] or [[target|label]]
+            if let wikiRange = remaining.range(
+                of: "\\[\\[[^\\]]+\\]\\]",
+                options: .regularExpression
+            ) {
+                let beforeWiki = String(remaining[..<wikiRange.lowerBound])
+                if !beforeWiki.isEmpty {
+                    result.append(NSAttributedString(string: beforeWiki, attributes: currentAttrs))
+                }
+
+                let wikiText = String(remaining[wikiRange])
+                let inner = String(wikiText.dropFirst(2).dropLast(2))
+                let parsed = WikiLinkParser.parseTargetAndLabel(from: inner)
+                if !parsed.target.isEmpty {
+                    var linkAttrs = currentAttrs
+                    let resolution = resolveWikiLink(parsed.target)
+                    switch resolution {
+                    case .resolved:
+                        linkAttrs[.foregroundColor] = NSColor.linkColor
+                    case .missing, .ambiguous:
+                        linkAttrs[.foregroundColor] = NSColor.systemOrange
+                    }
+                    linkAttrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
+                    if let url = WikiLinkURLCodec.url(forTarget: parsed.target) {
+                        linkAttrs[.link] = url
+                    }
+                    let display = parsed.label ?? parsed.target
+                    result.append(NSAttributedString(string: display, attributes: linkAttrs))
+                } else {
+                    result.append(NSAttributedString(string: wikiText, attributes: currentAttrs))
+                }
+
+                remaining = String(remaining[wikiRange.upperBound...])
+                continue
+            }
+
             // Links [text](url)
             if let linkRange = remaining.range(of: "\\[[^\\]]+\\]\\([^)]+\\)", options: .regularExpression) {
                 let beforeLink = String(remaining[..<linkRange.lowerBound])
@@ -538,6 +578,7 @@ private class FocusForwardingScrollView: NSScrollView {
 class PreviewTextView: NSTextView {
     var onShiftTab: (() -> Void)?
     var onTypeToEdit: (() -> Void)?
+    var onOpenWikiLink: ((String) -> Void)?
 
     override func keyDown(with event: NSEvent) {
         // Shift-Tab to return to note list
@@ -588,6 +629,25 @@ class PreviewTextView: NSTextView {
         }
 
         super.keyDown(with: event)
+    }
+
+    override func clicked(onLink link: Any, at charIndex: Int) {
+        guard let url = link as? URL else {
+            super.clicked(onLink: link, at: charIndex)
+            return
+        }
+
+        if let wikiTarget = WikiLinkURLCodec.target(from: url) {
+            onOpenWikiLink?(wikiTarget)
+            return
+        }
+
+        if isLikelyExternalURL(url.absoluteString) {
+            NSWorkspace.shared.open(url)
+            return
+        }
+
+        super.clicked(onLink: link, at: charIndex)
     }
 
     func scrollUp(_ lineCount: Int = 1) {

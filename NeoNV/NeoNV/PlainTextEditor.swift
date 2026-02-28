@@ -12,6 +12,11 @@ struct PlainTextEditor: NSViewRepresentable {
     var isHiddenFromFocus: Bool = false
     var showFindBar: Bool = false
     var searchTerms: [String] = []
+    var resolveWikiLink: (String) -> WikiLinkResolution = { _ in .missing("") }
+    var wikiSuggestions: (String) -> [WikiLinkSuggestion] = { _ in [] }
+    var wikiIndexVersion: Int = 0
+    var wikiAutocompleteEnabled: Bool = true
+    var onOpenWikiLink: (String) -> Void = { _ in }
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
 
@@ -22,8 +27,19 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.delegate = context.coordinator
         textView.textStorage?.delegate = context.coordinator
         context.coordinator.textView = textView
+        context.coordinator.resolveWikiLink = resolveWikiLink
+        context.coordinator.wikiSuggestions = wikiSuggestions
+        context.coordinator.wikiIndexVersion = wikiIndexVersion
+        context.coordinator.wikiAutocompleteEnabled = wikiAutocompleteEnabled
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
+        textView.onTabCompletion = {
+            context.coordinator.handleTabCompletion()
+        }
+        textView.onEscapeCompletion = {
+            context.coordinator.handleEscapeInCompletion()
+        }
+        textView.onOpenWikiLink = onOpenWikiLink
 
         textView.isRichText = false
         textView.allowsUndo = true
@@ -49,6 +65,10 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.isAutomaticSpellingCorrectionEnabled = false
         textView.isAutomaticTextCompletionEnabled = false
         textView.smartInsertDeleteEnabled = false
+        // Keep links clickable but preserve per-link foreground colors (resolved vs missing).
+        textView.linkTextAttributes = [
+            .underlineStyle: NSUnderlineStyle.single.rawValue
+        ]
 
         textView.textContainer?.containerSize = NSSize(
             width: scrollView.contentSize.width,
@@ -69,6 +89,7 @@ struct PlainTextEditor: NSViewRepresentable {
 
         // Apply initial done-styling for the full document
         context.coordinator.applyDoneAttributesFullDocument()
+        applyEditorAttributes(to: textView)
 
         // Restore cursor position (clamped to valid range)
         let safePosition = min(cursorPosition, text.count)
@@ -118,6 +139,17 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.isEditable = isEditable
         textView.onShiftTab = onShiftTab
         textView.onEscape = onEscape
+        textView.onTabCompletion = {
+            context.coordinator.handleTabCompletion()
+        }
+        textView.onEscapeCompletion = {
+            context.coordinator.handleEscapeInCompletion()
+        }
+        textView.onOpenWikiLink = onOpenWikiLink
+        context.coordinator.resolveWikiLink = resolveWikiLink
+        context.coordinator.wikiSuggestions = wikiSuggestions
+        context.coordinator.wikiIndexVersion = wikiIndexVersion
+        context.coordinator.wikiAutocompleteEnabled = wikiAutocompleteEnabled
 
         textView.refusesFocus = isHiddenFromFocus
         if let focusScroll = scrollView as? FocusForwardingScrollView {
@@ -127,15 +159,18 @@ struct PlainTextEditor: NSViewRepresentable {
             textView.window?.makeFirstResponder(nil)
         }
 
-        // Only re-apply highlighting if text or search terms changed
-        if textChanged || context.coordinator.lastSearchTerms != searchTerms {
-            applySearchHighlighting(to: textView)
-            context.coordinator.lastSearchTerms = searchTerms
-        }
-        
         // Apply full done-styling only when switching to a new document
         if textChanged {
             context.coordinator.applyDoneAttributesFullDocument()
+        }
+
+        // Re-apply transient editor attributes when text/search/lookup state changes.
+        if textChanged ||
+            context.coordinator.lastSearchTerms != searchTerms ||
+            context.coordinator.lastWikiIndexVersion != wikiIndexVersion {
+            applyEditorAttributes(to: textView)
+            context.coordinator.lastSearchTerms = searchTerms
+            context.coordinator.lastWikiIndexVersion = wikiIndexVersion
         }
 
         // Restore scroll position when returning from preview
@@ -164,7 +199,7 @@ struct PlainTextEditor: NSViewRepresentable {
         }
     }
 
-    private func applySearchHighlighting(to textView: NSTextView) {
+    private func applyEditorAttributes(to textView: NSTextView) {
         guard let textStorage = textView.textStorage else { return }
         
         textStorage.beginEditing()
@@ -173,11 +208,38 @@ struct PlainTextEditor: NSViewRepresentable {
         let fullRange = NSRange(location: 0, length: textStorage.length)
 
         textStorage.removeAttribute(.backgroundColor, range: fullRange)
-
-        guard !searchTerms.isEmpty else { return }
+        textStorage.removeAttribute(.link, range: fullRange)
+        textStorage.removeAttribute(.underlineStyle, range: fullRange)
 
         let text = textView.string
         let nsText = text as NSString
+
+        if text.contains("[[") {
+            // Highlight wiki-links and attach internal link attributes.
+            for match in WikiLinkParser.matches(in: text) {
+                let resolution = resolveWikiLink(match.target)
+                let linkColor: NSColor
+                switch resolution {
+                case .resolved:
+                    linkColor = .linkColor
+                case .missing, .ambiguous:
+                    linkColor = .systemOrange
+                }
+
+                textStorage.addAttribute(.foregroundColor, value: linkColor, range: match.fullRange)
+                textStorage.addAttribute(
+                    .underlineStyle,
+                    value: NSUnderlineStyle.single.rawValue,
+                    range: match.fullRange
+                )
+                if let linkURL = WikiLinkURLCodec.url(forTarget: match.target) {
+                    textStorage.addAttribute(.link, value: linkURL, range: match.fullRange)
+                }
+            }
+        }
+
+        guard !searchTerms.isEmpty else { return }
+
         let highlightColor = NSColor.systemYellow.withAlphaComponent(0.4)
 
         for term in searchTerms where !term.isEmpty {
@@ -216,23 +278,50 @@ struct PlainTextEditor: NSViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, cursorPosition: $cursorPosition, scrollFraction: $scrollFraction)
+        Coordinator(
+            text: $text,
+            cursorPosition: $cursorPosition,
+            scrollFraction: $scrollFraction,
+            resolveWikiLink: resolveWikiLink,
+            wikiSuggestions: wikiSuggestions,
+            wikiIndexVersion: wikiIndexVersion,
+            wikiAutocompleteEnabled: wikiAutocompleteEnabled
+        )
     }
 
     class Coordinator: NSObject, NSTextViewDelegate, NSTextStorageDelegate {
         var text: Binding<String>
         var cursorPosition: Binding<Int>
         var scrollFraction: Binding<CGFloat>
+        var resolveWikiLink: (String) -> WikiLinkResolution
+        var wikiSuggestions: (String) -> [WikiLinkSuggestion]
+        var wikiIndexVersion: Int
+        var wikiAutocompleteEnabled: Bool
         var lastSearchTerms: [String] = []
+        var lastWikiIndexVersion: Int = -1
         weak var textView: NSTextView?
         private var isApplyingDoneAttributes = false
         private var pendingDoneRange: NSRange?
         private var scheduledDoneApply = false
+        private var pendingCompletionContext: WikiLinkContext?
+        private var isApplyingCompletion = false
 
-        init(text: Binding<String>, cursorPosition: Binding<Int>, scrollFraction: Binding<CGFloat>) {
+        init(
+            text: Binding<String>,
+            cursorPosition: Binding<Int>,
+            scrollFraction: Binding<CGFloat>,
+            resolveWikiLink: @escaping (String) -> WikiLinkResolution,
+            wikiSuggestions: @escaping (String) -> [WikiLinkSuggestion],
+            wikiIndexVersion: Int,
+            wikiAutocompleteEnabled: Bool
+        ) {
             self.text = text
             self.cursorPosition = cursorPosition
             self.scrollFraction = scrollFraction
+            self.resolveWikiLink = resolveWikiLink
+            self.wikiSuggestions = wikiSuggestions
+            self.wikiIndexVersion = wikiIndexVersion
+            self.wikiAutocompleteEnabled = wikiAutocompleteEnabled
         }
 
         func textDidChange(_ notification: Notification) {
@@ -241,6 +330,8 @@ struct PlainTextEditor: NSViewRepresentable {
             if text.wrappedValue != newText {
                 text.wrappedValue = newText
             }
+
+            updateCompletionContext(for: textView)
         }
 
         @objc func scrollViewDidScroll(_ notification: Notification) {
@@ -261,6 +352,115 @@ struct PlainTextEditor: NSViewRepresentable {
             if cursorPosition.wrappedValue != loc {
                 cursorPosition.wrappedValue = loc
             }
+            updateCompletionContext(for: textView)
+        }
+
+        private func updateCompletionContext(for textView: NSTextView) {
+            let cursor = textView.selectedRange().location
+            let nsText = textView.string as NSString
+            pendingCompletionContext = WikiLinkParser.contextAtCursor(in: nsText, cursorLocation: cursor)
+        }
+
+        func handleEscapeInCompletion() -> Bool {
+            false
+        }
+
+        func handleTabCompletion() -> Bool {
+            guard wikiAutocompleteEnabled,
+                  let textView,
+                  let context = pendingCompletionContext
+            else { return false }
+
+            let query = context.query.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !query.isEmpty else { return false }
+
+            let suggestions = wikiSuggestions(context.query)
+            guard let first = suggestions.first else { return false }
+
+            let selected = first.insertTarget.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !selected.isEmpty else { return false }
+
+            isApplyingCompletion = true
+            defer { isApplyingCompletion = false }
+
+            textView.shouldChangeText(in: context.replacementRange, replacementString: selected)
+            textView.textStorage?.replaceCharacters(in: context.replacementRange, with: selected)
+            textView.didChangeText()
+
+            var newCursor = context.replacementRange.location + (selected as NSString).length
+            if !context.hasClosingBrackets {
+                let close = "]]"
+                textView.insertText(close, replacementRange: NSRange(location: newCursor, length: 0))
+                newCursor += close.count
+            }
+
+            textView.setSelectedRange(NSRange(location: newCursor, length: 0))
+            updateCompletionContext(for: textView)
+            return true
+        }
+
+        func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
+            guard let url = link as? URL,
+                  let target = WikiLinkURLCodec.target(from: url) else {
+                return false
+            }
+
+            let modifiers = NSApp.currentEvent?.modifierFlags ?? []
+            guard modifiers.contains(.command) else {
+                // Editor mode should only navigate on Cmd-click.
+                return true
+            }
+
+            if let custom = textView as? CustomTextView {
+                custom.onOpenWikiLink?(target)
+                return true
+            }
+            return false
+        }
+
+        func textView(
+            _ textView: NSTextView,
+            completions words: [String],
+            forPartialWordRange charRange: NSRange,
+            indexOfSelectedItem index: UnsafeMutablePointer<Int>?
+        ) -> [String] {
+            // Use explicit Tab completion flow instead of AppKit completion list.
+            []
+        }
+
+        func textView(
+            _ textView: NSTextView,
+            insertCompletion word: String,
+            forPartialWordRange charRange: NSRange,
+            movement: Int,
+            isFinal flag: Bool
+        ) {
+            guard wikiAutocompleteEnabled else { return }
+            guard flag else { return }
+            // Only accept explicit completion commits (return/tab/click). Ignore navigation moves.
+            let allowedMovements: Set<Int> = [NSReturnTextMovement, NSTabTextMovement, NSOtherTextMovement]
+            guard allowedMovements.contains(movement) else { return }
+            guard let context = pendingCompletionContext else { return }
+            let selected = word.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !selected.isEmpty else { return }
+
+            isApplyingCompletion = true
+            defer { isApplyingCompletion = false }
+
+            textView.shouldChangeText(in: context.replacementRange, replacementString: selected)
+            textView.textStorage?.replaceCharacters(in: context.replacementRange, with: selected)
+            textView.didChangeText()
+
+            var newCursor = context.replacementRange.location + (selected as NSString).length
+            if !context.hasClosingBrackets {
+                let close = "]]"
+                textView.insertText(close, replacementRange: NSRange(location: newCursor, length: 0))
+                newCursor += close.count
+            }
+
+            textView.setSelectedRange(NSRange(location: newCursor, length: 0))
+            pendingCompletionContext = nil
+            updateCompletionContext(for: textView)
         }
 
         func textStorage(
@@ -369,6 +569,9 @@ private class FocusForwardingScrollView: NSScrollView {
 class CustomTextView: NSTextView {
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
+    var onTabCompletion: (() -> Bool)?
+    var onEscapeCompletion: (() -> Bool)?
+    var onOpenWikiLink: ((String) -> Void)?
     var refusesFocus: Bool = false
 
     override var acceptsFirstResponder: Bool {
@@ -395,13 +598,22 @@ class CustomTextView: NSTextView {
     }
 
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 48 && event.modifierFlags.contains(.shift) {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if event.keyCode == 48 && flags.contains(.shift) {
             window?.makeFirstResponder(nil)
             onShiftTab?()
             return
         }
+        if event.keyCode == 48 && flags.isEmpty {
+            if onTabCompletion?() == true {
+                return
+            }
+        }
 
         if event.keyCode == 53 {
+            if onEscapeCompletion?() == true {
+                return
+            }
             if let scrollView = enclosingScrollView, scrollView.isFindBarVisible {
                 let menuItem = NSMenuItem()
                 menuItem.tag = Int(NSTextFinder.Action.hideFindInterface.rawValue)

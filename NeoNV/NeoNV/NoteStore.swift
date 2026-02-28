@@ -111,10 +111,19 @@ struct ExternalChangeEvent: Equatable {
 
 @MainActor
 class NoteStore: ObservableObject, FileWatcherDelegate {
-    @Published var notes: [NoteFile] = []
+    @Published var notes: [NoteFile] = [] {
+        didSet { rebuildWikiIndex() }
+    }
     @Published var selectedFolderURL: URL?
     @Published var isLoading = false
     @Published var lastExternalChange: ExternalChangeEvent?
+    @Published private(set) var wikiIndexVersion = 0
+
+    private var pathIndexLower: [String: NoteFile] = [:]
+    private var basenameIndexLower: [String: [NoteFile]] = [:]
+    private var canonicalByNoteID: [UUID: String] = [:]
+    private var suggestionsAll: [WikiLinkSuggestion] = []
+    private var suggestionsAllLower: [(suggestion: WikiLinkSuggestion, lowerTarget: String)] = []
 
     private let allowedExtensions: Set<String> = ["txt", "md", "markdown", "org", "text"]
     private let folderBookmarkKey = "selectedFolderBookmark"
@@ -734,6 +743,177 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         }
         
         return content.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func normalizedWikiTarget(_ target: String) -> String {
+        let trimmed = target
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\\", with: "/")
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard !trimmed.isEmpty else { return "" }
+
+        let lower = trimmed.lowercased()
+        for ext in Self.validExtensions {
+            let suffix = ".\(ext)"
+            if lower.hasSuffix(suffix) {
+                return String(trimmed.dropLast(suffix.count))
+            }
+        }
+        return trimmed
+    }
+
+    private func relativePathWithoutExtension(for note: NoteFile) -> String {
+        let ns = note.relativePath as NSString
+        return ns.deletingPathExtension
+    }
+
+    private func basenameWithoutExtension(for note: NoteFile) -> String {
+        note.url.deletingPathExtension().lastPathComponent
+    }
+
+    func resolveWikiLink(_ target: String) -> WikiLinkResolution {
+        let normalized = normalizedWikiTarget(target)
+        guard !normalized.isEmpty else { return .missing(normalized) }
+
+        let lower = normalized.lowercased()
+        if normalized.contains("/") {
+            if let note = pathIndexLower[lower] {
+                return .resolved(note)
+            }
+            return .missing(normalized)
+        }
+
+        guard let matches = basenameIndexLower[lower], !matches.isEmpty else {
+            return .missing(normalized)
+        }
+
+        if matches.count == 1, let note = matches.first {
+            return .resolved(note)
+        }
+        return .ambiguous(matches)
+    }
+
+    func canonicalWikiTarget(for note: NoteFile) -> String {
+        if let canonical = canonicalByNoteID[note.id] {
+            return canonical
+        }
+
+        let basename = basenameWithoutExtension(for: note)
+        if normalizedWikiTarget(basename).isEmpty {
+            return relativePathWithoutExtension(for: note)
+        }
+        return basename
+    }
+
+    func wikiLinkSuggestions(prefix: String, limit: Int = 30) -> [WikiLinkSuggestion] {
+        let cappedLimit = max(0, limit)
+        guard cappedLimit > 0 else { return [] }
+
+        let normalizedPrefix = normalizedWikiTarget(prefix).lowercased()
+        guard !normalizedPrefix.isEmpty else {
+            return Array(suggestionsAll.prefix(cappedLimit))
+        }
+
+        var seen = Set<String>()
+        var candidates: [WikiLinkSuggestion] = []
+
+        // Reuse the same matching rules as the main Cmd+L search path.
+        for note in notes where note.matches(query: normalizedPrefix) {
+            let canonical = canonicalByNoteID[note.id] ?? canonicalWikiTarget(for: note)
+            let lowerCanonical = canonical.lowercased()
+            guard seen.insert(lowerCanonical).inserted else { continue }
+
+            candidates.append(
+                WikiLinkSuggestion(
+                    insertTarget: canonical,
+                    display: canonical,
+                    detailPath: note.relativePath
+                )
+            )
+        }
+
+        // Fallback to canonical-target contains matching when content-based search yields no hits.
+        if candidates.isEmpty {
+            for entry in suggestionsAllLower where entry.lowerTarget.contains(normalizedPrefix) {
+                guard seen.insert(entry.lowerTarget).inserted else { continue }
+                candidates.append(entry.suggestion)
+            }
+        }
+
+        let ranked = candidates.sorted { lhs, rhs in
+            let lhsLower = lhs.insertTarget.lowercased()
+            let rhsLower = rhs.insertTarget.lowercased()
+            let lhsPrefix = lhsLower.hasPrefix(normalizedPrefix)
+            let rhsPrefix = rhsLower.hasPrefix(normalizedPrefix)
+            if lhsPrefix != rhsPrefix {
+                return lhsPrefix
+            }
+            return lhs.display.localizedCaseInsensitiveCompare(rhs.display) == .orderedAscending
+        }
+
+        return Array(ranked.prefix(cappedLimit))
+    }
+
+    private func rebuildWikiIndex() {
+        var newPathIndexLower: [String: NoteFile] = [:]
+        var newBasenameIndexLower: [String: [NoteFile]] = [:]
+        var newCanonicalByNoteID: [UUID: String] = [:]
+
+        for note in notes {
+            let pathKey = relativePathWithoutExtension(for: note).lowercased()
+            newPathIndexLower[pathKey] = note
+
+            let basenameKey = basenameWithoutExtension(for: note).lowercased()
+            newBasenameIndexLower[basenameKey, default: []].append(note)
+        }
+
+        for (key, var list) in newBasenameIndexLower {
+            list.sort {
+                $0.relativePath.localizedCaseInsensitiveCompare($1.relativePath) == .orderedAscending
+            }
+            newBasenameIndexLower[key] = list
+
+            if list.count == 1, let note = list.first {
+                newCanonicalByNoteID[note.id] = basenameWithoutExtension(for: note)
+            } else {
+                for note in list {
+                    newCanonicalByNoteID[note.id] = relativePathWithoutExtension(for: note)
+                }
+            }
+        }
+
+        var suggestionByKey: [String: WikiLinkSuggestion] = [:]
+        for note in notes {
+            let canonical = newCanonicalByNoteID[note.id] ?? basenameWithoutExtension(for: note)
+            let key = canonical.lowercased()
+            let candidate = WikiLinkSuggestion(
+                insertTarget: canonical,
+                display: canonical,
+                detailPath: note.relativePath
+            )
+
+            if let existing = suggestionByKey[key] {
+                if candidate.detailPath.localizedCaseInsensitiveCompare(existing.detailPath) == .orderedAscending {
+                    suggestionByKey[key] = candidate
+                }
+            } else {
+                suggestionByKey[key] = candidate
+            }
+        }
+
+        let sortedSuggestions = suggestionByKey.values.sorted { lhs, rhs in
+            lhs.display.localizedCaseInsensitiveCompare(rhs.display) == .orderedAscending
+        }
+        let sortedSuggestionsLower = sortedSuggestions.map { suggestion in
+            (suggestion: suggestion, lowerTarget: suggestion.insertTarget.lowercased())
+        }
+
+        pathIndexLower = newPathIndexLower
+        basenameIndexLower = newBasenameIndexLower
+        canonicalByNoteID = newCanonicalByNoteID
+        suggestionsAll = sortedSuggestions
+        suggestionsAllLower = sortedSuggestionsLower
+        wikiIndexVersion &+= 1
     }
     
     private func saveFolder(_ url: URL) {
