@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 enum WikiLinkResolution {
     case resolved(NoteFile)
@@ -112,6 +113,12 @@ enum WikiLinkParser {
             if closedBeforeCursor.location != NSNotFound {
                 return nil
             }
+            // Wiki-link targets are single-line. If cursor moved to a later line,
+            // do not treat this as an active completion context.
+            let newlineBeforeCursor = text.range(of: "\n", options: [], range: preCursorRange)
+            if newlineBeforeCursor.location != NSNotFound {
+                return nil
+            }
         }
 
         let fromContentToEnd = NSRange(location: contentStart, length: text.length - contentStart)
@@ -144,4 +151,74 @@ func isLikelyExternalURL(_ raw: String) -> Bool {
         return false
     }
     return ["http", "https", "mailto"].contains(scheme)
+}
+
+/// Returns false for targets that cannot be represented safely with current wiki syntax.
+func isSafeWikiLinkTargetForInsertion(_ rawTarget: String) -> Bool {
+    let target = rawTarget.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !target.isEmpty else { return false }
+    if target.contains("|") { return false }
+    if target.contains("]]") || target.contains("[[") { return false }
+    if target.contains("]") { return false }
+    if target.contains("\n") || target.contains("\r") { return false }
+    return true
+}
+
+@MainActor
+final class AutosaveGuard {
+    static let shared = AutosaveGuard()
+
+    private struct Gate: Equatable {
+        let originalLength: Int
+        let newLengthBucket: Int
+    }
+
+    private var gateByNoteID: [UUID: Gate] = [:]
+    private let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "net.area51a.neonv",
+        category: "AutosaveGuard"
+    )
+
+    private init() {}
+
+    func reset(for noteID: UUID) {
+        gateByNoteID.removeValue(forKey: noteID)
+    }
+
+    /// Returns true only on the first suspicious shrink event for a given size bucket.
+    /// A second edit in the same bucket is treated as user-confirmed and allowed.
+    func shouldBlockSave(noteID: UUID, originalContent: String, currentContent: String) -> Bool {
+        guard let gate = makeGate(originalContent: originalContent, currentContent: currentContent) else {
+            gateByNoteID.removeValue(forKey: noteID)
+            return false
+        }
+
+        if gateByNoteID[noteID] == gate {
+            gateByNoteID.removeValue(forKey: noteID)
+            return false
+        }
+
+        gateByNoteID[noteID] = gate
+        logger.error(
+            "Blocked suspicious autosave shrink note=\(noteID.uuidString, privacy: .public) oldLen=\(gate.originalLength) newLen=\(currentContent.count)"
+        )
+        return true
+    }
+
+    private func makeGate(originalContent: String, currentContent: String) -> Gate? {
+        let originalLength = originalContent.count
+        let currentLength = currentContent.count
+        guard originalLength >= 1200 else { return nil }
+
+        let delta = originalLength - currentLength
+        guard delta >= 800 else { return nil }
+
+        let remainingRatio = Double(currentLength) / Double(originalLength)
+        guard remainingRatio <= 0.5 else { return nil }
+
+        return Gate(
+            originalLength: originalLength,
+            newLengthBucket: max(0, currentLength / 256)
+        )
+    }
 }
