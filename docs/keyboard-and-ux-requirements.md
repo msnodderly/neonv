@@ -1,6 +1,6 @@
 # Keyboard & UX Requirements
 
-*Implementation Status: ✅ Phase 1 & 2 Complete (v0.9.0)*
+*Implementation Status: ✅ Production (updated for Wiki Links + tab-based completion, February 2026)*
 
 This document tracks keyboard navigation and UX requirements. Originally written during prototyping, now reflects production implementation.
 
@@ -15,7 +15,7 @@ This document tracks keyboard navigation and UX requirements. Originally written
 **Forward navigation (Tab / Down Arrow):**
 - **✅ From Search:** Tab OR Down Arrow → moves to note list
 - **✅ From Note List:** Tab OR Right Arrow → moves to editor
-- **✅ In Editor:** Tab inserts tab character (for code/indentation)
+- **✅ In Editor:** Tab inserts tab character, except inside a wiki-link target (`[[...]]`) where Tab performs wiki completion
 - **✅ Enter in List:** Opens note in editor
 
 **Backward navigation (Shift-Tab / Up Arrow / Escape):**
@@ -59,6 +59,10 @@ This document tracks keyboard navigation and UX requirements. Originally written
 | **Down Arrow** (in search) | Move to note list | ✅ |
 | **Up/Down** (in list) | Navigate notes | ✅ |
 | **Page Up/Down** (in preview) | Scroll by page | ✅ |
+| **Cmd-Click** (wiki link in editor) | Open wiki link target | ✅ |
+| **Tab** (inside `[[target`]) | Complete target or open suggestions | ✅ |
+| **Down Arrow** (inside `[[target`]) | Open wiki suggestion list | ✅ |
+| **Esc** (wiki completion list) | Dismiss wiki suggestions without inserting | ✅ |
 
 ### ❌ Not Implemented
 - **Global hotkey** to summon app (requires AppKit CGEvent handling)
@@ -78,7 +82,7 @@ This document tracks keyboard navigation and UX requirements. Originally written
 - ✅ Up Arrow in search (at top) → stays in search (no action, no beep)
 - ✅ Up Arrow in list (at first item) → moves to search
 - ✅ Escape from editor/list → returns to search
-- ✅ Tab in editor → inserts tab character
+- ✅ Tab in editor → inserts tab character, or completes wiki target when inside `[[...]]`
 - ✅ Right Arrow in list → opens note in editor
 - ✅ All navigation keys → graceful handling
 
@@ -249,6 +253,17 @@ Beyond the original MVP spec, the following features were added based on daily u
 - **✅ Find in note:** Cmd-F opens find bar within current note
 - **✅ Incremental text styling** (v0.9.0): Prevents flickering when typing at bottom
 - **✅ External editor integration:** Cmd-G opens note in configured editor
+- **✅ Wiki links:** `[[target]]` and `[[target|label]]` render/click in editor and preview
+- **✅ Wiki completion:** Tab-first completion in `[[...]]` with optional dropdown
+
+### Wiki Link Interaction Rules
+- **✅ Resolve rules:** Case-insensitive filename/path matching only (no first-line title fallback)
+- **✅ Styling:** Resolved links are blue; missing/ambiguous links are orange
+- **✅ Open behavior:** Cmd-click in editor opens link target; preview click opens directly
+- **✅ Missing target:** Prompts to create a new note from the link target
+- **✅ Ambiguous basename:** Shows a picker with matching relative paths
+- **✅ Completion behavior:** `Tab` completes unique match; if ambiguous, `Tab` or `Down Arrow` opens list, `Enter`/`Tab` commits, `Esc` dismisses
+- **✅ Settings fallback:** Wiki autocomplete can be disabled in Settings while keeping wiki link parsing/open/create
 
 ---
 
@@ -289,6 +304,7 @@ Beyond the original MVP spec, the following features were added based on daily u
 11. ✅ Collapsible UI elements (search field, file list toggles)
 12. ✅ File operations (rename, delete, show in Finder)
 13. ✅ Auto-created subdirectories (v0.9.0)
+14. ✅ Wiki links across editor/preview with tab-based completion controls
 
 ---
 
@@ -301,4 +317,4 @@ Beyond the original MVP spec, the following features were added based on daily u
 
 ---
 
-*Last updated: February 2026 (v0.9.0)*
+*Last updated: February 2026 (wiki-links update)*

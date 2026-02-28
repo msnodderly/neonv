@@ -38,6 +38,7 @@ class AppSettings: ObservableObject {
         static let fontFamily = "editorFontFamily"
         static let externalEditorPath = "externalEditorPath"
         static let searchHighlightingEnabled = "searchHighlightingEnabled"
+        static let wikiAutocompleteEnabled = "wikiAutocompleteEnabled"
         static let isSearchFieldHidden = "isSearchFieldHidden"
         static let isFileListHidden = "isFileListHidden"
         static let layoutMode = "layoutMode"
@@ -71,6 +72,12 @@ class AppSettings: ObservableObject {
     @Published var searchHighlightingEnabled: Bool {
         didSet {
             UserDefaults.standard.set(searchHighlightingEnabled, forKey: Keys.searchHighlightingEnabled)
+        }
+    }
+
+    @Published var wikiAutocompleteEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(wikiAutocompleteEnabled, forKey: Keys.wikiAutocompleteEnabled)
         }
     }
 
@@ -118,6 +125,13 @@ class AppSettings: ObservableObject {
             self.searchHighlightingEnabled = true
         }
 
+        // Load wiki autocomplete preference (default: enabled)
+        if UserDefaults.standard.object(forKey: Keys.wikiAutocompleteEnabled) != nil {
+            self.wikiAutocompleteEnabled = UserDefaults.standard.bool(forKey: Keys.wikiAutocompleteEnabled)
+        } else {
+            self.wikiAutocompleteEnabled = true
+        }
+
         // Load search field visibility (default: visible)
         self.isSearchFieldHidden = UserDefaults.standard.bool(forKey: Keys.isSearchFieldHidden)
 
@@ -139,6 +153,7 @@ class AppSettings: ObservableObject {
         fontFamily = ""
         externalEditorPath = nil
         searchHighlightingEnabled = true
+        wikiAutocompleteEnabled = true
         isSearchFieldHidden = false
         isFileListHidden = false
         layoutMode = .vertical

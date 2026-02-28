@@ -6,6 +6,8 @@ struct OrgPreviewView: NSViewRepresentable {
     var fontSize: CGFloat = 13
     var initialScrollFraction: CGFloat = 0
     @Binding var scrollFraction: CGFloat
+    var resolveWikiLink: (String) -> WikiLinkResolution = { _ in .missing("") }
+    var onOpenWikiLink: (String) -> Void = { _ in }
     var onShiftTab: (() -> Void)?
     var onTypeToEdit: (() -> Void)?
 
@@ -29,6 +31,7 @@ struct OrgPreviewView: NSViewRepresentable {
 
         textView.onShiftTab = onShiftTab
         textView.onTypeToEdit = onTypeToEdit
+        textView.onOpenWikiLink = onOpenWikiLink
 
         scrollView.documentView = textView
         scrollView.hasVerticalScroller = true
@@ -95,6 +98,7 @@ struct OrgPreviewView: NSViewRepresentable {
 
         textView.onShiftTab = onShiftTab
         textView.onTypeToEdit = onTypeToEdit
+        textView.onOpenWikiLink = onOpenWikiLink
 
         updateContent(textView: textView, content: content, fontSize: fontSize)
     }
@@ -662,19 +666,41 @@ extension OrgPreviewView {
         var linkAttrs = attrs
         let inner = String(match.dropFirst(2).dropLast(2))
         let displayText: String
-        let urlText: String
+        let targetText: String
+
         if let sepRange = inner.range(of: "][") {
-            urlText = String(inner[inner.startIndex..<sepRange.lowerBound])
+            targetText = String(inner[inner.startIndex..<sepRange.lowerBound])
             displayText = String(inner[sepRange.upperBound...])
+        } else if let pipeIndex = inner.firstIndex(of: "|") {
+            targetText = String(inner[..<pipeIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let parsedLabel = String(inner[inner.index(after: pipeIndex)...])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            displayText = parsedLabel.isEmpty ? targetText : parsedLabel
         } else {
-            urlText = inner
+            targetText = inner
             displayText = inner
         }
-        linkAttrs[.foregroundColor] = NSColor.linkColor
+
         linkAttrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
-        if let url = URL(string: urlText) {
+
+        if isLikelyExternalURL(targetText), let url = URL(string: targetText) {
+            linkAttrs[.foregroundColor] = NSColor.linkColor
+            linkAttrs[.link] = url
+            return NSAttributedString(string: displayText, attributes: linkAttrs)
+        }
+
+        let resolution = resolveWikiLink(targetText)
+        switch resolution {
+        case .resolved:
+            linkAttrs[.foregroundColor] = NSColor.linkColor
+        case .missing, .ambiguous:
+            linkAttrs[.foregroundColor] = NSColor.systemOrange
+        }
+
+        if let url = WikiLinkURLCodec.url(forTarget: targetText) {
             linkAttrs[.link] = url
         }
+
         return NSAttributedString(string: displayText, attributes: linkAttrs)
     }
 

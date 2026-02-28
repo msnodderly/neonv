@@ -44,6 +44,9 @@ struct ContentView: View {
     @State private var editorScrollFraction: CGFloat = 0
     @State private var previewScrollFraction: CGFloat = 0
     @State private var restoreEditorScrollFraction: CGFloat?
+    @State private var wikiLinkTargetToCreate: String?
+    @State private var wikiAmbiguousTarget: String?
+    @State private var wikiAmbiguousMatches: [NoteFile] = []
     @StateObject private var navHistory = NavigationHistory()
     @FocusState private var focusedField: FocusedField?
 
@@ -287,6 +290,44 @@ struct ContentView: View {
                 }
             }
         }
+        .alert("Create Linked Note?", isPresented: Binding(
+            get: { wikiLinkTargetToCreate != nil },
+            set: { if !$0 { wikiLinkTargetToCreate = nil } }
+        )) {
+            Button("Cancel", role: .cancel) {
+                wikiLinkTargetToCreate = nil
+            }
+            Button("Create") {
+                if let target = wikiLinkTargetToCreate {
+                    createNoteFromWikiTarget(target)
+                }
+                wikiLinkTargetToCreate = nil
+            }
+        } message: {
+            let target = wikiLinkTargetToCreate ?? ""
+            Text("No note matches \"\(target)\". Create it?")
+        }
+        .confirmationDialog(
+            "Multiple Notes Match",
+            isPresented: Binding(
+                get: { !wikiAmbiguousMatches.isEmpty },
+                set: { if !$0 { wikiAmbiguousTarget = nil; wikiAmbiguousMatches = [] } }
+            ),
+            titleVisibility: .visible
+        ) {
+            ForEach(wikiAmbiguousMatches, id: \.id) { note in
+                Button(note.relativePath) {
+                    openResolvedWikiNote(note)
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                wikiAmbiguousTarget = nil
+                wikiAmbiguousMatches = []
+            }
+        } message: {
+            let target = wikiAmbiguousTarget ?? ""
+            Text("Select the note to open for \"\(target)\".")
+        }
         .modifier(NotificationHandlers(
             onFocusSearch: {
                 if settings.isSearchFieldHidden {
@@ -350,6 +391,8 @@ struct ContentView: View {
                 fontSize: CGFloat(AppSettings.shared.fontSize),
                 initialScrollFraction: editorScrollFraction,
                 scrollFraction: $previewScrollFraction,
+                resolveWikiLink: { target in noteStore.resolveWikiLink(target) },
+                onOpenWikiLink: { target in handleWikiLinkOpen(target) },
                 onShiftTab: { focusedField = .noteList },
                 onTypeToEdit: { switchToEditor() }
             )
@@ -361,6 +404,8 @@ struct ContentView: View {
                 fontSize: CGFloat(AppSettings.shared.fontSize),
                 initialScrollFraction: editorScrollFraction,
                 scrollFraction: $previewScrollFraction,
+                resolveWikiLink: { target in noteStore.resolveWikiLink(target) },
+                onOpenWikiLink: { target in handleWikiLinkOpen(target) },
                 onShiftTab: { focusedField = .noteList },
                 onTypeToEdit: { switchToEditor() }
             )
@@ -460,8 +505,11 @@ struct ContentView: View {
                     focusedField: _focusedField,
                     searchText: debouncedSearchText, isEditable: !isReadOnly,
                     isHiddenFromFocus: showPreview,
-                    onShiftTab: navigateToList,
-                    onEscape: navigateToList)
+                    resolveWikiLink: { target in noteStore.resolveWikiLink(target) },
+                    wikiSuggestions: { query in noteStore.wikiLinkSuggestions(prefix: query, limit: 30) },
+                    wikiIndexVersion: noteStore.wikiIndexVersion, wikiAutocompleteEnabled: settings.wikiAutocompleteEnabled,
+                    onOpenWikiLink: { target in handleWikiLinkOpen(target) },
+                    onShiftTab: navigateToList, onEscape: navigateToList)
                     .opacity(showPreview ? 0 : 1)
                     .allowsHitTesting(!showPreview)
                     .accessibilityHidden(showPreview)
@@ -730,44 +778,6 @@ struct ContentView: View {
             settings.isSearchFieldHidden = false
         }
         focusedField = .search
-    }
-
-    private func switchToEditor() {
-        restoreEditorScrollFraction = previewScrollFraction
-        showPreview = false
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            focusedField = .editor
-            restoreEditorScrollFraction = nil
-        }
-    }
-
-    private func openInExternalEditor() {
-        guard let url = selectedNoteURL else { return }
-
-        let settings = AppSettings.shared
-        if let editorPath = settings.externalEditorPath {
-            let editorURL = URL(fileURLWithPath: editorPath)
-            let config = NSWorkspace.OpenConfiguration()
-            NSWorkspace.shared.open([url], withApplicationAt: editorURL, configuration: config) { _, error in
-                if let error = error {
-                    DispatchQueue.main.async {
-                        let alert = NSAlert()
-                        alert.messageText = "Failed to Open External Editor"
-                        alert.informativeText = error.localizedDescription
-                        alert.alertStyle = .warning
-                        alert.addButton(withTitle: "OK")
-                        alert.runModal()
-                    }
-                }
-            }
-        } else {
-            NSWorkspace.shared.open(url)
-        }
-    }
-
-    private func showInFinder() {
-        guard let url = selectedNoteURL else { return }
-        NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
     private func handleExternalChange(_ change: ExternalChangeEvent) {
@@ -1207,9 +1217,6 @@ struct ContentView: View {
         alert.runModal()
     }
 
-    private func showInFinder(error: SaveError) {
-        NSWorkspace.shared.selectFile(error.fileURL.path, inFileViewerRootedAtPath: error.fileURL.deletingLastPathComponent().path)
-    }
 }
 
 private extension ContentView {
@@ -1247,6 +1254,154 @@ private extension ContentView {
             return
         }
         createNewNote()
+    }
+
+    func switchToEditor() {
+        restoreEditorScrollFraction = previewScrollFraction
+        showPreview = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            focusedField = .editor
+            restoreEditorScrollFraction = nil
+        }
+    }
+
+    func openInExternalEditor() {
+        guard let url = selectedNoteURL else { return }
+
+        let settings = AppSettings.shared
+        if let editorPath = settings.externalEditorPath {
+            let editorURL = URL(fileURLWithPath: editorPath)
+            let config = NSWorkspace.OpenConfiguration()
+            NSWorkspace.shared.open([url], withApplicationAt: editorURL, configuration: config) { _, error in
+                if let error = error {
+                    DispatchQueue.main.async {
+                        let alert = NSAlert()
+                        alert.messageText = "Failed to Open External Editor"
+                        alert.informativeText = error.localizedDescription
+                        alert.alertStyle = .warning
+                        alert.addButton(withTitle: "OK")
+                        alert.runModal()
+                    }
+                }
+            }
+        } else {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    func showInFinder() {
+        guard let url = selectedNoteURL else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+    }
+
+    func handleWikiLinkOpen(_ rawTarget: String) {
+        let target = rawTarget.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !target.isEmpty else { return }
+
+        switch noteStore.resolveWikiLink(target) {
+        case .resolved(let note):
+            openResolvedWikiNote(note)
+        case .missing(let normalized):
+            wikiLinkTargetToCreate = normalized.isEmpty ? target : normalized
+        case .ambiguous(let matches):
+            wikiAmbiguousTarget = target
+            wikiAmbiguousMatches = matches.sorted {
+                $0.relativePath.localizedCaseInsensitiveCompare($1.relativePath) == .orderedAscending
+            }
+        }
+    }
+
+    func openResolvedWikiNote(_ note: NoteFile) {
+        wikiAmbiguousTarget = nil
+        wikiAmbiguousMatches = []
+        selectedNoteID = note.id
+        selectedNoteURL = note.url
+        if !showPreview {
+            focusedField = .editor
+        }
+    }
+
+    func createNoteFromWikiTarget(_ target: String) {
+        guard let folderURL = noteStore.selectedFolderURL else { return }
+
+        let parts = sanitizePathComponents(target)
+        guard !parts.isEmpty else {
+            let alert = NSAlert()
+            alert.messageText = "Invalid Link Target"
+            alert.informativeText = "Could not create a valid filename from \"\(target)\"."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            return
+        }
+
+        let directoryParts = parts.dropLast()
+        let baseName = parts.last!
+
+        var dirURL = folderURL
+        for part in directoryParts where !part.isEmpty {
+            dirURL = dirURL.appendingPathComponent(part, isDirectory: true)
+        }
+
+        let fileName: String
+        if hasValidExtension(baseName) {
+            fileName = baseName
+        } else {
+            fileName = "\(baseName).\(AppSettings.shared.defaultExtension.rawValue)"
+        }
+
+        let fileURL = dirURL.appendingPathComponent(fileName)
+        let initialTitle = baseName.replacingOccurrences(of: "-", with: " ")
+        let initialContent = "\(initialTitle)\n\n"
+
+        if let existingNote = noteStore.notes.first(where: { $0.url == fileURL }) {
+            openResolvedWikiNote(existingNote)
+            return
+        }
+
+        Task {
+            do {
+                let fileManager = FileManager.default
+                try fileManager.createDirectory(
+                    at: fileURL.deletingLastPathComponent(),
+                    withIntermediateDirectories: true
+                )
+                try initialContent.data(using: .utf8)!.write(to: fileURL, options: .withoutOverwriting)
+                noteStore.markAsSavedLocally(fileURL, content: initialContent)
+                await noteStore.discoverFiles()
+
+                await MainActor.run {
+                    if let newNote = noteStore.notes.first(where: { $0.url == fileURL }) {
+                        openResolvedWikiNote(newNote)
+                    }
+                }
+            } catch let error as NSError where
+                error.domain == NSCocoaErrorDomain &&
+                error.code == NSFileWriteFileExistsError {
+                await noteStore.discoverFiles()
+                await MainActor.run {
+                    if let existing = noteStore.notes.first(where: { $0.url == fileURL }) {
+                        openResolvedWikiNote(existing)
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    let alert = NSAlert()
+                    alert.messageText = "Failed to Create Linked Note"
+                    alert.informativeText = "Could not create \"\(target)\":\n\n\(error.localizedDescription)"
+                    alert.alertStyle = .warning
+                    alert.addButton(withTitle: "OK")
+                    alert.runModal()
+                }
+            }
+        }
+    }
+
+    func showInFinder(error: SaveError) {
+        NSWorkspace.shared.selectFile(
+            error.fileURL.path,
+            inFileViewerRootedAtPath: error.fileURL.deletingLastPathComponent().path
+        )
     }
 }
 
@@ -1646,6 +1801,11 @@ struct EditorView: View {
     var searchText: String
     var isEditable: Bool = true
     var isHiddenFromFocus: Bool = false
+    var resolveWikiLink: (String) -> WikiLinkResolution = { _ in .missing("") }
+    var wikiSuggestions: (String) -> [WikiLinkSuggestion] = { _ in [] }
+    var wikiIndexVersion: Int = 0
+    var wikiAutocompleteEnabled: Bool = true
+    var onOpenWikiLink: (String) -> Void = { _ in }
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
 
@@ -1661,6 +1821,11 @@ struct EditorView: View {
             isHiddenFromFocus: isHiddenFromFocus,
             showFindBar: showFindBar,
             searchTerms: [],
+            resolveWikiLink: resolveWikiLink,
+            wikiSuggestions: wikiSuggestions,
+            wikiIndexVersion: wikiIndexVersion,
+            wikiAutocompleteEnabled: wikiAutocompleteEnabled,
+            onOpenWikiLink: onOpenWikiLink,
             onShiftTab: onShiftTab,
             onEscape: onEscape
         )

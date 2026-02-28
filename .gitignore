@@ -186,3 +186,6 @@ file-pane-width/
 integration-test/
 tab-focus-regression/
 tab-focus-cycle-fix/
+
+# Local Entire tool state
+.entire/
