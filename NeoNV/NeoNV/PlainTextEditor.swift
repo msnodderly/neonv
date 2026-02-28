@@ -385,6 +385,7 @@ struct PlainTextEditor: NSViewRepresentable {
                   let textView,
                   let context = pendingCompletionContext
             else { return false }
+            guard textView.selectedRange().length == 0 else { return false }
 
             // If completion UI is already active, let AppKit handle arrow navigation.
             guard !completionSessionActive else { return false }
@@ -405,6 +406,7 @@ struct PlainTextEditor: NSViewRepresentable {
                   let textView,
                   let context = pendingCompletionContext
             else { return false }
+            guard textView.selectedRange().length == 0 else { return false }
 
             let cursor = textView.selectedRange().location
             let textLength = (textView.string as NSString).length
@@ -435,6 +437,7 @@ struct PlainTextEditor: NSViewRepresentable {
 
             let selected = first.insertTarget.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !selected.isEmpty else { return false }
+            guard isSafeWikiLinkTargetForInsertion(selected) else { return false }
 
             isApplyingCompletion = true
             defer { isApplyingCompletion = false }
@@ -492,6 +495,10 @@ struct PlainTextEditor: NSViewRepresentable {
             indexOfSelectedItem index: UnsafeMutablePointer<Int>?
         ) -> [String] {
             guard wikiAutocompleteEnabled else { return [] }
+            guard textView.selectedRange().length == 0 else {
+                completionSessionActive = false
+                return []
+            }
             guard let context = pendingCompletionContext else {
                 completionSessionActive = false
                 return []
@@ -526,6 +533,10 @@ struct PlainTextEditor: NSViewRepresentable {
                 guard event.keyCode == 36 || event.keyCode == 48 else { return }
             }
             guard let context = pendingCompletionContext else { return }
+            let selectedRange = textView.selectedRange()
+            if selectedRange.length > 0 && selectedRange != context.replacementRange {
+                return
+            }
             let cursor = textView.selectedRange().location
             let textLength = (textView.string as NSString).length
             guard context.replacementRange.location >= 0,
@@ -536,6 +547,7 @@ struct PlainTextEditor: NSViewRepresentable {
             }
             let selected = word.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !selected.isEmpty else { return }
+            guard isSafeWikiLinkTargetForInsertion(selected) else { return }
 
             isApplyingCompletion = true
             defer { isApplyingCompletion = false }

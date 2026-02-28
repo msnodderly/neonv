@@ -820,6 +820,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         // Reuse the same matching rules as the main Cmd+L search path.
         for note in notes where note.matches(query: normalizedPrefix) {
             let canonical = canonicalByNoteID[note.id] ?? canonicalWikiTarget(for: note)
+            guard isSafeWikiLinkTargetForInsertion(canonical) else { continue }
             let lowerCanonical = canonical.lowercased()
             guard seen.insert(lowerCanonical).inserted else { continue }
 
@@ -835,6 +836,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         // Fallback to canonical-target contains matching when content-based search yields no hits.
         if candidates.isEmpty {
             for entry in suggestionsAllLower where entry.lowerTarget.contains(normalizedPrefix) {
+                guard isSafeWikiLinkTargetForInsertion(entry.suggestion.insertTarget) else { continue }
                 guard seen.insert(entry.lowerTarget).inserted else { continue }
                 candidates.append(entry.suggestion)
             }
@@ -885,6 +887,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         var suggestionByKey: [String: WikiLinkSuggestion] = [:]
         for note in notes {
             let canonical = newCanonicalByNoteID[note.id] ?? basenameWithoutExtension(for: note)
+            guard isSafeWikiLinkTargetForInsertion(canonical) else { continue }
             let key = canonical.lowercased()
             let candidate = WikiLinkSuggestion(
                 insertTarget: canonical,

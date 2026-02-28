@@ -1066,26 +1066,25 @@ struct ContentView: View {
     }
 
     private func hasValidExtension(_ name: String) -> Bool {
-        let lowercased = name.lowercased()
-        return Self.validExtensions.contains { lowercased.hasSuffix(".\($0)") }
+        Self.validExtensions.contains { name.lowercased().hasSuffix(".\($0)") }
     }
 
     private func scheduleAutoSave() {
         guard loadError == nil, let selectedID = selectedNoteID else { return }
         saveTask?.cancel()
         guard editorContent != originalContent else {
-            isDirty = false
+            AutosaveGuard.shared.reset(for: selectedID); isDirty = false; return
+        }
+
+        if AutosaveGuard.shared.shouldBlockSave(noteID: selectedID, originalContent: originalContent, currentContent: editorContent) {
+            isDirty = true; unsavedNoteIDs.insert(selectedID); AppDelegate.shared.hasUnsavedChanges = true
+            withAnimation { externalToastMessage = "Autosave paused: unusually large deletion detected. Undo if unexpected, then keep typing to confirm save." }
             return
         }
-        isDirty = true
-        unsavedNoteIDs.insert(selectedID)
-        AppDelegate.shared.hasUnsavedChanges = true
+
+        isDirty = true; unsavedNoteIDs.insert(selectedID); AppDelegate.shared.hasUnsavedChanges = true
         let (capturedID, capturedContent) = (selectedID, editorContent)
-        saveTask = Task {
-            try? await Task.sleep(for: .milliseconds(500))
-            guard !Task.isCancelled, selectedNoteID == capturedID else { return }
-            await performSave(noteID: capturedID, content: capturedContent)
-        }
+        saveTask = Task { try? await Task.sleep(for: .milliseconds(500)); guard !Task.isCancelled, selectedNoteID == capturedID else { return }; await performSave(noteID: capturedID, content: capturedContent) }
     }
     
     private func performSave(noteID: UUID, content: String) async {
