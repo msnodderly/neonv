@@ -1,4 +1,4 @@
-# Plan: Wiki Links (Obsidian-like Core + Alias) - Implemented Snapshot
+# Plan: Double-Bracket Wiki-Links (neonv-6b1)
 
 ## Summary
 Wiki links are implemented with plain-text syntax (`[[target]]`, `[[target|label]]`) across editor and preview, plus open/create/ambiguity flows.  
