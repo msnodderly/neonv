@@ -36,6 +36,9 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.onTabCompletion = {
             context.coordinator.handleTabCompletion()
         }
+        textView.onOpenCompletionList = {
+            context.coordinator.handleOpenCompletionList()
+        }
         textView.onEscapeCompletion = {
             context.coordinator.handleEscapeInCompletion()
         }
@@ -141,6 +144,9 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.onEscape = onEscape
         textView.onTabCompletion = {
             context.coordinator.handleTabCompletion()
+        }
+        textView.onOpenCompletionList = {
+            context.coordinator.handleOpenCompletionList()
         }
         textView.onEscapeCompletion = {
             context.coordinator.handleEscapeInCompletion()
@@ -305,6 +311,7 @@ struct PlainTextEditor: NSViewRepresentable {
         private var scheduledDoneApply = false
         private var pendingCompletionContext: WikiLinkContext?
         private var isApplyingCompletion = false
+        private var completionSessionActive = false
 
         init(
             text: Binding<String>,
@@ -331,6 +338,8 @@ struct PlainTextEditor: NSViewRepresentable {
                 text.wrappedValue = newText
             }
 
+            // Any direct text edit should end the previous completion session state.
+            completionSessionActive = false
             updateCompletionContext(for: textView)
         }
 
@@ -359,10 +368,36 @@ struct PlainTextEditor: NSViewRepresentable {
             let cursor = textView.selectedRange().location
             let nsText = textView.string as NSString
             pendingCompletionContext = WikiLinkParser.contextAtCursor(in: nsText, cursorLocation: cursor)
+            if pendingCompletionContext == nil {
+                completionSessionActive = false
+            }
         }
 
         func handleEscapeInCompletion() -> Bool {
-            false
+            guard completionSessionActive, let textView else { return false }
+            textView.cancelOperation(nil)
+            completionSessionActive = false
+            return true
+        }
+
+        func handleOpenCompletionList() -> Bool {
+            guard wikiAutocompleteEnabled,
+                  let textView,
+                  let context = pendingCompletionContext
+            else { return false }
+
+            // If completion UI is already active, let AppKit handle arrow navigation.
+            guard !completionSessionActive else { return false }
+
+            let query = context.query.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !query.isEmpty else { return false }
+
+            let suggestions = tabCompletionCandidates(for: context.query)
+            guard !suggestions.isEmpty else { return false }
+
+            completionSessionActive = true
+            textView.complete(nil)
+            return true
         }
 
         func handleTabCompletion() -> Bool {
@@ -374,8 +409,19 @@ struct PlainTextEditor: NSViewRepresentable {
             let query = context.query.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !query.isEmpty else { return false }
 
-            let suggestions = wikiSuggestions(context.query)
+            guard !completionSessionActive else { return false }
+
+            let suggestions = tabCompletionCandidates(for: context.query)
             guard let first = suggestions.first else { return false }
+
+            let hasExactMatch = suggestions.contains {
+                $0.insertTarget.compare(query, options: .caseInsensitive) == .orderedSame
+            }
+            if suggestions.count > 1 && !hasExactMatch {
+                completionSessionActive = true
+                textView.complete(nil)
+                return true
+            }
 
             let selected = first.insertTarget.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !selected.isEmpty else { return false }
@@ -397,6 +443,15 @@ struct PlainTextEditor: NSViewRepresentable {
             textView.setSelectedRange(NSRange(location: newCursor, length: 0))
             updateCompletionContext(for: textView)
             return true
+        }
+
+        private func tabCompletionCandidates(for query: String) -> [WikiLinkSuggestion] {
+            let suggestions = wikiSuggestions(query)
+            let lowerQuery = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            guard !lowerQuery.isEmpty else { return suggestions }
+
+            let prefixOnly = suggestions.filter { $0.insertTarget.lowercased().hasPrefix(lowerQuery) }
+            return prefixOnly.isEmpty ? suggestions : prefixOnly
         }
 
         func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
@@ -424,8 +479,22 @@ struct PlainTextEditor: NSViewRepresentable {
             forPartialWordRange charRange: NSRange,
             indexOfSelectedItem index: UnsafeMutablePointer<Int>?
         ) -> [String] {
-            // Use explicit Tab completion flow instead of AppKit completion list.
-            []
+            guard wikiAutocompleteEnabled else { return [] }
+            guard let context = pendingCompletionContext else {
+                completionSessionActive = false
+                return []
+            }
+            guard !context.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                completionSessionActive = false
+                return []
+            }
+
+            let suggestions = tabCompletionCandidates(for: context.query)
+            completionSessionActive = !suggestions.isEmpty
+            guard !suggestions.isEmpty else { return [] }
+
+            index?.pointee = 0
+            return suggestions.map(\.insertTarget)
         }
 
         func textView(
@@ -437,9 +506,13 @@ struct PlainTextEditor: NSViewRepresentable {
         ) {
             guard wikiAutocompleteEnabled else { return }
             guard flag else { return }
-            // Only accept explicit completion commits (return/tab/click). Ignore navigation moves.
-            let allowedMovements: Set<Int> = [NSReturnTextMovement, NSTabTextMovement, NSOtherTextMovement]
+            // Only accept explicit keyboard commits (return/tab). Ignore navigation moves.
+            let allowedMovements: Set<Int> = [NSReturnTextMovement, NSTabTextMovement]
             guard allowedMovements.contains(movement) else { return }
+            if let event = NSApp.currentEvent, event.type == .keyDown {
+                // Defensive guard: never commit on arrow-key or other non-commit key events.
+                guard event.keyCode == 36 || event.keyCode == 48 else { return }
+            }
             guard let context = pendingCompletionContext else { return }
             let selected = word.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !selected.isEmpty else { return }
@@ -460,6 +533,7 @@ struct PlainTextEditor: NSViewRepresentable {
 
             textView.setSelectedRange(NSRange(location: newCursor, length: 0))
             pendingCompletionContext = nil
+            completionSessionActive = false
             updateCompletionContext(for: textView)
         }
 
@@ -570,6 +644,7 @@ class CustomTextView: NSTextView {
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
     var onTabCompletion: (() -> Bool)?
+    var onOpenCompletionList: (() -> Bool)?
     var onEscapeCompletion: (() -> Bool)?
     var onOpenWikiLink: ((String) -> Void)?
     var refusesFocus: Bool = false
@@ -606,6 +681,11 @@ class CustomTextView: NSTextView {
         }
         if event.keyCode == 48 && flags.isEmpty {
             if onTabCompletion?() == true {
+                return
+            }
+        }
+        if event.keyCode == 125 && flags.isEmpty {
+            if onOpenCompletionList?() == true {
                 return
             }
         }
