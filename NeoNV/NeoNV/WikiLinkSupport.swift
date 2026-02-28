@@ -116,7 +116,10 @@ enum WikiLinkParser {
 
         let fromContentToEnd = NSRange(location: contentStart, length: text.length - contentStart)
         let closeRange = text.range(of: "]]", options: [], range: fromContentToEnd)
-        let closeLocation = closeRange.location == NSNotFound ? text.length : closeRange.location
+        let hasClosingBrackets = closeRange.location != NSNotFound
+        // For unclosed wiki links, never let replacement extend beyond the cursor.
+        // Otherwise completion can overwrite the remainder of the document.
+        let closeLocation = hasClosingBrackets ? closeRange.location : safeCursor
 
         let beforeCloseRange = NSRange(location: contentStart, length: max(0, closeLocation - contentStart))
         let pipeRange = text.range(of: "|", options: [], range: beforeCloseRange)
@@ -131,7 +134,7 @@ enum WikiLinkParser {
         return WikiLinkContext(
             query: query,
             replacementRange: replacementRange,
-            hasClosingBrackets: closeRange.location != NSNotFound
+            hasClosingBrackets: hasClosingBrackets
         )
     }
 }

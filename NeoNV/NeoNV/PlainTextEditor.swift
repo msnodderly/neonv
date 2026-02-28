@@ -406,6 +406,16 @@ struct PlainTextEditor: NSViewRepresentable {
                   let context = pendingCompletionContext
             else { return false }
 
+            let cursor = textView.selectedRange().location
+            let textLength = (textView.string as NSString).length
+            guard context.replacementRange.location >= 0,
+                  NSMaxRange(context.replacementRange) <= textLength
+            else { return false }
+            // Safety invariant: for unclosed wiki links, never replace past cursor.
+            guard context.hasClosingBrackets || NSMaxRange(context.replacementRange) <= cursor else {
+                return false
+            }
+
             let query = context.query.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !query.isEmpty else { return false }
 
@@ -514,6 +524,14 @@ struct PlainTextEditor: NSViewRepresentable {
                 guard event.keyCode == 36 || event.keyCode == 48 else { return }
             }
             guard let context = pendingCompletionContext else { return }
+            let cursor = textView.selectedRange().location
+            let textLength = (textView.string as NSString).length
+            guard context.replacementRange.location >= 0,
+                  NSMaxRange(context.replacementRange) <= textLength
+            else { return }
+            guard context.hasClosingBrackets || NSMaxRange(context.replacementRange) <= cursor else {
+                return
+            }
             let selected = word.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !selected.isEmpty else { return }
 
