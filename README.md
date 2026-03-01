@@ -8,22 +8,15 @@ Bug reports and feature requests are accepted, preferably in the form of an agen
 
 ## Philosophy
 
-**Do one thing perfectly:** Capture and retrieve text instantly.
+**Do one thing and do it well:** Capture and retrieve text instantly.
 
 ## Features
 
 - **Instant Capture** — One text box, always ready. Auto-saves continuously.
 - **Instant Search** — Fuzzy full-text search as you type. Results appear immediately.
-- **Zero Friction Storage** — Point at any folder with text files in it.. Files are plain `.txt`, `.md`, or `.org`. No databases.
-- **Wiki Links** — Wiki-style `[[target]]` and `[[target|label]]` links in editor and preview.
-- **Wiki Navigation + Create Flow** — Cmd-click in editor (or click in preview) opens links, prompts to create missing notes, and shows a picker for ambiguous targets.
-- **Tab-Based Wiki Autocomplete** — Inside `[[...]]`, `Tab` completes unique matches; ambiguous matches open a suggestion list (`Tab` or `Down Arrow`), `Enter`/`Tab` commits, `Esc` cancels.
-- **Native Performance** — macOS-native Swift/SwiftUI. Optimized for Apple Silicon. Instant everything.
-
-## Requirements
-
-- macOS 14.0 (Sonoma) or later
-- Apple Silicon or Intel Mac (universal binary)
+- **Zero Friction Storage** — Point at any folder with text files in it. Files are plain `.txt`, `.md`, or `.org`. No databases.
+- **Wiki Links** — Wiki-style `[[target]]` and `[[target|label]]` links in editor and preview. Cmd-click opens links.
+- **Tab-Based Wiki Autocomplete** — Hit Tab to autocomplete inside `[[...]]`
 
 ## Installation
 
@@ -32,8 +25,6 @@ Bug reports and feature requests are accepted, preferably in the form of an agen
 ```bash
 brew install --cask msnodderly/tap/neonv
 ```
-
-This is the easiest way to install NeoNV. Homebrew handles the download and installation automatically.
 
 ### Manual Download
 
