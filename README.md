@@ -4,7 +4,7 @@ A minimal, low friction text capture tool with Markdown preview for macOS. Store
 
 Inspired by [Notational Velocity](https://notational.net/)'s speed and simplicity, with a few extra features to modernize it (.org support, Markdown preview, open in external editor).
 
-This was built partially because it was something I wanted, and partially as an excuse to learn and experiment with AI coding tools, and trying to find a viable way to use them to build what I hope is high quality software.
+Yes, it's mostly AI coded. This was built partially because it was something I wanted, and partially as an excuse to learn and experiment with AI coding tools, and trying to find a viable way to use them to build what I hope is high quality software.
 
 Bug reports and feature requests are accepted, preferably in the form of a coding agent prompt. As of Feb 2026 I consider this project essentially feature-complete. -Matt
 
