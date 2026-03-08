@@ -21,7 +21,11 @@ Bug reports and feature requests are accepted, preferably in the form of a codin
 
 ## Screenshots
 
-Mac app icon: [PNG](img/neonv-mac-icon.png)
+Mac app icon:
+
+<a href="img/neonv-mac-icon.png">
+  <img src="img/neonv-mac-icon.png" alt="NeoNV macOS app icon" width="128" height="128">
+</a>
 
 ### Light Theme
 
