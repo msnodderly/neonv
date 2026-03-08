@@ -1,10 +1,12 @@
 # neonv
 
-A fast, low friction text capture tool for macOS. Store snippets, thoughts, notes, and random text, find them instantly, never think about saving.
+A minimal, low friction text capture tool for macOS. Store snippets, thoughts, notes, and random text, find them instantly, never think about saving.
 
 Inspired by [Notational Velocity](https://notational.net/)'s speed and simplicity, built for modern macOS.
 
-Bug reports and feature requests are accepted, preferably in the form of conding agent prompts. As of Feb 2026 I consider this project essentially feature-complete. -Matt
+This was built partially as an excuse to learn and experiment with AI coding tools, and trying to find a viable way to use them to build what I hope is high quality software.
+
+Bug reports and feature requests are accepted, preferably in the form of a coding agent prompt. As of Feb 2026 I consider this project essentially feature-complete. -Matt
 
 ## Philosophy
 
@@ -16,7 +18,30 @@ Bug reports and feature requests are accepted, preferably in the form of conding
 - **Instant Search** — Fuzzy full-text search as you type. Results appear immediately.
 - **Zero Friction Storage** — Point at any folder with text files in it. Files are plain `.txt`, `.md`, or `.org`. No databases.
 - **Wiki Links** — Wiki-style `[[target]]` and `[[target|label]]` links in editor and preview. Cmd-click opens links.
-- **Tab-Based Wiki Autocomplete** — Hit Tab to autocomplete inside `[[...]]`
+
+## Screenshots
+
+Mac app icon: [PNG](img/neonv-mac-icon.png)
+
+### Light Theme
+
+![NeoNV light theme](img/screenshots/light-theme.webp)
+
+### Markdown Preview
+
+![NeoNV markdown preview](img/screenshots/markdown-preview.webp)
+
+### Org Mode Preview
+
+![NeoNV org mode preview](img/screenshots/orgmode-preview.webp)
+
+### Org Mode Editing
+
+![NeoNV org mode editing](img/screenshots/orgmode.webp)
+
+### Tags And Vertical Layout
+
+![NeoNV tags and vertically stacked mode](img/screenshots/tags-and-vertically-stacked-mode.webp)
 
 ## Installation
 
@@ -44,5 +69,6 @@ xcodebuild -scheme NeoNV -configuration Release
 ```
 
 ## License
+This repo contains no code from Notational Velocity but is heavily inspired by it and as such it's released under the same license.
 
 NeoNV is free software licensed under the [GNU General Public License v3.0](LICENSE).
