@@ -1,23 +1,20 @@
 # neonv
 
-A minimal, low friction text capture tool for macOS. Store snippets, thoughts, notes, and random text, find them instantly, never think about saving.
+A minimal, low friction text capture tool with Markdown preview for macOS. Store snippets, thoughts, notes, and random text, find them instantly, never think about saving.
 
-Inspired by [Notational Velocity](https://notational.net/)'s speed and simplicity, built for modern macOS.
+Inspired by [Notational Velocity](https://notational.net/)'s speed and simplicity, with a few extra features to modernize it (.org support, Markdown preview, open in external editor).
 
 This was built partially because it was something I wanted, and partially as an excuse to learn and experiment with AI coding tools, and trying to find a viable way to use them to build what I hope is high quality software.
 
 Bug reports and feature requests are accepted, preferably in the form of a coding agent prompt. As of Feb 2026 I consider this project essentially feature-complete. -Matt
 
-## Philosophy
-
-**Do one thing and do it well:** Capture and retrieve text instantly.
-
 ## Features
 
-- **Instant Capture** — One text box, always ready. Auto-saves continuously.
-- **Instant Search** — Fuzzy full-text search as you type. Results appear immediately.
-- **Zero Friction Storage** — Point at any folder with text files in it. Files are plain `.txt`, `.md`, or `.org`. No databases.
-- **Wiki Links** — Wiki-style `[[target]]` and `[[target|label]]` links in editor and preview. Cmd-click opens links.
+- Auto-saves continuously.
+- Fuzzy full-text search as you type. 
+- Files are plain `.txt`, `.md`, or `.org`. No databases.
+- CMD-G to open in external editor. Neonv is focused on text capture and search, it isn't a replacement for your full-featured text editor.
+- Wiki-style `[[target]]` and `[[target|label]]` links in editor and preview. Cmd-click opens links.
 
 ## Screenshots
 
