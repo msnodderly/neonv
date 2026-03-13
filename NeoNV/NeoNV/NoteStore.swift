@@ -131,7 +131,11 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
     private var discoveryTask: Task<Void, Never>?
     
     init() {
-        if let cliPath = Self.parseCommandLineFolder() {
+        if let testDir = ProcessInfo.processInfo.environment["NEONV_TEST_NOTES_DIR"] {
+            let url = URL(fileURLWithPath: testDir)
+            selectedFolderURL = url
+            discoveryTask = Task { await discoverFiles() }
+        } else if let cliPath = Self.parseCommandLineFolder() {
             setFolder(from: cliPath)
         } else {
             loadSavedFolder()

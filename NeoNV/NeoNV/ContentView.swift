@@ -1540,6 +1540,7 @@ struct SearchBar: View {
                 .textFieldStyle(.plain)
                 .disableAutocorrection(true)
                 .focused($focusedField, equals: .search)
+                .accessibilityIdentifier("search-field")
                 .onKeyPress { press in
                     // Cmd+Shift+D or Cmd+Period to insert date
                     let isCmdShiftD = press.modifiers.contains([.command, .shift]) &&
@@ -1729,6 +1730,7 @@ struct NoteListView: View {
                         }
                     }
                     .tag(note.id)
+                    .accessibilityIdentifier("note-row")
                     .contextMenu {
                         if !note.isUnsaved, let onAddTag = onAddTag {
                             Button("Add Tags...") {
@@ -1755,6 +1757,7 @@ struct NoteListView: View {
                 .listStyle(.sidebar)
                 .focusable()
                 .focused($focusedField, equals: .noteList)
+                .accessibilityIdentifier("note-list")
                 .onKeyPress { press in
                     if press.key == .tab && press.modifiers.contains(.shift) {
                         onShiftTabToSearch()
