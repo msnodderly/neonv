@@ -60,7 +60,7 @@ so build time never pollutes the metric.
 cd NeoNV && xcodebuild test-without-building \
   -scheme NeoNV \
   -destination 'platform=macOS' \
-  CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
+  CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO
 ```
 
 ## Installing pi-autoresearch

@@ -18,7 +18,7 @@ RESULT=$(xcodebuild test-without-building \
   -scheme NeoNV \
   -destination 'platform=macOS' \
   -only-testing:NeoNVUITests/NeoNVUITests/testFullEditWorkflowPerformance \
-  CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \
+  CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO \
   2>&1) || {
   echo "ERROR: xcodebuild test-without-building failed." >&2
   echo "Run ./autoresearch.checks.sh first to build the test bundle." >&2

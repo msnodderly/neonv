@@ -18,7 +18,7 @@ echo "==> Building NeoNV for testing (Debug)..."
 xcodebuild build-for-testing \
   -scheme NeoNV \
   -configuration Debug \
-  CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \
+  CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO \
   2>&1 | tail -10
 
 echo "==> Running SwiftLint..."
