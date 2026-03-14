@@ -155,7 +155,7 @@ struct ContentView: View {
             } else {
                 searchDebounceTask?.cancel()
                 searchDebounceTask = Task {
-                    try? await Task.sleep(for: .milliseconds(50))
+                    try? await Task.sleep(for: .milliseconds(20))
                     guard !Task.isCancelled else { return }
                     debouncedSearchText = newText
                     rebuildFilteredNotes()
