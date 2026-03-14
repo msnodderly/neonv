@@ -1,14 +1,12 @@
 # Autoresearch Optimization Ideas
 
 ## File Discovery / Startup
-- `discoverFiles()` reads first 512 bytes + 2048 bytes from every file — could batch or parallelize with DispatchQueue.concurrentPerform
-- `enumerateNotes()` does `readFirstLineStatic` + `readRawContentStatic` + `parseTagsStatic` per file — lots of redundant I/O (reads same file twice)
-- Merge `readFirstLineStatic` and `readRawContentStatic` into a single read per file
+- `discoverFiles()` reads file contents during full validation even though cached metadata is shown first — could validate in background and only patch changed notes
+- `discoverFiles()` / `enumerateNotes()` might benefit from bounded parallel metadata loading once we confirm filesystem contention is not the bottleneck
 - MetadataCache warm start: show cached notes immediately, validate in background
 
 ## Search Path
-- `matches(query:)` does 4 `String.contains()` calls with pre-lowercased strings — could use a single combined search string
-- `filteredNotes` is a computed property re-evaluated on every access — could cache
+- `filteredNotes` is a computed property re-evaluated on every access — could cache the filtered result for the current debounced query + unsaved set
 - Search debounce (50ms) fires on every keystroke — each debounce triggers `autoSelectTopMatch()` which accesses `filteredNotes`
 
 ## Note Loading / Editor Focus  

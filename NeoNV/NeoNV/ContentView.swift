@@ -1,4 +1,4 @@
-// swiftlint:disable file_length
+// swiftlint:disable file_length type_body_length
 import SwiftUI
 
 enum FocusedField: Hashable {
@@ -23,6 +23,7 @@ struct ContentView: View {
     @State private var loadError: LoadError?
     @State private var unsavedNoteIDs: Set<UUID> = []
     @State private var debouncedSearchText = ""
+    @State private var filteredNotesCache: [NoteFile] = []
     @State private var searchDebounceTask: Task<Void, Never>?
     @State private var showPreview = false
     @State private var noteToDelete: NoteFile?
@@ -70,19 +71,7 @@ struct ContentView: View {
     }
 
     private var filteredNotes: [NoteFile] {
-        let query = debouncedSearchText
-        let baseNotes = query.isEmpty ? noteStore.notes : noteStore.notes.filter { $0.matches(query: query) }
-
-        if unsavedNoteIDs.isEmpty {
-            return baseNotes
-        }
-
-        return baseNotes.map { note in
-            guard unsavedNoteIDs.contains(note.id) else { return note }
-            var updatedNote = note
-            updatedNote.isUnsaved = true
-            return updatedNote
-        }
+        filteredNotesCache
     }
 
     @ObservedObject private var settings = AppSettings.shared
@@ -118,6 +107,7 @@ struct ContentView: View {
         .navigationTitle("neonv")
         .onAppear {
             focusedField = .search
+            rebuildFilteredNotes()
         }
 
         .toolbar {
@@ -160,6 +150,7 @@ struct ContentView: View {
                 // Immediate update when clearing search
                 searchDebounceTask?.cancel()
                 debouncedSearchText = ""
+                rebuildFilteredNotes()
                 autoSelectTopMatch()
             } else {
                 searchDebounceTask?.cancel()
@@ -167,6 +158,7 @@ struct ContentView: View {
                     try? await Task.sleep(for: .milliseconds(50))
                     guard !Task.isCancelled else { return }
                     debouncedSearchText = newText
+                    rebuildFilteredNotes()
                     autoSelectTopMatch()
                 }
             }
@@ -175,6 +167,9 @@ struct ContentView: View {
             if let change = change {
                 handleExternalChange(change)
             }
+        }
+        .onReceive(noteStore.$notes) { _ in
+            rebuildFilteredNotes()
         }
         .alert(item: $saveError) { error in
             Alert(
@@ -522,6 +517,23 @@ struct ContentView: View {
         }
     }
 
+    private func rebuildFilteredNotes() {
+        let query = debouncedSearchText
+        let baseNotes = query.isEmpty ? noteStore.notes : noteStore.notes.filter { $0.matches(query: query) }
+
+        guard !unsavedNoteIDs.isEmpty else {
+            filteredNotesCache = baseNotes
+            return
+        }
+
+        filteredNotesCache = baseNotes.map { note in
+            guard unsavedNoteIDs.contains(note.id) else { return note }
+            var updatedNote = note
+            updatedNote.isUnsaved = true
+            return updatedNote
+        }
+    }
+
     private func deleteNote(_ note: NoteFile) {
         let notes = filteredNotes
         let currentIndex = notes.firstIndex(where: { $0.id == note.id })
@@ -529,6 +541,7 @@ struct ContentView: View {
         do {
             try noteStore.deleteNote(id: note.id)
             unsavedNoteIDs.remove(note.id)
+            rebuildFilteredNotes()
 
             // Select adjacent note
             if let idx = currentIndex {
@@ -569,6 +582,7 @@ struct ContentView: View {
             originalContent = content
             isDirty = false
             unsavedNoteIDs.remove(note.id)
+            rebuildFilteredNotes()
             AppDelegate.shared.hasUnsavedChanges = false
         }
 
@@ -819,6 +833,7 @@ struct ContentView: View {
         
         if let newNote = noteStore.createNewUnsavedNote() {
             unsavedNoteIDs.insert(newNote.id)
+            rebuildFilteredNotes()
             selectedNoteID = newNote.id
             originalContent = ""
             editorContent = ""
@@ -903,6 +918,7 @@ struct ContentView: View {
                     }
                     isDirty = false
                     unsavedNoteIDs.remove(noteID)
+                    rebuildFilteredNotes()
                     loadError = nil
                 }
             } catch {
@@ -913,6 +929,7 @@ struct ContentView: View {
                     cursorPosition = 0
                     isDirty = false
                     unsavedNoteIDs.remove(noteID)
+                    rebuildFilteredNotes()
                 }
             }
         }
@@ -1077,12 +1094,12 @@ struct ContentView: View {
         }
 
         if AutosaveGuard.shared.shouldBlockSave(noteID: selectedID, originalContent: originalContent, currentContent: editorContent) {
-            isDirty = true; unsavedNoteIDs.insert(selectedID); AppDelegate.shared.hasUnsavedChanges = true
+            isDirty = true; unsavedNoteIDs.insert(selectedID); rebuildFilteredNotes(); AppDelegate.shared.hasUnsavedChanges = true
             withAnimation { externalToastMessage = "Autosave paused: unusually large deletion detected. Undo if unexpected, then keep typing to confirm save." }
             return
         }
 
-        isDirty = true; unsavedNoteIDs.insert(selectedID); AppDelegate.shared.hasUnsavedChanges = true
+        isDirty = true; unsavedNoteIDs.insert(selectedID); rebuildFilteredNotes(); AppDelegate.shared.hasUnsavedChanges = true
         let (capturedID, capturedContent) = (selectedID, editorContent)
         saveTask = Task { try? await Task.sleep(for: .milliseconds(500)); guard !Task.isCancelled, selectedNoteID == capturedID else { return }; await performSave(noteID: capturedID, content: capturedContent) }
     }
@@ -1110,6 +1127,7 @@ struct ContentView: View {
                     isDirty = false
                 }
                 unsavedNoteIDs.remove(noteID)
+                rebuildFilteredNotes()
                 if let idx = noteStore.notes.firstIndex(where: { $0.id == noteID }) {
                     noteStore.notes[idx].isUnsaved = false
                 }
@@ -1138,6 +1156,7 @@ struct ContentView: View {
                 if let noteID = noteStore.notes.first(where: { $0.url == error.fileURL })?.id {
                     unsavedNoteIDs.remove(noteID)
                 }
+                rebuildFilteredNotes()
                 saveError = nil
                 AppDelegate.shared.hasUnsavedChanges = false
             }
