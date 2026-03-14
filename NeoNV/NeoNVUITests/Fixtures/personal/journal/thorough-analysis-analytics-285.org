@@ -1,0 +1,10 @@
+#+TITLE: thorough analysis analytics
+
+- database — The machine-learning team will explore the project by next week.
+- DONE explore the project
+- TODO low-priority coordination: automate
+- TODO daily communication: scale
+
+* daily project
+
+The machine-learning team will explore the project by next week. The machine-learning team will explore the project by next week. The machine-learning team will explore the project by next week. The machine-learning team will explore the project by next week. The machine-learning team will explore the project by next week. The machine-learning team will explore the project by next week. The machine-learning team will explore the project by next week. 

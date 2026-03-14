@@ -1,0 +1,6 @@
+#+TITLE: low-priority architecture research
+#+FILETAGS: :followup:reference:
+
+* low-priority analysis
+
+We need to design the low-priority analysis for storage. We need to design the low-priority analysis for storage. We need to design the low-priority analysis for storage. We need to design the low-priority analysis for storage. We need to design the low-priority analysis for storage. We need to design the low-priority analysis for storage. 

@@ -1,0 +1,9 @@
+#+TITLE: quarterly security review
+
+```
+func testmission() {
+    // Consider a upcoming approach to test the mission.
+    let result = process(mission)
+    return result
+}
+```

@@ -1,0 +1,7 @@
+#+TITLE: systematic sprint mission
+
+- DONE analyze the migration
+- DONE iterate the research
+- TODO essential migration: debug
+- DONE explore the communication
+- TODO monthly analysis: deploy

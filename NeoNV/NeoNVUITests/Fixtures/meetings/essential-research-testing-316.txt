@@ -1,0 +1,19 @@
+essential research testing
+
+## structured prototype
+
+The search team will communicate the prototype by next week. The search team will communicate the prototype by next week. The search team will communicate the prototype by next week. The search team will communicate the prototype by next week. The search team will communicate the prototype by next week. The search team will communicate the prototype by next week. The search team will communicate the prototype by next week. 
+
+Discussion about ongoing forecast in the context of frontend. Discussion about ongoing forecast in the context of frontend. Discussion about ongoing forecast in the context of frontend. Discussion about ongoing forecast in the context of frontend. Discussion about ongoing forecast in the context of frontend. Discussion about ongoing forecast in the context of frontend. Discussion about ongoing forecast in the context of frontend. Discussion about ongoing forecast in the context of frontend. 
+
+```
+func evaluatevision() {
+    // The platform team will evaluate the vision by next week.
+    let result = process(vision)
+    return result
+}
+```
+
+- [ ] critical architecture: validate
+- [ ] systematic onboarding: investigate
+- [ ] upcoming hypothesis: test

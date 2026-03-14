@@ -1,0 +1,15 @@
+upcoming values urainstorm
+
+- [ ] recurring retrospective: review
+- [ ] operational pipeline: migrate
+- release — We need to provision the fundamental design for analytics.
+
+Action item: migrate pipeline (recurring priority, data). Action item: migrate pipeline (recurring priority, data). Action item: migrate pipeline (recurring priority, data). Action item: migrate pipeline (recurring priority, data). Action item: migrate pipeline (recurring priority, data). Action item: migrate pipeline (recurring priority, data). 
+
+```
+func implementrelease() {
+    // We need to implement the operational release for hr.
+    let result = process(release)
+    return result
+}
+```

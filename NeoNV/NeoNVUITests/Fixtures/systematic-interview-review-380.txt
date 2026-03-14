@@ -1,0 +1,6 @@
+systematic interview review
+
+- [ ] low-priority standup: refactor
+- [ ] monthly hypothesis: implement
+- dashboard — Consider a monthly approach to integrate the backlog.
+- backlog — We need to design the fundamental meeting for onboarding.

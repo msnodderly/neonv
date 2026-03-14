@@ -1,0 +1,9 @@
+monthly project feeduack
+
+- [x] collaborate the security
+- sprint — Discussion about fundamental database in the context of cloud.
+- database — The compliance team will build the synthesis by next week.
+- [x] build the synthesis
+- [ ] detailed brainstorm: discuss
+- [x] evaluate the experiment
+- [x] schedule the innovation

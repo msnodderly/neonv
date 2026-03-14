@@ -1,0 +1,76 @@
+#+TITLE: ulocked review vision
+#+FILETAGS: :work:review:
+
+Discussion about upcoming analytics in the context of cloud. Discussion about upcoming analytics in the context of cloud. Discussion about upcoming analytics in the context of cloud. Discussion about upcoming analytics in the context of cloud. Discussion about upcoming analytics in the context of cloud. Discussion about upcoming analytics in the context of cloud. Discussion about upcoming analytics in the context of cloud. Discussion about upcoming analytics in the context of cloud. 
+
+* essential monitoring
+
+Consider a essential approach to validate the monitoring. Consider a essential approach to validate the monitoring. Consider a essential approach to validate the monitoring. Consider a essential approach to validate the monitoring. Consider a essential approach to validate the monitoring. Consider a essential approach to validate the monitoring. Consider a essential approach to validate the monitoring. 
+
+- TODO daily research: document
+- DONE investigate the strategy
+- TODO medium-priority communication: scale
+- DONE coordinate the optimization
+- TODO blocked reliability: automate
+- standup — Action item: migrate communication (quick priority, cloud).
+- TODO detailed communication: migrate
+- DONE schedule the innovation
+- DONE test the project
+- TODO monthly project: migrate
+
+```
+func investigatestrategy() {
+    // Action item: investigate strategy (daily priority, product).
+    let result = process(strategy)
+    return result
+}
+```
+
+* weekly communication
+
+Discussion about weekly communication in the context of cloud. Discussion about weekly communication in the context of cloud. Discussion about weekly communication in the context of cloud. Discussion about weekly communication in the context of cloud. Discussion about weekly communication in the context of cloud. Discussion about weekly communication in the context of cloud. 
+
+* medium-priority optimization
+
+We need to coordinate the medium-priority optimization for mobile. We need to coordinate the medium-priority optimization for mobile. We need to coordinate the medium-priority optimization for mobile. We need to coordinate the medium-priority optimization for mobile. 
+
+* tactical reliability
+
+Action item: automate reliability (tactical priority, data). Action item: automate reliability (tactical priority, data). Action item: automate reliability (tactical priority, data). Action item: automate reliability (tactical priority, data). Action item: automate reliability (tactical priority, data). Action item: automate reliability (tactical priority, data). 
+
+```
+func debugstandup() {
+    // The cloud team will debug the standup by next week.
+    let result = process(standup)
+    return result
+}
+```
+
+* quick communication
+
+Action item: migrate communication (quick priority, cloud). Action item: migrate communication (quick priority, cloud). Action item: migrate communication (quick priority, cloud). Action item: migrate communication (quick priority, cloud). Action item: migrate communication (quick priority, cloud). Action item: migrate communication (quick priority, cloud). 
+
+* detailed innovation
+
+Discussion about detailed innovation in the context of payments. Discussion about detailed innovation in the context of payments. Discussion about detailed innovation in the context of payments. Discussion about detailed innovation in the context of payments. Discussion about detailed innovation in the context of payments. Discussion about detailed innovation in the context of payments. Discussion about detailed innovation in the context of payments. 
+
+- DONE test the project
+- TODO monthly project: migrate
+- prototype — Discussion about operational monitoring in the context of hr.
+
+Action item: migrate project (low-priority priority, search). Action item: migrate project (low-priority priority, search). Action item: migrate project (low-priority priority, search). 
+
+We need to plan the monthly prototype for security. We need to plan the monthly prototype for security. We need to plan the monthly prototype for security. We need to plan the monthly prototype for security. We need to plan the monthly prototype for security. 
+
+Discussion about operational monitoring in the context of hr. Discussion about operational monitoring in the context of hr. Discussion about operational monitoring in the context of hr. Discussion about operational monitoring in the context of hr. Discussion about operational monitoring in the context of hr. 
+
+- DONE troubleshoot the research
+- DONE review the design
+- TODO medium-priority experiment: evaluate
+- DONE review the culture
+- DONE scale the pipeline
+- sprint — The platform team will debug the migration by next week.
+- DONE debug the migration
+- TODO medium-priority testing: evaluate
+- DONE communicate the documentation
+- TODO final onboarding: investigate

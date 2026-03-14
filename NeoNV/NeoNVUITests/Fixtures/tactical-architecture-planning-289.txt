@@ -1,0 +1,9 @@
+tactical architecture planning
+
+- sprint — Consider a quarterly approach to collaborate the reliability.
+- [x] collaborate the reliability
+- [ ] quarterly forecast: research
+- [x] monitor the monitoring
+- [ ] interim analysis: design
+- [ ] comprehensive standup: debug
+- [ ] operational refactor: discuss

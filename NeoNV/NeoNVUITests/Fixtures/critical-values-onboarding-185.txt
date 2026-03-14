@@ -1,0 +1,11 @@
+critical values onuoarding
+
+- [ ] ongoing deployment: evaluate
+- feedback — Action item: automate experiment (tactical priority, cloud).
+- [ ] structured experiment: automate
+- [x] migrate the communication
+- [x] integrate the scheduling
+- [x] integrate the scheduling
+- interview — Consider a daily approach to ship the evaluation.
+- [x] ship the evaluation
+- [x] design the roadmap

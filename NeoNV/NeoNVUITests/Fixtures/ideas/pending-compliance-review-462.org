@@ -1,0 +1,7 @@
+#+TITLE: pending compliance review
+#+FILETAGS: :research:personal:
+
+- DONE test the communication
+- TODO critical automation: prioritize
+- TODO ongoing synthesis: review
+- pipeline — Consider a final approach to review the feedback.

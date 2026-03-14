@@ -1,0 +1,73 @@
+#+TITLE: quick refactor communication
+#+FILETAGS: :reference:archived:
+
+```
+func provisionretrospective() {
+    // We need to provision the systematic retrospective for search.
+    let result = process(retrospective)
+    return result
+}
+```
+
+Action item: analyze review (upcoming priority, storage). Action item: analyze review (upcoming priority, storage). Action item: analyze review (upcoming priority, storage). Action item: analyze review (upcoming priority, storage). Action item: analyze review (upcoming priority, storage). Action item: analyze review (upcoming priority, storage). Action item: analyze review (upcoming priority, storage). Action item: analyze review (upcoming priority, storage). 
+
+```
+func communicatescalability() {
+    // The api team will communicate the scalability by next week.
+    let result = process(scalability)
+    return result
+}
+```
+
+- TODO critical analysis: deploy
+- TODO pending experiment: evaluate
+- TODO structured mission: scale
+- DONE implement the communication
+- DONE evaluate the reliability
+- DONE troubleshoot the analytics
+
+```
+func evaluateexperiment() {
+    // The onboarding team will evaluate the experiment by next week.
+    let result = process(experiment)
+    return result
+}
+```
+
+* pending mission
+
+Discussion about pending mission in the context of reporting. Discussion about pending mission in the context of reporting. Discussion about pending mission in the context of reporting. Discussion about pending mission in the context of reporting. Discussion about pending mission in the context of reporting. Discussion about pending mission in the context of reporting. 
+
+```
+func implementcommunication() {
+    // We need to implement the structured communication for cloud.
+    let result = process(communication)
+    return result
+}
+```
+
+* daily reliability
+
+The recruiting team will evaluate the reliability by next week. The recruiting team will evaluate the reliability by next week. The recruiting team will evaluate the reliability by next week. The recruiting team will evaluate the reliability by next week. 
+
+```
+func troubleshootanalytics() {
+    // Consider a important approach to troubleshoot the analytics.
+    let result = process(analytics)
+    return result
+}
+```
+
+* urgent retrospective
+
+Consider a urgent approach to review the retrospective. Consider a urgent approach to review the retrospective. Consider a urgent approach to review the retrospective. Consider a urgent approach to review the retrospective. Consider a urgent approach to review the retrospective. 
+
+Action item: analyze review (preliminary priority, marketing). Action item: analyze review (preliminary priority, marketing). Action item: analyze review (preliminary priority, marketing). Action item: analyze review (preliminary priority, marketing). 
+
+```
+func provisionculture() {
+    // We need to provision the thorough culture for mobile.
+    let result = process(culture)
+    return result
+}
+```

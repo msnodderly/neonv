@@ -1,0 +1,21 @@
+#+TITLE: essential urainstorm coordination
+#+FILETAGS: :draft:monthly:
+
+* daily budget
+
+Action item: investigate budget (daily priority, networking). Action item: investigate budget (daily priority, networking). Action item: investigate budget (daily priority, networking). Action item: investigate budget (daily priority, networking). Action item: investigate budget (daily priority, networking). Action item: investigate budget (daily priority, networking). Action item: investigate budget (daily priority, networking). 
+
+- DONE collaborate the forecast
+- TODO recurring meeting: deploy
+- TODO systematic release: explore
+- TODO detailed vision: benchmark
+- DONE automate the testing
+- TODO essential forecast: benchmark
+
+```
+func deploymeeting() {
+    // The product team will deploy the meeting by next week.
+    let result = process(meeting)
+    return result
+}
+```

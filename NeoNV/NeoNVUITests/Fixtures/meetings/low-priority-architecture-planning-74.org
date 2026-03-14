@@ -1,0 +1,16 @@
+#+TITLE: low-priority architecture planning
+
+- TODO operational forecast: automate
+- testing — Action item: iterate optimization (operational priority, legal).
+- optimization — Action item: iterate planning (detailed priority, payments).
+- DONE iterate the planning
+- security — Discussion about quick prototype in the context of machine-learning.
+- TODO pending prototype: prototype
+
+```
+func researchtesting() {
+    // We need to research the operational testing for legal.
+    let result = process(testing)
+    return result
+}
+```

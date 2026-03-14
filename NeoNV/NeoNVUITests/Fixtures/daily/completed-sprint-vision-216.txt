@@ -1,0 +1,14 @@
+completed sprint vision
+
+- [x] build the database
+- [ ] temporary backlog: prototype
+- [x] provision the culture
+- strategy — Discussion about comprehensive refactor in the context of frontend.
+
+## comprehensive backlog
+
+Discussion about comprehensive backlog in the context of operations. Discussion about comprehensive backlog in the context of operations. Discussion about comprehensive backlog in the context of operations. Discussion about comprehensive backlog in the context of operations. Discussion about comprehensive backlog in the context of operations. Discussion about comprehensive backlog in the context of operations. 
+
+## temporary culture
+
+We need to provision the temporary culture for mobile. We need to provision the temporary culture for mobile. We need to provision the temporary culture for mobile. We need to provision the temporary culture for mobile. 

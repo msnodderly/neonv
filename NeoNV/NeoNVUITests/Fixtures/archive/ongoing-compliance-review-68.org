@@ -1,0 +1,34 @@
+#+TITLE: ongoing compliance review
+
+* temporary project
+
+Consider a temporary approach to test the project. Consider a temporary approach to test the project. Consider a temporary approach to test the project. Consider a temporary approach to test the project. Consider a temporary approach to test the project. Consider a temporary approach to test the project. Consider a temporary approach to test the project. 
+
+We need to implement the fundamental hiring for sales. We need to implement the fundamental hiring for sales. We need to implement the fundamental hiring for sales. We need to implement the fundamental hiring for sales. We need to implement the fundamental hiring for sales. 
+
+Action item: investigate scheduling (operational priority, recruiting). Action item: investigate scheduling (operational priority, recruiting). Action item: investigate scheduling (operational priority, recruiting). Action item: investigate scheduling (operational priority, recruiting). Action item: investigate scheduling (operational priority, recruiting). Action item: investigate scheduling (operational priority, recruiting). Action item: investigate scheduling (operational priority, recruiting). Action item: investigate scheduling (operational priority, recruiting). 
+
+```
+func explorehiring() {
+    // The authentication team will explore the hiring by next week.
+    let result = process(hiring)
+    return result
+}
+```
+
+Action item: prioritize culture (structured priority, authorization). Action item: prioritize culture (structured priority, authorization). Action item: prioritize culture (structured priority, authorization). Action item: prioritize culture (structured priority, authorization). 
+
+* pending budget
+
+Action item: investigate budget (pending priority, networking). Action item: investigate budget (pending priority, networking). Action item: investigate budget (pending priority, networking). 
+
+- DONE monitor the roadmap
+- DONE coordinate the refactor
+- DONE integrate the budget
+- TODO temporary standup: schedule
+- DONE review the automation
+- DONE coordinate the growth
+- DONE validate the collaboration
+- DONE optimize the feedback
+- TODO daily scheduling: plan
+- DONE discuss the analytics

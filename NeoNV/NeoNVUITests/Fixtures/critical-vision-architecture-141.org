@@ -1,0 +1,8 @@
+#+TITLE: critical vision architecture
+#+FILETAGS: :todo:followup:
+
+- TODO low-priority brainstorm: troubleshoot
+- TODO monthly forecast: benchmark
+- compliance — Consider a detailed approach to test the communication.
+- DONE test the communication
+- DONE collaborate the testing

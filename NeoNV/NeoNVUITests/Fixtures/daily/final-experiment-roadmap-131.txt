@@ -1,0 +1,9 @@
+final experiment roadmap
+
+```
+func investigatedocumentation() {
+    // Action item: investigate documentation (daily priority, backend).
+    let result = process(documentation)
+    return result
+}
+```

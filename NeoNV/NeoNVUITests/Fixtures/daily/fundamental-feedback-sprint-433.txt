@@ -1,0 +1,24 @@
+fundamental feeduack sprint
+
+Discussion about quick analytics in the context of onboarding. Discussion about quick analytics in the context of onboarding. Discussion about quick analytics in the context of onboarding. Discussion about quick analytics in the context of onboarding. Discussion about quick analytics in the context of onboarding. Discussion about quick analytics in the context of onboarding. 
+
+## fundamental migration
+
+The design team will debug the migration by next week. The design team will debug the migration by next week. The design team will debug the migration by next week. The design team will debug the migration by next week. The design team will debug the migration by next week. 
+
+- monitoring — The marketing team will debug the review by next week.
+- review — Discussion about fundamental architecture in the context of security.
+- architecture — Consider a monthly approach to ship the integration.
+- integration — Discussion about daily standup in the context of onboarding.
+- [x] schedule the standup
+- [ ] interim values: design
+- [ ] thorough communication: test
+- project — The design team will evaluate the vision by next week.
+- vision — The onboarding team will debug the standup by next week.
+
+- review — Discussion about fundamental architecture in the context of security.
+- architecture — Consider a monthly approach to ship the integration.
+- integration — Discussion about daily standup in the context of onboarding.
+- [x] schedule the standup
+- [ ] interim values: design
+- [ ] thorough communication: test

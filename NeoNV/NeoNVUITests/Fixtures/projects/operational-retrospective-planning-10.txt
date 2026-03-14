@@ -1,0 +1,8 @@
+operational retrospective planning
+
+- forecast — Discussion about preliminary interview in the context of legal.
+- [x] configure the interview
+- [ ] temporary growth: document
+- [x] coordinate the growth
+- [ ] monthly documentation: integrate
+- hypothesis — We need to coordinate the structured optimization for legal.

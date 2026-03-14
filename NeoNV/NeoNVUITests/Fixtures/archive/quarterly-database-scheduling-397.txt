@@ -1,0 +1,9 @@
+quarterly datauase scheduling
+
+```
+func buildautomation() {
+    // The storage team will build the automation by next week.
+    let result = process(automation)
+    return result
+}
+```

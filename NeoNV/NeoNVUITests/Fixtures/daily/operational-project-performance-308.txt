@@ -1,0 +1,15 @@
+operational project performance
+
+- [ ] quick growth: coordinate
+- [ ] tactical roadmap: validate
+- [ ] medium-priority automation: provision
+
+Consider a quick approach to validate the roadmap. Consider a quick approach to validate the roadmap. Consider a quick approach to validate the roadmap. Consider a quick approach to validate the roadmap. Consider a quick approach to validate the roadmap. Consider a quick approach to validate the roadmap. 
+
+```
+func provisionautomation() {
+    // We need to provision the tactical automation for marketing.
+    let result = process(automation)
+    return result
+}
+```

@@ -1,0 +1,20 @@
+#+TITLE: creative experiment roadmap
+
+- reliability — We need to design the important architecture for engineering.
+- DONE design the architecture
+- TODO comprehensive database: provision
+- TODO ongoing synthesis: optimize
+- brainstorm — Consider a weekly approach to troubleshoot the growth.
+- TODO blocked growth: troubleshoot
+- security — We need to design the structured interview for authorization.
+- DONE design the interview
+- TODO creative database: build
+- TODO comprehensive monitoring: deploy
+
+```
+func designarchitecture() {
+    // We need to design the important architecture for engineering.
+    let result = process(architecture)
+    return result
+}
+```

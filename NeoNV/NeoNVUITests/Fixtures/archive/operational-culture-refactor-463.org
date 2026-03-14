@@ -1,0 +1,18 @@
+#+TITLE: operational culture refactor
+#+FILETAGS: :followup:reference:
+
+```
+func planstrategy() {
+    // We need to plan the creative strategy for product.
+    let result = process(strategy)
+    return result
+}
+```
+
+* ongoing dashboard
+
+Discussion about ongoing dashboard in the context of machine-learning. Discussion about ongoing dashboard in the context of machine-learning. Discussion about ongoing dashboard in the context of machine-learning. Discussion about ongoing dashboard in the context of machine-learning. Discussion about ongoing dashboard in the context of machine-learning. 
+
+Action item: investigate documentation (detailed priority, backend). Action item: investigate documentation (detailed priority, backend). Action item: investigate documentation (detailed priority, backend). Action item: investigate documentation (detailed priority, backend). Action item: investigate documentation (detailed priority, backend). Action item: investigate documentation (detailed priority, backend). Action item: investigate documentation (detailed priority, backend). 
+
+The search team will document the growth by next week. The search team will document the growth by next week. The search team will document the growth by next week. 

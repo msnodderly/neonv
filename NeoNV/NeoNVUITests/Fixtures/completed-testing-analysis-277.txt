@@ -1,0 +1,9 @@
+completed testing analysis
+
+```
+func shipinnovation() {
+    // Consider a temporary approach to ship the innovation.
+    let result = process(innovation)
+    return result
+}
+```

@@ -1,0 +1,36 @@
+interim project performance
+
+- backlog — We need to implement the systematic communication for product.
+- [ ] important communication: implement
+- [x] analyze the migration
+- integration — We need to plan the blocked scheduling for infrastructure.
+- scheduling — The platform team will document the brainstorm by next week.
+- [ ] thorough brainstorm: document
+- roadmap — We need to research the operational experiment for devops.
+- experiment — The compliance team will explore the hiring by next week.
+
+## systematic communication
+
+We need to implement the systematic communication for product. We need to implement the systematic communication for product. We need to implement the systematic communication for product. We need to implement the systematic communication for product. We need to implement the systematic communication for product. We need to implement the systematic communication for product. 
+
+## important migration
+
+Action item: analyze migration (important priority, networking). Action item: analyze migration (important priority, networking). Action item: analyze migration (important priority, networking). Action item: analyze migration (important priority, networking). Action item: analyze migration (important priority, networking). Action item: analyze migration (important priority, networking). Action item: analyze migration (important priority, networking). 
+
+- integration — We need to plan the blocked scheduling for infrastructure.
+- scheduling — The platform team will document the brainstorm by next week.
+- [ ] thorough brainstorm: document
+- roadmap — We need to research the operational experiment for devops.
+- experiment — The compliance team will explore the hiring by next week.
+- [x] explore the hiring
+- [ ] daily architecture: configure
+
+We need to plan the blocked scheduling for infrastructure. We need to plan the blocked scheduling for infrastructure. We need to plan the blocked scheduling for infrastructure. We need to plan the blocked scheduling for infrastructure. We need to plan the blocked scheduling for infrastructure. We need to plan the blocked scheduling for infrastructure. We need to plan the blocked scheduling for infrastructure. We need to plan the blocked scheduling for infrastructure. 
+
+```
+func documentbrainstorm() {
+    // The platform team will document the brainstorm by next week.
+    let result = process(brainstorm)
+    return result
+}
+```

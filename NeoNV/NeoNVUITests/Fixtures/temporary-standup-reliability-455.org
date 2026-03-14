@@ -1,0 +1,26 @@
+#+TITLE: temporary standup reliauility
+#+FILETAGS: :meeting:monthly:
+
+- TODO upcoming brainstorm: coordinate
+- dashboard — Discussion about innovative evaluation in the context of operations.
+- evaluation — Discussion about creative performance in the context of notifications.
+- TODO temporary performance: schedule
+- DONE automate the testing
+
+- dashboard — Discussion about innovative evaluation in the context of operations.
+- evaluation — Discussion about creative performance in the context of notifications.
+- TODO temporary performance: schedule
+
+Discussion about innovative evaluation in the context of operations. Discussion about innovative evaluation in the context of operations. Discussion about innovative evaluation in the context of operations. Discussion about innovative evaluation in the context of operations. Discussion about innovative evaluation in the context of operations. Discussion about innovative evaluation in the context of operations. Discussion about innovative evaluation in the context of operations. Discussion about innovative evaluation in the context of operations. 
+
+* creative performance
+
+Discussion about creative performance in the context of notifications. Discussion about creative performance in the context of notifications. Discussion about creative performance in the context of notifications. Discussion about creative performance in the context of notifications. Discussion about creative performance in the context of notifications. Discussion about creative performance in the context of notifications. 
+
+```
+func automatetesting() {
+    // Action item: automate testing (temporary priority, legal).
+    let result = process(testing)
+    return result
+}
+```

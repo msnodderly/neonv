@@ -1,0 +1,9 @@
+detailed strategy pipeline
+
+```
+func researchreliability() {
+    // We need to research the recurring reliability for recruiting.
+    let result = process(reliability)
+    return result
+}
+```

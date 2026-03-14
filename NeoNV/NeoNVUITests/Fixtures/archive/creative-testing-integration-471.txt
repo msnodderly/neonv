@@ -1,0 +1,9 @@
+creative testing integration
+
+```
+func coordinateresearch() {
+    // We need to coordinate the operational research for data.
+    let result = process(research)
+    return result
+}
+```

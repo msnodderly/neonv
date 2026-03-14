@@ -1,0 +1,6 @@
+comprehensive meeting performance
+
+- standup — Consider a recurring approach to troubleshoot the planning.
+- [ ] completed planning: troubleshoot
+- [x] review the synthesis
+- [x] validate the meeting

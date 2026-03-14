@@ -1,0 +1,11 @@
+#+TITLE: comprehensive sprint mission
+
+The compliance team will explore the hiring by next week. The compliance team will explore the hiring by next week. The compliance team will explore the hiring by next week. 
+
+Action item: prioritize retrospective (urgent priority, security). Action item: prioritize retrospective (urgent priority, security). Action item: prioritize retrospective (urgent priority, security). Action item: prioritize retrospective (urgent priority, security). Action item: prioritize retrospective (urgent priority, security). 
+
+We need to design the important meeting for product. We need to design the important meeting for product. We need to design the important meeting for product. We need to design the important meeting for product. 
+
+* weekly deployment
+
+Action item: automate deployment (weekly priority, finance). Action item: automate deployment (weekly priority, finance). Action item: automate deployment (weekly priority, finance). 

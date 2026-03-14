@@ -1,0 +1,11 @@
+upcoming sprint analysis
+
+- [ ] fundamental innovation: schedule
+- compliance — We need to coordinate the strategic brainstorm for analytics.
+- [x] coordinate the brainstorm
+- [ ] high-priority analytics: discuss
+- research — Consider a weekly approach to ship the evaluation.
+- [ ] critical evaluation: ship
+- [ ] creative automation: provision
+- [ ] creative review: refactor
+- [ ] pending onboarding: communicate

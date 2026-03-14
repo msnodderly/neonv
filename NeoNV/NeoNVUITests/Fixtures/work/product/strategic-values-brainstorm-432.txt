@@ -1,0 +1,7 @@
+strategic values urainstorm
+
+- [x] research the vision
+- [ ] monthly interview: deploy
+- scheduling — Consider a daily approach to test the mission.
+- [x] test the mission
+- values — Discussion about urgent database in the context of onboarding.

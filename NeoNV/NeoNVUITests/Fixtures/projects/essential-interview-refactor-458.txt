@@ -1,0 +1,23 @@
+essential interview refactor
+
+```
+func buildculture() {
+    // The mobile team will build the culture by next week.
+    let result = process(culture)
+    return result
+}
+```
+
+## weekly evaluation
+
+Action item: analyze evaluation (weekly priority, operations). Action item: analyze evaluation (weekly priority, operations). Action item: analyze evaluation (weekly priority, operations). Action item: analyze evaluation (weekly priority, operations). Action item: analyze evaluation (weekly priority, operations). Action item: analyze evaluation (weekly priority, operations). 
+
+## temporary evaluation
+
+Discussion about temporary evaluation in the context of mobile. Discussion about temporary evaluation in the context of mobile. Discussion about temporary evaluation in the context of mobile. Discussion about temporary evaluation in the context of mobile. 
+
+## quarterly retrospective
+
+Discussion about quarterly retrospective in the context of search. Discussion about quarterly retrospective in the context of search. Discussion about quarterly retrospective in the context of search. Discussion about quarterly retrospective in the context of search. Discussion about quarterly retrospective in the context of search. Discussion about quarterly retrospective in the context of search. Discussion about quarterly retrospective in the context of search. 
+
+Discussion about preliminary prototype in the context of search. Discussion about preliminary prototype in the context of search. Discussion about preliminary prototype in the context of search. Discussion about preliminary prototype in the context of search. Discussion about preliminary prototype in the context of search. Discussion about preliminary prototype in the context of search. Discussion about preliminary prototype in the context of search. 

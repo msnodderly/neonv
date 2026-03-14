@@ -1,0 +1,11 @@
+#+TITLE: operational sprint vision
+
+- DONE refactor the innovation
+- DONE provision the automation
+- pipeline — Action item: monitor interview (essential priority, legal).
+- DONE monitor the interview
+- project — We need to implement the urgent communication for product.
+- communication — Consider a temporary approach to test the hypothesis.
+- DONE test the hypothesis
+- analysis — We need to coordinate the upcoming planning for finance.
+- planning — We need to research the final coordination for security.

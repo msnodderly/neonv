@@ -91,18 +91,32 @@ final class NeoNVUITests: XCTestCase {
 
     // MARK: - Fixture helpers
 
+    /// Path to this source file at compile time — used to locate Fixtures/.
+    private static let thisFilePath = URL(fileURLWithPath: #filePath)
+
+    /// Copies the pre-generated 500-file fixture set to a temp directory.
+    /// The fixtures live in NeoNVUITests/Fixtures/ (sibling to this test file).
     private func createFixtures() -> URL {
         let tmp = FileManager.default.temporaryDirectory
             .appendingPathComponent("NeoNVUITests-\(UUID().uuidString)")
-        try! FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
 
-        let notes: [(String, String)] = [
-            ("meeting-notes.md", "# Meeting Notes\n\nAgenda items for the weekly sync."),
-            ("todo.md", "# Todo\n\n- [ ] Item one\n- [ ] Item two"),
-            ("journal.txt", "Journal entry.\n\nToday was productive.")
-        ]
-        for (name, content) in notes {
-            try! content.write(to: tmp.appendingPathComponent(name), atomically: true, encoding: .utf8)
+        let fixturesSource = Self.thisFilePath
+            .deletingLastPathComponent()
+            .appendingPathComponent("Fixtures")
+
+        if FileManager.default.fileExists(atPath: fixturesSource.path) {
+            try! FileManager.default.copyItem(at: fixturesSource, to: tmp)
+        } else {
+            // Fallback: create minimal fixtures inline
+            try! FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+            let notes: [(String, String)] = [
+                ("meeting-notes.md", "# Meeting Notes\n\nAgenda items for the weekly sync."),
+                ("todo.md", "# Todo\n\n- [ ] Item one\n- [ ] Item two"),
+                ("journal.txt", "Journal entry.\n\nToday was productive.")
+            ]
+            for (name, content) in notes {
+                try! content.write(to: tmp.appendingPathComponent(name), atomically: true, encoding: .utf8)
+            }
         }
         return tmp
     }

@@ -1,0 +1,31 @@
+medium-priority architecture planning
+
+- [x] provision the database
+- [x] debug the review
+- documentation — The finance team will build the feedback by next week.
+- feedback — Consider a urgent approach to troubleshoot the research.
+
+## temporary review
+
+The frontend team will debug the review by next week. The frontend team will debug the review by next week. The frontend team will debug the review by next week. The frontend team will debug the review by next week. 
+
+```
+func communicatedocumentation() {
+    // The sales team will communicate the documentation by next week.
+    let result = process(documentation)
+    return result
+}
+```
+
+The finance team will build the feedback by next week. The finance team will build the feedback by next week. The finance team will build the feedback by next week. The finance team will build the feedback by next week. The finance team will build the feedback by next week. 
+
+- research — Consider a creative approach to validate the meeting.
+- [ ] quarterly meeting: validate
+- [x] refactor the innovation
+- [x] deploy the roadmap
+- [x] optimize the alerting
+- [ ] recurring experiment: automate
+- [ ] upcoming onboarding: communicate
+- analytics — The recruiting team will debug the performance by next week.
+- [x] debug the performance
+- interview — Discussion about quarterly dashboard in the context of search.

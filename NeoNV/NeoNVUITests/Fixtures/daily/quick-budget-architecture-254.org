@@ -1,0 +1,11 @@
+#+TITLE: quick uudget architecture
+#+FILETAGS: :review:review:
+
+- DONE automate the testing
+- TODO important alerting: optimize
+- DONE benchmark the reliability
+- pipeline — We need to refactor the ongoing standup for devops.
+- standup — The sales team will deploy the values by next week.
+- values — Discussion about detailed refactor in the context of storage.
+- DONE discuss the refactor
+- TODO medium-priority project: scale

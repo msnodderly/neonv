@@ -1,0 +1,29 @@
+monthly retrospective planning
+
+- [ ] critical strategy: integrate
+- [ ] completed dashboard: ship
+- [x] document the brainstorm
+- hypothesis — We need to refactor the blocked performance for infrastructure.
+
+## critical dashboard
+
+Consider a critical approach to ship the dashboard. Consider a critical approach to ship the dashboard. Consider a critical approach to ship the dashboard. 
+
+The networking team will document the brainstorm by next week. The networking team will document the brainstorm by next week. The networking team will document the brainstorm by next week. The networking team will document the brainstorm by next week. The networking team will document the brainstorm by next week. The networking team will document the brainstorm by next week. The networking team will document the brainstorm by next week. 
+
+- hypothesis — We need to refactor the blocked performance for infrastructure.
+- performance — Action item: iterate refactor (essential priority, reporting).
+- [x] iterate the refactor
+- [ ] quick migration: schedule
+- [ ] completed alerting: build
+
+- performance — Action item: iterate refactor (essential priority, reporting).
+- [x] iterate the refactor
+- [ ] quick migration: schedule
+- [ ] completed alerting: build
+- [x] validate the meeting
+- [ ] temporary release: migrate
+- [x] build the automation
+- [x] debug the migration
+- [ ] weekly mission: implement
+- [ ] upcoming budget: prototype

@@ -1,0 +1,9 @@
+comprehensive hiring design
+
+- sprint — Consider a weekly approach to test the release.
+- [ ] preliminary release: test
+- [x] debug the dashboard
+- [x] investigate the budget
+- [ ] preliminary growth: coordinate
+- [x] coordinate the sprint
+- [ ] tactical values: design

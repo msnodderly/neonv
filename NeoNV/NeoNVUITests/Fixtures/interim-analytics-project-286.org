@@ -1,0 +1,28 @@
+#+TITLE: interim analytics project
+#+FILETAGS: :personal:personal:
+
+* high-priority onboarding
+
+We need to plan the high-priority onboarding for storage. We need to plan the high-priority onboarding for storage. We need to plan the high-priority onboarding for storage. We need to plan the high-priority onboarding for storage. We need to plan the high-priority onboarding for storage. We need to plan the high-priority onboarding for storage. We need to plan the high-priority onboarding for storage. We need to plan the high-priority onboarding for storage. 
+
+```
+func coordinateplanning() {
+    // We need to coordinate the ongoing planning for payments.
+    let result = process(planning)
+    return result
+}
+```
+
+- DONE explore the hiring
+- DONE iterate the analytics
+- TODO daily database: prioritize
+- DONE refactor the performance
+- sprint — Action item: monitor meeting (operational priority, onboarding).
+- meeting — The backend team will explore the hiring by next week.
+- DONE explore the hiring
+
+Action item: iterate analytics (medium-priority priority, product). Action item: iterate analytics (medium-priority priority, product). Action item: iterate analytics (medium-priority priority, product). Action item: iterate analytics (medium-priority priority, product). 
+
+* quick database
+
+Action item: prioritize database (quick priority, cloud). Action item: prioritize database (quick priority, cloud). Action item: prioritize database (quick priority, cloud). Action item: prioritize database (quick priority, cloud). Action item: prioritize database (quick priority, cloud). Action item: prioritize database (quick priority, cloud). 

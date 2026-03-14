@@ -1,0 +1,25 @@
+#+TITLE: urgent research monitoring
+
+- TODO final synthesis: review
+- vision — Discussion about interim retrospective in the context of engineering.
+- TODO medium-priority retrospective: optimize
+- DONE prototype the backlog
+- communication — We need to provision the pending database for product.
+- TODO structured database: provision
+- DONE optimize the feedback
+
+Action item: automate vision (final priority, networking). Action item: automate vision (final priority, networking). Action item: automate vision (final priority, networking). Action item: automate vision (final priority, networking). Action item: automate vision (final priority, networking). 
+
+- TODO medium-priority retrospective: optimize
+- DONE prototype the backlog
+- communication — We need to provision the pending database for product.
+
+Discussion about medium-priority backlog in the context of mobile. Discussion about medium-priority backlog in the context of mobile. Discussion about medium-priority backlog in the context of mobile. Discussion about medium-priority backlog in the context of mobile. 
+
+* final communication
+
+Action item: migrate communication (final priority, product). Action item: migrate communication (final priority, product). Action item: migrate communication (final priority, product). Action item: migrate communication (final priority, product). Action item: migrate communication (final priority, product). Action item: migrate communication (final priority, product). Action item: migrate communication (final priority, product). Action item: migrate communication (final priority, product). 
+
+* pending database
+
+We need to provision the pending database for product. We need to provision the pending database for product. We need to provision the pending database for product. We need to provision the pending database for product. We need to provision the pending database for product. We need to provision the pending database for product. 

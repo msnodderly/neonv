@@ -1,0 +1,9 @@
+thorough project performance
+
+- [x] configure the values
+- [ ] temporary vision: benchmark
+- [x] implement the project
+- [x] discuss the research
+- [x] analyze the evaluation
+- [ ] completed evaluation: analyze
+- [x] communicate the scalability

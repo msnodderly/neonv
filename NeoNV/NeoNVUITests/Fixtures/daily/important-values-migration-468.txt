@@ -1,0 +1,5 @@
+important values migration
+
+- [x] communicate the prototype
+- values — Consider a fundamental approach to ship the migration.
+- migration — Discussion about structured database in the context of product.
