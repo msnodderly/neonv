@@ -45,14 +45,19 @@ struct NoteFile: Identifiable, Equatable {
         self.searchPath = relativePath.lowercased()
         self.searchPreview = contentPreview.lowercased()
         self.searchTags = tags.joined(separator: " ").lowercased()
+        self.searchCombined = "\(self.searchTitle)\n\(self.searchPath)\n\(self.searchPreview)\n\(self.searchTags)"
     }
 
+    /// Perf-sensitive: combine all searchable fields once so filtering can
+    /// lowercase the query once per rebuild and do a single contains check.
+    private(set) var searchCombined: String = ""
+
     func matches(query: String) -> Bool {
-        let lowercasedQuery = query.lowercased()
-        return searchTitle.contains(lowercasedQuery) ||
-               searchPath.contains(lowercasedQuery) ||
-               searchPreview.contains(lowercasedQuery) ||
-               searchTags.contains(lowercasedQuery)
+        matches(lowercasedQuery: query.lowercased())
+    }
+
+    func matches(lowercasedQuery: String) -> Bool {
+        searchCombined.contains(lowercasedQuery)
     }
 
     mutating func updateContent(title: String, contentPreview: String, modificationDate: Date, tags: [String] = []) {
@@ -64,6 +69,7 @@ struct NoteFile: Identifiable, Equatable {
         self.searchTitle = title.lowercased()
         self.searchPreview = contentPreview.lowercased()
         self.searchTags = tags.joined(separator: " ").lowercased()
+        self.searchCombined = "\(self.searchTitle)\n\(self.searchPath)\n\(self.searchPreview)\n\(self.searchTags)"
     }
     
     var displayTitle: String {
