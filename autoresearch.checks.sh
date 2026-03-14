@@ -19,6 +19,7 @@ xcodebuild build-for-testing \
   -scheme NeoNV \
   -configuration Debug \
   CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO \
+  GENERATE_INFOPLIST_FILE=YES \
   2>&1 | tail -10
 
 echo "==> Running SwiftLint..."
