@@ -52,8 +52,11 @@ struct NoteFile: Identifiable, Equatable {
     private(set) var searchCombined: String = ""
 
     func matches(query: String) -> Bool {
-        let lowercasedQuery = query.lowercased()
-        return searchCombined.contains(lowercasedQuery)
+        matches(lowercasedQuery: query.lowercased())
+    }
+
+    func matches(lowercasedQuery: String) -> Bool {
+        searchCombined.contains(lowercasedQuery)
     }
 
     mutating func updateContent(title: String, contentPreview: String, modificationDate: Date, tags: [String] = []) {

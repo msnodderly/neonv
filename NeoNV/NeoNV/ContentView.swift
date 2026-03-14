@@ -155,7 +155,7 @@ struct ContentView: View {
             } else {
                 searchDebounceTask?.cancel()
                 searchDebounceTask = Task {
-                    try? await Task.sleep(for: .milliseconds(20))
+                    try? await Task.sleep(for: .milliseconds(10))
                     guard !Task.isCancelled else { return }
                     debouncedSearchText = newText
                     rebuildFilteredNotes()
@@ -519,7 +519,8 @@ struct ContentView: View {
 
     private func rebuildFilteredNotes() {
         let query = debouncedSearchText
-        let baseNotes = query.isEmpty ? noteStore.notes : noteStore.notes.filter { $0.matches(query: query) }
+        let lowercasedQuery = query.lowercased()
+        let baseNotes = query.isEmpty ? noteStore.notes : noteStore.notes.filter { $0.matches(lowercasedQuery: lowercasedQuery) }
 
         guard !unsavedNoteIDs.isEmpty else {
             filteredNotesCache = baseNotes
