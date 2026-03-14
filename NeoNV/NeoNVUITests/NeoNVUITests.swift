@@ -17,6 +17,8 @@ final class NeoNVUITests: XCTestCase {
 
         app = XCUIApplication()
         app.launchEnvironment["NEONV_TEST_NOTES_DIR"] = fixturesURL.path
+        // Override UserDefaults to ensure search field is visible during tests
+        app.launchArguments += ["-isSearchFieldHidden", "0"]
         app.launch()
     }
 
@@ -28,24 +30,18 @@ final class NeoNVUITests: XCTestCase {
 
     // MARK: - Functional tests
 
-    /// Search → select first result → open in editor → make an edit.
+    /// Search exact title → Return opens in editor → make an edit.
     func testSearchOpenEditWorkflow() {
         let searchField = app.textFields["search-field"]
         XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Search field not found")
 
+        // Type exact title match and press Return to select + focus editor
         searchField.click()
-        searchField.typeText("meeting")
-
-        let noteList = app.lists["note-list"]
-        XCTAssertTrue(noteList.waitForExistence(timeout: 3), "Note list not found")
-
-        let firstNote = noteList.cells.firstMatch
-        XCTAssertTrue(firstNote.waitForExistence(timeout: 3), "No notes matched search")
-        firstNote.click()
+        searchField.typeText("Meeting Notes")
+        searchField.typeKey(.return, modifierFlags: [])
 
         let editor = app.textViews["note-editor"]
         XCTAssertTrue(editor.waitForExistence(timeout: 3), "Editor not found")
-        editor.click()
         editor.typeText(" - edited by test")
     }
 
@@ -66,33 +62,24 @@ final class NeoNVUITests: XCTestCase {
     /// Full edit workflow: search → open → type edit → wait for autosave.
     ///
     /// This is the primary metric consumed by autoresearch.sh.
-    /// Run this test directly to capture baseline timing:
-    ///   xcodebuild test -scheme NeoNV -destination 'platform=macOS' \
-    ///     -only-testing:NeoNVUITests/NeoNVUITests/testFullEditWorkflowPerformance
-    ///
-    /// The XCTest measure block prints: average: X.XXX s  (σ: ...)
+    /// Uses exact title match + Return to select note and focus editor
+    /// (pure keyboard flow — no mouse clicks on the note list).
     func testFullEditWorkflowPerformance() {
         let searchField = app.textFields["search-field"]
         XCTAssertTrue(searchField.waitForExistence(timeout: 10))
 
         measure(metrics: [XCTClockMetric()]) {
-            // 1. Type search query
+            // 1. Type exact title and press Return to select + focus editor
             searchField.click()
-            searchField.typeText("meeting")
+            searchField.typeText("Meeting Notes")
+            searchField.typeKey(.return, modifierFlags: [])
 
-            // 2. Select first result
-            let noteList = app.lists["note-list"]
-            let firstNote = noteList.cells.firstMatch
-            _ = firstNote.waitForExistence(timeout: 5)
-            firstNote.click()
-
-            // 3. Type a minimal edit to trigger autosave
+            // 2. Type a minimal edit to trigger autosave
             let editor = app.textViews["note-editor"]
             _ = editor.waitForExistence(timeout: 3)
-            editor.click()
             editor.typeText(" x")
 
-            // 4. Wait for the autosave debounce to fire (50 ms debounce + write)
+            // 3. Wait for the autosave debounce to fire (50 ms debounce + write)
             Thread.sleep(forTimeInterval: 0.5)
 
             // Reset: clear search so next iteration starts clean

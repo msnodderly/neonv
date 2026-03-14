@@ -1,0 +1,2 @@
+{"type":"config","name":"NeoNV full edit workflow: search → open → edit → autosave","metricName":"avg_seconds","metricUnit":"s","bestDirection":"lower"}
+{"run":1,"commit":"46b4c6a","metric":2.983,"metrics":{},"status":"keep","description":"Baseline: full edit workflow with keyboard-only flow (Return to select+focus editor)","timestamp":1773460339512,"segment":0}
