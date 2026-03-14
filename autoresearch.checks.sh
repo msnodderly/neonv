@@ -12,8 +12,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/NeoNV"
 
-echo "==> Building NeoNV (Debug)..."
-xcodebuild build \
+echo "==> Building NeoNV for testing (Debug)..."
+# build-for-testing produces the test bundle consumed by test-without-building
+# in autoresearch.sh, keeping build time out of the benchmark metric.
+xcodebuild build-for-testing \
   -scheme NeoNV \
   -configuration Debug \
   CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \

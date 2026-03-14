@@ -11,7 +11,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/NeoNV"
 
-RESULT=$(xcodebuild test \
+# test-without-building skips the compiler entirely so that build time is never
+# included in the benchmark metric. Run autoresearch.checks.sh first to ensure
+# the test bundle is up to date.
+RESULT=$(xcodebuild test-without-building \
   -scheme NeoNV \
   -destination 'platform=macOS' \
   -only-testing:NeoNVUITests/NeoNVUITests/testFullEditWorkflowPerformance \

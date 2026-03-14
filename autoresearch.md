@@ -10,6 +10,23 @@ search for a note → select it → open editor → make an edit → autosave co
 Average seconds reported by `testFullEditWorkflowPerformance` (XCTest `measure` block).
 Printed by `./autoresearch.sh`. **Lower is better.**
 
+## What Is (and Isn't) Measured
+
+The benchmark measures **pure runtime UX performance only** — the time the user
+experiences inside the already-running app:
+
+> search for a note → select it → editor opens → edit made → autosave completes
+
+**Build time is explicitly excluded.** The app must be compiled before the
+benchmark starts. `autoresearch.sh` uses `xcodebuild test-without-building` so
+that the compiler never runs during a timed iteration. This means:
+
+- Compile time, linker time, and DerivedData warming are **not** optimization targets.
+- Every candidate change must be compiled first via `autoresearch.checks.sh`
+  (which calls `build-for-testing`) before `autoresearch.sh` runs.
+- Do **not** optimize for faster incremental builds — only for faster in-app
+  interactions visible to the user at runtime.
+
 ## Baseline
 
 Run `./autoresearch.sh` once on an unmodified build to establish the baseline.
@@ -29,15 +46,18 @@ The following areas are most likely to affect the benchmark:
 
 ## Running Manually
 
-```bash
-# Get current benchmark time
-./autoresearch.sh
+**Always build before benchmarking** — the benchmark uses `test-without-building`
+so build time never pollutes the metric.
 
-# Verify build + lint are clean
+```bash
+# Step 1: compile + lint (must pass before benchmarking)
 ./autoresearch.checks.sh
 
-# Run all UI tests (functional + benchmark)
-cd NeoNV && xcodebuild test \
+# Step 2: benchmark (no build, pure runtime measurement)
+./autoresearch.sh
+
+# Run the full test suite (functional + benchmark) without building
+cd NeoNV && xcodebuild test-without-building \
   -scheme NeoNV \
   -destination 'platform=macOS' \
   CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
