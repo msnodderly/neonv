@@ -19,7 +19,13 @@ RESULT=$(xcodebuild test-without-building \
   -destination 'platform=macOS' \
   -only-testing:NeoNVUITests/NeoNVUITests/testFullEditWorkflowPerformance \
   CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \
-  2>&1)
+  2>&1) || {
+  echo "ERROR: xcodebuild test-without-building failed." >&2
+  echo "Run ./autoresearch.checks.sh first to build the test bundle." >&2
+  echo "--- last 40 lines of xcodebuild output ---" >&2
+  echo "$RESULT" | tail -40 >&2
+  exit 1
+}
 
 # XCTest measure output format: "average: 0.234 s , σ: 0.012 s"
 AVG=$(echo "$RESULT" | grep -oE 'average: [0-9]+\.[0-9]+' | tail -1 | awk '{print $2}')
