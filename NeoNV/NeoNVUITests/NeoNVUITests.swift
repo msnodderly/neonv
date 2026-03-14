@@ -68,7 +68,14 @@ final class NeoNVUITests: XCTestCase {
         let searchField = app.textFields["search-field"]
         XCTAssertTrue(searchField.waitForExistence(timeout: 10))
 
-        measure(metrics: [XCTClockMetric()]) {
+        let measuredNoteURL = fixturesURL.appendingPathComponent("meeting-notes.md")
+        let options = XCTMeasureOptions()
+        options.iterationCount = 5
+
+        measure(metrics: [XCTClockMetric()], options: options) {
+            let baselineDate = (try? measuredNoteURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate)
+                ?? .distantPast
+
             // 1. Type exact title and press Return to select + focus editor
             searchField.click()
             searchField.typeText("Meeting Notes")
@@ -76,11 +83,11 @@ final class NeoNVUITests: XCTestCase {
 
             // 2. Type a minimal edit to trigger autosave
             let editor = app.textViews["note-editor"]
-            _ = editor.waitForExistence(timeout: 3)
+            XCTAssertTrue(editor.waitForExistence(timeout: 1), "Editor not found")
             editor.typeText(" x")
 
-            // 3. Wait for the autosave debounce to fire (50 ms debounce + write)
-            Thread.sleep(forTimeInterval: 0.5)
+            // 3. Wait only until the file is actually saved instead of always sleeping 500 ms
+            XCTAssertTrue(waitForAutosave(of: measuredNoteURL, after: baselineDate), "Autosave did not complete in time")
 
             // Reset: clear search so next iteration starts clean
             searchField.click()
@@ -119,5 +126,19 @@ final class NeoNVUITests: XCTestCase {
             }
         }
         return tmp
+    }
+
+    private func waitForAutosave(of url: URL, after baselineDate: Date, timeout: TimeInterval = 1.0) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+
+        while Date() < deadline {
+            if let updatedDate = try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,
+               updatedDate > baselineDate {
+                return true
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+        }
+
+        return false
     }
 }

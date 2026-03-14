@@ -2,3 +2,6 @@
 {"run":1,"commit":"46b4c6a","metric":2.983,"metrics":{},"status":"keep","description":"Baseline: full edit workflow with keyboard-only flow (Return to select+focus editor)","timestamp":1773460339512,"segment":0}
 {"run":2,"commit":"7eb85d1","metric":2.984,"metrics":{},"status":"discard","description":"Reduce search debounce 50→20ms, sync file load for small files, reduce autosave debounce 500→300ms — no improvement","timestamp":1773460519098,"segment":0}
 {"type":"config","name":"NeoNV full edit workflow (500-file fixture set)","metricName":"avg_seconds","metricUnit":"s","bestDirection":"lower"}
+{"run":1,"commit":"e8b914e","metric":9.679,"metrics":{},"status":"keep","description":"Baseline: 500-file fixture set with #filePath discovery. Confirms fixtures are loaded (3x slower than 3-file set).","timestamp":1773461069233,"segment":0}
+{"run":2,"commit":"e8b914e","metric":10.739,"metrics":{},"status":"discard","description":"Merge readFirstLine+readRawContent into single read per file in enumerateNotes — slower (10.74 vs 9.68), possibly noise or extra string ops","timestamp":1773461219152,"segment":0}
+{"run":5,"commit":"e8b914e","metric":0,"metrics":{},"status":"crash","description":"Baseline rerun timed out before benchmark output; investigate benchmark/runtime overhead before next iteration","timestamp":1773466197828,"segment":1}

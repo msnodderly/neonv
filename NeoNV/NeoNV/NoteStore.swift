@@ -45,14 +45,15 @@ struct NoteFile: Identifiable, Equatable {
         self.searchPath = relativePath.lowercased()
         self.searchPreview = contentPreview.lowercased()
         self.searchTags = tags.joined(separator: " ").lowercased()
+        self.searchCombined = "\(self.searchTitle)\n\(self.searchPath)\n\(self.searchPreview)\n\(self.searchTags)"
     }
+
+    /// Pre-computed combined search string for single-pass matching.
+    private(set) var searchCombined: String = ""
 
     func matches(query: String) -> Bool {
         let lowercasedQuery = query.lowercased()
-        return searchTitle.contains(lowercasedQuery) ||
-               searchPath.contains(lowercasedQuery) ||
-               searchPreview.contains(lowercasedQuery) ||
-               searchTags.contains(lowercasedQuery)
+        return searchCombined.contains(lowercasedQuery)
     }
 
     mutating func updateContent(title: String, contentPreview: String, modificationDate: Date, tags: [String] = []) {
@@ -64,6 +65,7 @@ struct NoteFile: Identifiable, Equatable {
         self.searchTitle = title.lowercased()
         self.searchPreview = contentPreview.lowercased()
         self.searchTags = tags.joined(separator: " ").lowercased()
+        self.searchCombined = "\(self.searchTitle)\n\(self.searchPath)\n\(self.searchPreview)\n\(self.searchTags)"
     }
     
     var displayTitle: String {
