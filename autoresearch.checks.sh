@@ -18,7 +18,9 @@ echo "==> Building NeoNV for testing (Debug)..."
 BUILD_OUTPUT=$(xcodebuild build-for-testing \
   -scheme NeoNV \
   -configuration Debug \
-  CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO \
+  CODE_SIGN_STYLE=Manual \
+  CODE_SIGN_IDENTITY="-" \
+  CODE_SIGNING_REQUIRED=NO \
   GENERATE_INFOPLIST_FILE=YES \
   2>&1)
 BUILD_STATUS=$?
