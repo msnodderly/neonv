@@ -81,6 +81,7 @@ struct PlainTextEditor: NSViewRepresentable {
 
         textView.refusesFocus = isHiddenFromFocus
         scrollView.refusesFocus = isHiddenFromFocus
+        textView.setAccessibilityIdentifier("note-editor")
 
         scrollView.documentView = textView
         scrollView.hasVerticalScroller = true
