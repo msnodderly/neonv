@@ -31,8 +31,8 @@ struct NoteFile: Identifiable, Equatable {
     private(set) var searchTags: String = ""
 
     // swiftlint:disable:next line_length
-    init(id: UUID = UUID(), url: URL, relativePath: String, modificationDate: Date, title: String, contentPreview: String = "", isUnsaved: Bool = false, isReadOnly: Bool = false, tags: [String] = []) {
-        self.id = id
+    init(id: UUID? = nil, url: URL, relativePath: String, modificationDate: Date, title: String, contentPreview: String = "", isUnsaved: Bool = false, isReadOnly: Bool = false, tags: [String] = []) {
+        self.id = id ?? Self.stableID(for: url)
         self.url = url
         self.relativePath = relativePath
         self.modificationDate = modificationDate
@@ -58,6 +58,24 @@ struct NoteFile: Identifiable, Equatable {
 
     func matches(lowercasedQuery: String) -> Bool {
         searchCombined.contains(lowercasedQuery)
+    }
+
+    private static func stableID(for url: URL) -> UUID {
+        let path = url.standardizedFileURL.path
+        let digest = SHA256.hash(data: Data(path.utf8))
+        var bytes = Array(digest.prefix(16))
+        bytes[6] = (bytes[6] & 0x0f) | 0x50
+        bytes[8] = (bytes[8] & 0x3f) | 0x80
+
+        let uuidString = String(
+            format: "%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+            bytes[0], bytes[1], bytes[2], bytes[3],
+            bytes[4], bytes[5],
+            bytes[6], bytes[7],
+            bytes[8], bytes[9],
+            bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]
+        )
+        return UUID(uuidString: uuidString) ?? UUID()
     }
 
     mutating func updateContent(title: String, contentPreview: String, modificationDate: Date, tags: [String] = []) {
@@ -481,7 +499,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         } ?? candidate.lastPathComponent
 
         notes[idx] = NoteFile(
-            url: candidate, relativePath: relativePath,
+            id: note.id, url: candidate, relativePath: relativePath,
             modificationDate: Date(), title: note.title,
             contentPreview: note.contentPreview, isUnsaved: true
         )
@@ -828,7 +846,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         var candidates: [WikiLinkSuggestion] = []
 
         // Reuse the same matching rules as the main Cmd+L search path.
-        for note in notes where note.matches(query: normalizedPrefix) {
+        for note in notes where note.matches(lowercasedQuery: normalizedPrefix) {
             let canonical = canonicalByNoteID[note.id] ?? canonicalWikiTarget(for: note)
             guard isSafeWikiLinkTargetForInsertion(canonical) else { continue }
             let lowerCanonical = canonical.lowercased()

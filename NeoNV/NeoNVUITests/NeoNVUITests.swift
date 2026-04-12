@@ -21,6 +21,7 @@ final class NeoNVUITests: XCTestCase {
         app = XCUIApplication()
         app.launchEnvironment["NEONV_TEST_NOTES_DIR"] = fixturesURL.path
         app.launchArguments += ["-isSearchFieldHidden", "0"]
+        app.launchArguments += ["-isFileListHidden", "0"]
         app.launch()
     }
 
@@ -38,6 +39,17 @@ final class NeoNVUITests: XCTestCase {
         XCTAssertTrue(window.waitForExistence(timeout: 10), "App window not found")
         XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
         XCTAssertTrue(scrollToBottom(using: window, bottomTitle: Self.noteTitle(Self.noteCount)), "Failed to scroll to the end of the note list")
+    }
+
+    /// Selecting a note from the list loads the full file body in the editor.
+    func testSelectingNoteLoadsEditorContent() {
+        XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
+
+        app.staticTexts[Self.noteTitle(1)].click()
+
+        let editor = app.textViews["note-editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 3), "Editor not found")
+        XCTAssertTrue(waitForEditor(editor, containing: "Line 2 for Note 0001."), "Editor did not load the selected note content")
     }
 
     /// Cmd-N creates a new note and opens the editor ready for input.
@@ -119,10 +131,28 @@ final class NeoNVUITests: XCTestCase {
         RunLoop.current.run(until: Date().addingTimeInterval(0.05))
     }
 
+    private func waitForEditor(_ editor: XCUIElement, containing expectedText: String, timeout: TimeInterval = 3) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+
+        while Date() < deadline {
+            if let value = editor.value as? String, value.contains(expectedText) {
+                return true
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+
+        return (editor.value as? String)?.contains(expectedText) == true
+    }
+
     // MARK: - Fixture helpers
 
     private func createFixtures(noteCount: Int) -> URL {
-        let tmp = FileManager.default.temporaryDirectory
+        let containerTmp = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Containers/net.area51a.NeoNV/Data/tmp", isDirectory: true)
+
+        try? FileManager.default.createDirectory(at: containerTmp, withIntermediateDirectories: true)
+
+        let tmp = containerTmp
             .appendingPathComponent("NeoNVUITests-\(UUID().uuidString)")
 
         let fixturesSource = Self.thisFilePath
