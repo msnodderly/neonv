@@ -6,12 +6,24 @@
 
 set -euo pipefail
 
-cd "$(dirname "$0")/NeoNV"
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+APP_TMP="$HOME/Library/Containers/net.area51a.NeoNV/Data/tmp"
+mkdir -p "$APP_TMP"
+FIXTURES_DIR="$(mktemp -d "$APP_TMP/NeoNVAutoresearch.XXXXXX")"
+
+cleanup() {
+  rm -rf "$FIXTURES_DIR"
+}
+trap cleanup EXIT
+
+"$ROOT_DIR/scripts/generate-test-fixtures.sh" "$FIXTURES_DIR" 500
+
+cd "$ROOT_DIR/NeoNV"
 
 # test-without-building skips the compiler entirely so that build time is never
 # included in the benchmark metric. Run autoresearch.checks.sh first to ensure
 # the test bundle is up to date.
-RESULT=$(xcodebuild test-without-building \
+RESULT=$(NEONV_TEST_NOTES_DIR="$FIXTURES_DIR" xcodebuild test-without-building \
   -scheme NeoNV \
   -destination 'platform=macOS' \
   -only-testing:NeoNVUITests/NeoNVUITests/testFullFileListScrollPerformance \

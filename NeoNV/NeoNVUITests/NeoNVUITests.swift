@@ -1,8 +1,9 @@
+import Darwin
 import XCTest
 
 /// End-to-end UI tests for NeoNV.
 ///
-/// Fixtures are copied to a temp directory each run and injected via
+/// Generated fixtures are injected via
 /// NEONV_TEST_NOTES_DIR so the user's real notes folder is never touched.
 final class NeoNVUITests: XCTestCase {
 
@@ -12,11 +13,11 @@ final class NeoNVUITests: XCTestCase {
     var app: XCUIApplication!
     var fixturesURL: URL!
 
-    override func setUp() {
-        super.setUp()
+    override func setUpWithError() throws {
+        try super.setUpWithError()
         continueAfterFailure = false
 
-        fixturesURL = createFixtures(noteCount: Self.noteCount)
+        fixturesURL = try createFixtures(noteCount: Self.noteCount)
 
         app = XCUIApplication()
         app.launchEnvironment["NEONV_TEST_NOTES_DIR"] = fixturesURL.path
@@ -25,10 +26,9 @@ final class NeoNVUITests: XCTestCase {
         app.launch()
     }
 
-    override func tearDown() {
-        app.terminate()
-        try? FileManager.default.removeItem(at: fixturesURL)
-        super.tearDown()
+    override func tearDownWithError() throws {
+        app?.terminate()
+        try super.tearDownWithError()
     }
 
     // MARK: - Functional tests
@@ -146,35 +146,53 @@ final class NeoNVUITests: XCTestCase {
 
     // MARK: - Fixture helpers
 
-    private func createFixtures(noteCount: Int) -> URL {
-        let containerTmp = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Containers/net.area51a.NeoNV/Data/tmp", isDirectory: true)
+    private func createFixtures(noteCount: Int) throws -> URL {
+        let environment = ProcessInfo.processInfo.environment
+        let fixturesURL = environment["NEONV_TEST_NOTES_DIR"]
+            .map { URL(fileURLWithPath: $0, isDirectory: true) }
+            ?? Self.defaultFixturesURL
 
-        try? FileManager.default.createDirectory(at: containerTmp, withIntermediateDirectories: true)
+        try requireGeneratedFixtures(at: fixturesURL, noteCount: noteCount)
+        return fixturesURL
+    }
 
-        let tmp = containerTmp
-            .appendingPathComponent("NeoNVUITests-\(UUID().uuidString)")
+    private func requireGeneratedFixtures(at fixturesURL: URL, noteCount: Int) throws {
+        let firstNote = fixturesURL.appendingPathComponent("note-0001.md")
+        let lastNote = fixturesURL.appendingPathComponent(String(format: "note-%04d.md", noteCount))
 
-        let fixturesSource = Self.thisFilePath
-            .deletingLastPathComponent()
-            .appendingPathComponent("Fixtures")
-
-        if FileManager.default.fileExists(atPath: fixturesSource.path) {
-            try! FileManager.default.copyItem(at: fixturesSource, to: tmp)
-        } else {
-            try! FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
-            for index in 1...noteCount {
-                let name = String(format: "note-%04d.md", index)
-                let title = Self.noteTitle(index)
-                let content = "# \(title)\n\nLine 1 for \(title).\nLine 2 for \(title).\nLine 3 for \(title).\n"
-                try! content.write(to: tmp.appendingPathComponent(name), atomically: true, encoding: .utf8)
-            }
+        if FileManager.default.fileExists(atPath: firstNote.path),
+           FileManager.default.fileExists(atPath: lastNote.path) {
+            return
         }
 
-        return tmp
+        throw FixtureGenerationError(message: """
+        Missing generated UI test fixtures in \(fixturesURL.path).
+        Run: scripts/generate-test-fixtures.sh \(fixturesURL.path) \(noteCount)
+        """)
     }
 
     private static func noteTitle(_ index: Int) -> String {
         String(format: "Note %04d", index)
+    }
+
+    private static var hostHomeDirectory: URL {
+        if let passwd = getpwuid(getuid()), let home = passwd.pointee.pw_dir {
+            return URL(fileURLWithPath: String(cString: home), isDirectory: true)
+        }
+
+        return FileManager.default.homeDirectoryForCurrentUser
+    }
+
+    private static var defaultFixturesURL: URL {
+        hostHomeDirectory
+            .appendingPathComponent("Library/Containers/net.area51a.NeoNV/Data/tmp/NeoNVUITests-Fixtures", isDirectory: true)
+    }
+}
+
+private struct FixtureGenerationError: Error, CustomStringConvertible {
+    let message: String
+
+    var description: String {
+        message
     }
 }

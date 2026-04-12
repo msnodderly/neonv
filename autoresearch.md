@@ -40,6 +40,11 @@ The following areas are most likely to affect the benchmark:
 **Always build before benchmarking** — the benchmark uses `test-without-building`
 so build time never pollutes the metric.
 
+The UI benchmark generates its 500-note fixture set with
+`scripts/generate-test-fixtures.sh`; the fixture files are not checked in.
+`autoresearch.sh` creates a temporary fixture directory inside NeoNV's app
+container and removes it when the benchmark exits.
+
 ```bash
 # Step 1: compile + lint (must pass before benchmarking)
 ./autoresearch.checks.sh
@@ -47,3 +52,12 @@ so build time never pollutes the metric.
 # Step 2: benchmark (no build, pure runtime measurement)
 ./autoresearch.sh
 ```
+
+To generate the same fixture set manually:
+
+```bash
+scripts/generate-test-fixtures.sh
+```
+
+That default writes to `~/Library/Containers/net.area51a.NeoNV/Data/tmp/NeoNVUITests-Fixtures`,
+which is the fallback path used by the UI tests when `NEONV_TEST_NOTES_DIR` is not set.
