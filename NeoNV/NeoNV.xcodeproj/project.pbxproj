@@ -25,6 +25,7 @@
 		A0123456000000000000000D /* HighlightedText.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0123456000000000000001D /* HighlightedText.swift */; };
 		A0123456000000000000000E /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0123456000000000000001E /* HelpView.swift */; };
 		A0123456000000000000000F /* NavigationHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0123456000000000000001F /* NavigationHistory.swift */; };
+		A0UITEST001 /* NeoNVUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0UITEST010 /* NeoNVUITests.swift */; };
 /* End PBXBuildFile section */
 
 	/* Begin PBXFileReference section */
@@ -46,10 +47,19 @@
 		A0123456000000000000001D /* HighlightedText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighlightedText.swift; sourceTree = "<group>"; };
 		A0123456000000000000001E /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
 		A0123456000000000000001F /* NavigationHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationHistory.swift; sourceTree = "<group>"; };
+		A0UITEST010 /* NeoNVUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeoNVUITests.swift; sourceTree = "<group>"; };
+		A0UITEST020 /* NeoNVUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NeoNVUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		A01234560000000000000020 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A0UITEST042 /* Frameworks (UITests) */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -63,6 +73,7 @@
 			isa = PBXGroup;
 			children = (
 				A01234560000000000000031 /* NeoNV */,
+				A0UITEST030 /* NeoNVUITests */,
 				A01234560000000000000032 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -96,8 +107,17 @@
 			isa = PBXGroup;
 			children = (
 				A01234560000000000000010 /* NeoNV.app */,
+				A0UITEST020 /* NeoNVUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A0UITEST030 /* NeoNVUITests */ = {
+			isa = PBXGroup;
+			children = (
+				A0UITEST010 /* NeoNVUITests.swift */,
+			);
+			path = NeoNVUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -121,6 +141,24 @@
 			productReference = A01234560000000000000010 /* NeoNV.app */;
 			productType = "com.apple.product-type.application";
 		};
+		A0UITEST040 /* NeoNVUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A0UITEST050 /* Build configuration list for PBXNativeTarget "NeoNVUITests" */;
+			buildPhases = (
+				A0UITEST041 /* Sources */,
+				A0UITEST042 /* Frameworks (UITests) */,
+				A0UITEST043 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A0UITEST071 /* PBXTargetDependency */,
+			);
+			name = NeoNVUITests;
+			productName = NeoNVUITests;
+			productReference = A0UITEST020 /* NeoNVUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -133,6 +171,10 @@
 				TargetAttributes = {
 					A01234560000000000000040 = {
 						CreatedOnToolsVersion = 15.0;
+					};
+					A0UITEST040 = {
+						CreatedOnToolsVersion = 15.0;
+						TestTargetID = A01234560000000000000040;
 					};
 				};
 			};
@@ -150,6 +192,7 @@
 			projectRoot = "";
 			targets = (
 				A01234560000000000000040 /* NeoNV */,
+				A0UITEST040 /* NeoNVUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -160,6 +203,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				A01234560000000000000003 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A0UITEST043 /* Resources (UITests) */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -211,7 +261,33 @@
 				);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A0UITEST041 /* Sources (UITests) */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A0UITEST001 /* NeoNVUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXContainerItemProxy section */
+		A0UITEST072 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A01234560000000000000050 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A01234560000000000000040;
+			remoteInfo = NeoNV;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		A0UITEST071 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A01234560000000000000040 /* NeoNV */;
+			targetProxy = A0UITEST072 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		A01234560000000000000070 /* Debug */ = {
@@ -386,6 +462,36 @@
 			};
 			name = Release;
 		};
+		A0UITEST060 /* Debug (UITests) */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = net.area51a.NeoNVUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = NeoNV;
+			};
+			name = Debug;
+		};
+		A0UITEST061 /* Release (UITests) */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = net.area51a.NeoNVUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = NeoNV;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -403,6 +509,15 @@
 			buildConfigurations = (
 				A01234560000000000000080 /* Debug */,
 				A01234560000000000000081 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A0UITEST050 /* Build configuration list for PBXNativeTarget "NeoNVUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A0UITEST060 /* Debug */,
+				A0UITEST061 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

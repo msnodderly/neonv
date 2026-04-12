@@ -104,6 +104,7 @@ struct HorizontalNoteListView: View {
                     }
                     .padding(.vertical, 4)
                     .tag(note.id)
+                    .accessibilityIdentifier("note-row")
                     .contextMenu {
                         if !note.isUnsaved, let onAddTag = onAddTag {
                             Button("Add Tags...") {
@@ -130,6 +131,7 @@ struct HorizontalNoteListView: View {
                 .listStyle(.sidebar)
                 .focusable()
                 .focused($focusedField, equals: .noteList)
+                .accessibilityIdentifier("note-list")
                 .onKeyPress { press in
                     if press.key == .tab && press.modifiers.contains(.shift) {
                         onShiftTabToSearch()
