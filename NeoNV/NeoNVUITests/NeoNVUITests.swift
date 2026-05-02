@@ -52,6 +52,22 @@ final class NeoNVUITests: XCTestCase {
         XCTAssertTrue(waitForEditor(editor, containing: "Line 2 for Note 0001."), "Editor did not load the selected note content")
     }
 
+    /// Pressing Return after a partial search opens the current top match instead of creating a note.
+    func testSearchReturnOpensTopPartialMatch() {
+        XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
+
+        let searchField = app.textFields["search-field"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Search field not found")
+
+        searchField.click()
+        searchField.typeText("0420")
+        app.typeKey(.return, modifierFlags: [])
+
+        let editor = app.textViews["note-editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 3), "Editor not found")
+        XCTAssertTrue(waitForEditor(editor, containing: "Line 2 for Note 0420."), "Return from search did not open the top partial match")
+    }
+
     /// Cmd-N creates a new note and opens the editor ready for input.
     func testCreateNewNoteWorkflow() {
         let searchField = app.textFields["search-field"]

@@ -521,17 +521,22 @@ struct ContentView: View {
         }
     }
 
-    private func rebuildFilteredNotes() {
-        let query = debouncedSearchText
+    @discardableResult
+    private func rebuildFilteredNotes(for query: String? = nil) -> [NoteFile] {
+        let notes = notesFiltered(by: query ?? debouncedSearchText)
+        filteredNotesCache = notes
+        return notes
+    }
+
+    private func notesFiltered(by query: String) -> [NoteFile] {
         let lowercasedQuery = query.lowercased()
         let baseNotes = query.isEmpty ? noteStore.notes : noteStore.notes.filter { $0.matches(lowercasedQuery: lowercasedQuery) }
 
         guard !unsavedNoteIDs.isEmpty else {
-            filteredNotesCache = baseNotes
-            return
+            return baseNotes
         }
 
-        filteredNotesCache = baseNotes.map { note in
+        return baseNotes.map { note in
             guard unsavedNoteIDs.contains(note.id) else { return note }
             var updatedNote = note
             updatedNote.isUnsaved = true
@@ -1266,13 +1271,25 @@ private extension ContentView {
     }
 
     func handleSearchSubmit() {
+        searchDebounceTask?.cancel()
+        debouncedSearchText = searchText
+        let currentMatches = rebuildFilteredNotes(for: searchText)
+
         guard !searchText.isEmpty else {
-            if filteredNotes.count == 1 { focusEditor() }
-            else if filteredNotes.count > 1 { navigateToList() }
+            if currentMatches.count == 1 {
+                focusEditor()
+            } else if currentMatches.count > 1 {
+                navigateToList()
+            }
             return
         }
         if let exactTitleMatch = findExactTitleMatch(in: noteStore.notes, for: searchText) {
             selectedNoteID = exactTitleMatch.id
+            focusEditor()
+            return
+        }
+        if let firstMatch = currentMatches.first {
+            selectedNoteID = firstMatch.id
             focusEditor()
             return
         }
