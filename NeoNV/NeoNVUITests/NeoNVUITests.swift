@@ -23,6 +23,9 @@ final class NeoNVUITests: XCTestCase {
         app.launchEnvironment["NEONV_TEST_NOTES_DIR"] = fixturesURL.path
         app.launchArguments += ["-isSearchFieldHidden", "0"]
         app.launchArguments += ["-isFileListHidden", "0"]
+        // Window/split state restored from a previous manual session would
+        // override the defaults under test (e.g. list pane width).
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
         app.launch()
     }
 
@@ -45,11 +48,19 @@ final class NeoNVUITests: XCTestCase {
     func testSelectingNoteLoadsEditorContent() {
         XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
 
-        app.staticTexts[Self.noteTitle(1)].click()
+        // Narrow first so the target row is on screen regardless of sort order.
+        let searchField = app.textFields["search-field"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Search field not found")
+        searchField.click()
+        searchField.typeText("0137")
+
+        let row = app.staticTexts[Self.noteTitle(137)]
+        XCTAssertTrue(row.waitForExistence(timeout: 3), "Narrowed list missing target note")
+        row.click()
 
         let editor = app.textViews["note-editor"]
         XCTAssertTrue(editor.waitForExistence(timeout: 3), "Editor not found")
-        XCTAssertTrue(waitForEditor(editor, containing: "Line 2 for Note 0001."), "Editor did not load the selected note content")
+        XCTAssertTrue(waitForEditor(editor, containing: "Line 2 for Note 0137."), "Editor did not load the selected note content")
     }
 
     /// Pressing Return after a partial search opens the current top match instead of creating a note.
@@ -80,6 +91,299 @@ final class NeoNVUITests: XCTestCase {
         editor.typeText("Automated test note\nContent written by XCUITest.")
     }
 
+    /// Typing in the search field narrows the list to matching notes only.
+    func testSearchNarrowsListToMatches() {
+        XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
+
+        let searchField = app.textFields["search-field"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Search field not found")
+
+        searchField.click()
+        searchField.typeText("0420")
+
+        let match = app.staticTexts[Self.noteTitle(420)]
+        XCTAssertTrue(match.waitForExistence(timeout: 3), "Matching note missing from narrowed list")
+
+        let nonMatch = app.staticTexts[Self.noteTitle(1)]
+        let deadline = Date().addingTimeInterval(3)
+        while Date() < deadline && nonMatch.exists {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+        XCTAssertFalse(nonMatch.exists, "Non-matching note still visible after narrowing")
+
+        takeScreenshot(named: "search-narrowed")
+    }
+
+    /// A search that matches deep in a note body recenters the row preview on
+    /// the match (prefixed with an ellipsis) so the user can see why the note
+    /// is in the results.
+    func testBodyMatchShowsRecenteredSnippet() throws {
+        // snippet-probe.md (generated with the fixtures) holds the only
+        // occurrence of the term, deep enough that the row must recenter.
+        let probeURL = fixturesURL.appendingPathComponent("snippet-probe.md")
+        guard FileManager.default.fileExists(atPath: probeURL.path) else {
+            throw FixtureGenerationError(message: """
+            Missing snippet-probe.md in \(fixturesURL.path).
+            Regenerate fixtures: scripts/generate-test-fixtures.sh \(fixturesURL.path)
+            """)
+        }
+
+        XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
+
+        let searchField = app.textFields["search-field"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Search field not found")
+        searchField.click()
+        searchField.typeText("xylophone")
+
+        let probeTitle = app.staticTexts["Snippet Probe"]
+        XCTAssertTrue(probeTitle.waitForExistence(timeout: 5), "Probe note not found by body search")
+
+        // SwiftUI exposes these list texts through the AX value, not the label.
+        let snippet = app.staticTexts.matching(
+            NSPredicate(format: "value BEGINSWITH %@ AND value CONTAINS %@", "…", "xylophone")
+        ).firstMatch
+        XCTAssertTrue(snippet.waitForExistence(timeout: 3), "Row preview was not recentered on the body match")
+
+        takeScreenshot(named: "body-match-snippet")
+    }
+
+    /// The file list pane defaults to 25% of the window width.
+    func testListPaneDefaultWidthIsQuarterOfWindow() {
+        XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
+
+        let window = app.windows.firstMatch
+        let list = app.descendants(matching: .any).matching(identifier: "note-list").firstMatch
+        XCTAssertTrue(list.waitForExistence(timeout: 5), "Note list element not found")
+
+        let windowWidth = window.frame.width
+        let ratio = list.frame.width / windowWidth
+        XCTAssertEqual(ratio, 0.25, accuracy: 0.04,
+                       "List pane is \(list.frame.width)pt of \(windowWidth)pt (\(ratio)) — expected ~25%")
+
+        takeScreenshot(named: "pane-width")
+    }
+
+    /// Cmd-Shift-B toggles the file list pane.
+    func testToggleFileListShortcut() {
+        XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
+        let list = app.descendants(matching: .any).matching(identifier: "note-list").firstMatch
+        XCTAssertTrue(list.waitForExistence(timeout: 5), "Note list not found")
+
+        app.typeKey("b", modifierFlags: [.command, .shift])
+        let deadline = Date().addingTimeInterval(3)
+        while Date() < deadline && list.exists {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+        XCTAssertFalse(list.exists, "File list still visible after Cmd-Shift-B")
+
+        app.typeKey("b", modifierFlags: [.command, .shift])
+        XCTAssertTrue(list.waitForExistence(timeout: 3), "File list did not come back after Cmd-Shift-B")
+    }
+
+    /// Closing the window quits the app (single-window semantics).
+    func testCloseWindowQuitsApp() {
+        let window = app.windows.firstMatch
+        XCTAssertTrue(window.waitForExistence(timeout: 10), "App window not found")
+
+        window.buttons[XCUIIdentifierCloseWindow].click()
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 5), "App did not quit after closing its window")
+    }
+
+    /// Clearing the search scrolls the restored selection back into view.
+    func testClearingSearchRevealsSelection() {
+        let window = app.windows.firstMatch
+        XCTAssertTrue(window.waitForExistence(timeout: 10), "App window not found")
+        XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
+
+        // Manually select the oldest note (deepest row in the list).
+        let list = app.descendants(matching: .any).matching(identifier: "note-list").firstMatch
+        XCTAssertTrue(list.waitForExistence(timeout: 5), "Note list not found")
+        let oldest = app.staticTexts[Self.noteTitle(1)]
+        XCTAssertTrue(scrollListUntilHittable(oldest, in: list), "Could not scroll to the oldest note")
+        oldest.click()
+
+        // Searching saves the manual selection; clearing restores it.
+        let searchField = app.textFields["search-field"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Search field not found")
+        searchField.click()
+        searchField.typeText("0500")
+        XCTAssertTrue(app.staticTexts[Self.noteTitle(500)].waitForExistence(timeout: 3), "Search did not narrow")
+        app.typeKey(.escape, modifierFlags: [])
+
+        let deadline = Date().addingTimeInterval(3)
+        while Date() < deadline && !oldest.isHittable {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+        XCTAssertTrue(oldest.isHittable, "Cleared search did not reveal the selected note")
+    }
+
+    /// Multi-word search requires all terms anywhere (AND), not the phrase.
+    func testMultiWordSearchRequiresAllTerms() {
+        XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
+
+        let searchField = app.textFields["search-field"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Search field not found")
+        searchField.click()
+        // "0042" (title/filename) and "line 3" (body) never form a phrase.
+        searchField.typeText("0042 line 3")
+
+        let match = app.staticTexts[Self.noteTitle(42)]
+        XCTAssertTrue(match.waitForExistence(timeout: 3), "AND search missed the note containing all terms")
+
+        let nonMatch = app.staticTexts[Self.noteTitle(41)]
+        let deadline = Date().addingTimeInterval(2)
+        while Date() < deadline && nonMatch.exists {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+        XCTAssertFalse(nonMatch.exists, "AND search kept a note that lacks a term")
+    }
+
+    /// Search matches content past the 2 KB preview cap, and the row shows a
+    /// recentered snippet for the deep match.
+    func testSearchFindsMatchBeyondPreviewCap() throws {
+        let probeURL = fixturesURL.appendingPathComponent("deep-probe.md")
+        guard FileManager.default.fileExists(atPath: probeURL.path) else {
+            throw FixtureGenerationError(message: """
+            Missing deep-probe.md in \(fixturesURL.path).
+            Regenerate fixtures: scripts/generate-test-fixtures.sh \(fixturesURL.path)
+            """)
+        }
+
+        XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
+
+        let searchField = app.textFields["search-field"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Search field not found")
+        searchField.click()
+        searchField.typeText("quetzalcoatl")
+
+        XCTAssertTrue(app.staticTexts["Deep Probe"].waitForExistence(timeout: 3),
+                      "Search did not find a match past the preview cap")
+
+        let snippet = app.staticTexts.matching(
+            NSPredicate(format: "value BEGINSWITH %@ AND value CONTAINS %@", "…", "quetzalcoatl")
+        ).firstMatch
+        XCTAssertTrue(snippet.waitForExistence(timeout: 3), "Deep match did not show a recentered snippet")
+    }
+
+    // MARK: - Exploratory UI exercise
+    //
+    // Drives the main UI surfaces end to end, attaching screenshots so a
+    // reviewer can audit each state. Soft-fails (records issues) rather than
+    // aborting, to maximize coverage per run.
+
+    func testExerciseCoreSurfaces() {
+        continueAfterFailure = true
+        XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
+        let searchField = app.textFields["search-field"]
+
+        XCTContext.runActivity(named: "Search, open top hit via Return") { _ in
+            searchField.click()
+            searchField.typeText("0042")
+            app.typeKey(.return, modifierFlags: [])
+            let editor = app.textViews["note-editor"]
+            XCTAssertTrue(editor.waitForExistence(timeout: 3), "Editor missing after search Return")
+            XCTAssertTrue(waitForEditor(editor, containing: "Line 2 for Note 0042."), "Top hit did not open")
+            takeScreenshot(named: "exercise-1-open-top-hit")
+        }
+
+        XCTContext.runActivity(named: "Preview toggle (Cmd-P) on and off") { _ in
+            app.typeKey("p", modifierFlags: .command)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+            takeScreenshot(named: "exercise-2-preview-on")
+            app.typeKey("p", modifierFlags: .command)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+        }
+
+        XCTContext.runActivity(named: "Find in note (Cmd-F) opens find bar") { _ in
+            app.typeKey("f", modifierFlags: .command)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+            takeScreenshot(named: "exercise-3-find-bar")
+            app.typeKey(.escape, modifierFlags: [])
+        }
+
+        XCTContext.runActivity(named: "Toggle layout (Cmd-Shift-J) round trip") { _ in
+            app.typeKey("j", modifierFlags: [.command, .shift])
+            RunLoop.current.run(until: Date().addingTimeInterval(0.8))
+            takeScreenshot(named: "exercise-4-horizontal-layout")
+            app.typeKey("j", modifierFlags: [.command, .shift])
+            RunLoop.current.run(until: Date().addingTimeInterval(0.8))
+        }
+
+        XCTContext.runActivity(named: "Hide and show search bar (Cmd-Shift-L)") { _ in
+            app.typeKey("l", modifierFlags: [.command, .shift])
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+            XCTAssertFalse(searchField.exists, "Search field still visible after hide")
+            takeScreenshot(named: "exercise-5-search-hidden")
+            app.typeKey("l", modifierFlags: [.command, .shift])
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+            XCTAssertTrue(searchField.waitForExistence(timeout: 2), "Search field did not come back")
+        }
+
+        XCTContext.runActivity(named: "Keyboard flow: search -> list -> editor -> search") { _ in
+            app.typeKey("l", modifierFlags: .command)
+            searchField.typeText("Note 01")
+            app.typeKey(.downArrow, modifierFlags: [])   // into list
+            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+            app.typeKey(.downArrow, modifierFlags: [])   // next row
+            app.typeKey(.return, modifierFlags: [])      // into editor
+            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+            takeScreenshot(named: "exercise-6-keyboard-flow")
+            app.typeKey("l", modifierFlags: .command)    // back to search
+        }
+
+        XCTContext.runActivity(named: "Navigation history back/forward (Cmd-[ / Cmd-])") { _ in
+            app.typeKey(.escape, modifierFlags: [])
+            app.typeKey("[", modifierFlags: .command)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+            app.typeKey("]", modifierFlags: .command)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+            takeScreenshot(named: "exercise-7-nav-history")
+        }
+
+        XCTContext.runActivity(named: "Rename via context menu") { _ in
+            app.typeKey("l", modifierFlags: .command)
+            searchField.typeText("0003")
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+            let row = app.staticTexts[Self.noteTitle(3)]
+            if row.waitForExistence(timeout: 3) {
+                row.rightClick()
+                let renameItem = app.menuItems["Rename"]
+                if renameItem.waitForExistence(timeout: 2) {
+                    renameItem.click()
+                    RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+                    takeScreenshot(named: "exercise-8-rename-dialog")
+                    // The dialog field is focused with the name pre-selected;
+                    // type at the app level — the field isn't reliably
+                    // addressable through the textFields query.
+                    app.typeText("renamed-note-0003")
+                    app.typeKey(.return, modifierFlags: [])
+                    RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+                } else {
+                    XCTFail("Rename menu item not found")
+                }
+            } else {
+                XCTFail("Could not find note row for rename")
+            }
+        }
+
+        XCTContext.runActivity(named: "Keyboard shortcuts sheet (Cmd-K)") { _ in
+            app.typeKey("k", modifierFlags: .command)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.8))
+            takeScreenshot(named: "exercise-9-shortcuts-sheet")
+            app.typeKey(.escape, modifierFlags: [])
+            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+        }
+
+        takeScreenshot(named: "exercise-final-state")
+    }
+
+    private func takeScreenshot(named name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     // MARK: - Performance benchmark
 
     /// Full file-list scrolling workflow: start at top of list and scroll until
@@ -89,10 +393,15 @@ final class NeoNVUITests: XCTestCase {
     func testFullFileListScrollPerformance() {
         let window = app.windows.firstMatch
         XCTAssertTrue(window.waitForExistence(timeout: 10), "App window not found")
-        XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
+        // Generous: the first launch of a freshly built binary can take >10s
+        // to draw (one-time macOS verification). Setup only — not measured.
+        XCTAssertTrue(waitForInitialListPopulation(timeout: 30), "Note list never populated")
 
         let options = XCTMeasureOptions()
         options.iterationCount = 5
+        // Required for the explicit startMeasuring/stopMeasuring calls below;
+        // current XCTest asserts otherwise ("autoStop mode").
+        options.invocationOptions = [.manuallyStart, .manuallyStop]
 
         measure(metrics: [XCTClockMetric()], options: options) {
             XCTAssertTrue(scrollToTop(using: window, topTitle: Self.noteTitle(1)), "Failed to reset list to the top")
@@ -131,6 +440,20 @@ final class NeoNVUITests: XCTestCase {
             dragUpInListPane(window: window)
         }
         return app.staticTexts[bottomTitle].exists
+    }
+
+    /// Scrolls the list until `element` is actually hittable. Two traps here:
+    /// `exists` is the wrong signal (SwiftUI exposes off-screen rows to AX
+    /// with infinite frames), and press-drag doesn't scroll macOS lists — it
+    /// selects rows. Wheel-event scrolling via scroll(byDeltaX:deltaY:) is
+    /// the primitive that actually moves the list.
+    private func scrollListUntilHittable(_ element: XCUIElement, in list: XCUIElement, maxAttempts: Int = 60) -> Bool {
+        for _ in 0..<maxAttempts {
+            if element.isHittable { return true }
+            list.scroll(byDeltaX: 0, deltaY: -3000)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+        return element.isHittable
     }
 
     private func dragUpInListPane(window: XCUIElement) {

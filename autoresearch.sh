@@ -23,7 +23,10 @@ cd "$ROOT_DIR/NeoNV"
 # test-without-building skips the compiler entirely so that build time is never
 # included in the benchmark metric. Run autoresearch.checks.sh first to ensure
 # the test bundle is up to date.
-RESULT=$(NEONV_TEST_NOTES_DIR="$FIXTURES_DIR" xcodebuild test-without-building \
+# TEST_RUNNER_ prefix is required for xcodebuild to forward the variable to
+# the UI test runner process; the bare variable covers unit-test contexts.
+RESULT=$(NEONV_TEST_NOTES_DIR="$FIXTURES_DIR" \
+  TEST_RUNNER_NEONV_TEST_NOTES_DIR="$FIXTURES_DIR" xcodebuild test-without-building \
   -scheme NeoNV \
   -destination 'platform=macOS' \
   -only-testing:NeoNVUITests/NeoNVUITests/testFullFileListScrollPerformance \

@@ -24,6 +24,13 @@ that the compiler never runs during a timed iteration.
 Run `./autoresearch.sh` once on an unmodified build to establish the baseline.
 Record the result here after the first run.
 
+- **2026-06-11: 1.240 s** (500 notes, 5 iterations, M-series, Debug build).
+  First recorded baseline — earlier runs couldn't complete: the fixtures env
+  var never reached the UI test runner (needs the `TEST_RUNNER_` prefix), a
+  fresh fixtures folder hit the single-publish empty-list bug, and current
+  XCTest requires `invocationOptions = [.manuallyStart, .manuallyStop]` for
+  explicit start/stop. All three are fixed.
+
 ## Optimization Targets
 
 The following areas are most likely to affect the benchmark:
