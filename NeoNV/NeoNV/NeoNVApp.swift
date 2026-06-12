@@ -11,6 +11,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             window.setFrameAutosaveName("NeoNVMainWindow")
         }
 
+        // Terminal launches don't activate the app; when the user explicitly
+        // passed a folder on the command line, bring the window forward.
+        if NoteStore.launchFolderArgument() != nil {
+            NSApp.activate(ignoringOtherApps: true)
+        }
+
         // Monitor mouse back/forward buttons (buttons 3 and 4 on multi-button mice).
         // NSEvent button numbers: 0=left, 1=right, 2=middle, 3=back, 4=forward
         mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .otherMouseUp) { event in
@@ -29,6 +35,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let monitor = mouseMonitor {
             NSEvent.removeMonitor(monitor)
         }
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        // Single-window app: closing the window quits. This also means the
+        // app can never save a "no windows" restoration state, which used to
+        // strand command-line launches with an invisible app.
+        return true
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
@@ -54,6 +67,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 struct NeoNVApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var noteStore = NoteStore()
+
+    init() {
+        Self.migrateSandboxContainerPreferencesIfNeeded()
+    }
+
+    /// One-time import of preferences written by earlier sandboxed builds.
+    /// Those builds stored UserDefaults inside the app container, which the
+    /// un-sandboxed app no longer reads — without this import, existing users
+    /// would lose their saved notes folder and settings on upgrade.
+    private static func migrateSandboxContainerPreferencesIfNeeded() {
+        let defaults = UserDefaults.standard
+        let migrationKey = "didMigrateSandboxContainerPreferences"
+        guard !defaults.bool(forKey: migrationKey) else { return }
+
+        // When running sandboxed, NSHomeDirectory() already points inside the
+        // container, so this path doesn't exist and the import is skipped.
+        let containerPlist = NSHomeDirectory()
+            + "/Library/Containers/net.area51a.NeoNV/Data/Library/Preferences/net.area51a.NeoNV.plist"
+        if let imported = NSDictionary(contentsOfFile: containerPlist) as? [String: Any] {
+            for (key, value) in imported where defaults.object(forKey: key) == nil {
+                defaults.set(value, forKey: key)
+            }
+        }
+        defaults.set(true, forKey: migrationKey)
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -120,6 +158,7 @@ struct NeoNVApp: App {
                 Button("Toggle File List") {
                     NotificationCenter.default.post(name: .toggleFileList, object: nil)
                 }
+                .keyboardShortcut("b", modifiers: [.command, .shift])
 
                 Button("Toggle Preview") {
                     NotificationCenter.default.post(name: .togglePreview, object: nil)

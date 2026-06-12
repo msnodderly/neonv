@@ -51,6 +51,8 @@ struct ContentView: View {
     @State private var wikiAmbiguousTarget: String?
     @State private var wikiAmbiguousMatches: [NoteFile] = []
     @StateObject private var navHistory = NavigationHistory()
+    @State private var fileListWidth: CGFloat?
+    @State private var revealSelectionTick = 0
     @FocusState private var focusedField: FocusedField?
 
     struct ExternalConflict: Identifiable {
@@ -154,6 +156,9 @@ struct ContentView: View {
                 debouncedSearchText = ""
                 rebuildFilteredNotes()
                 autoSelectTopMatch()
+                // The restored selection is often scrolled out of view once
+                // the full list replaces the narrowed one — bring it back.
+                revealSelectionTick += 1
             } else {
                 searchDebounceTask?.cancel()
                 searchDebounceTask = Task {
@@ -172,8 +177,12 @@ struct ContentView: View {
                 handleExternalChange(change)
             }
         }
-        .onReceive(noteStore.$notes) { _ in
-            rebuildFilteredNotes()
+        .onReceive(noteStore.$notes) { newNotes in
+            // @Published emits on willSet — noteStore.notes still holds the
+            // old array here, so filter the received value. Reading the
+            // property left the list permanently empty when a fresh folder
+            // (no metadata cache) published exactly once.
+            rebuildFilteredNotes(from: newNotes)
         }
         .alert(item: $saveError) { error in
             Alert(
@@ -413,15 +422,34 @@ struct ContentView: View {
         }
     }
 
+    // HSplitView derives its divider position from the panes' natural content
+    // sizes and ignores idealWidth, so it can't express "default to 25% of the
+    // window". This custom splitter can: the list pane defaults to 25% and the
+    // divider stays user-draggable within the same min/max bounds as before.
     @ViewBuilder
     private var verticalLayout: some View {
-        HSplitView {
-            if !settings.isFileListHidden {
-                noteListPane
-                    .frame(minWidth: 180, idealWidth: 580, maxWidth: 800)
+        GeometryReader { geo in
+            HStack(spacing: 0) {
+                if !settings.isFileListHidden {
+                    noteListPane
+                        .frame(width: clampedFileListWidth(totalWidth: geo.size.width))
+
+                    PaneDivider { dividerX in
+                        fileListWidth = dividerX
+                    }
+                }
+                editorOrPreviewPane
+                    .frame(maxWidth: .infinity)
             }
-            editorOrPreviewPane
+            .coordinateSpace(name: "verticalSplit")
         }
+    }
+
+    private func clampedFileListWidth(totalWidth: CGFloat) -> CGFloat {
+        let editorMinWidth: CGFloat = 300
+        let width = fileListWidth ?? totalWidth * 0.25
+        let upperBound = max(180, min(800, totalWidth - editorMinWidth))
+        return min(max(width, 180), upperBound)
     }
 
     @ViewBuilder
@@ -434,6 +462,7 @@ struct ContentView: View {
                     focusedField: _focusedField,
                     isLoading: noteStore.isLoading,
                     searchText: debouncedSearchText,
+                    revealSelectionTrigger: revealSelectionTick,
                     onTabToEditor: focusEditor,
                     onShiftTabToSearch: focusSearch,
                     onEnterToEditor: focusEditor,
@@ -466,6 +495,7 @@ struct ContentView: View {
             focusedField: _focusedField,
             isLoading: noteStore.isLoading,
             searchText: debouncedSearchText,
+            revealSelectionTrigger: revealSelectionTick,
             onTabToEditor: focusEditor,
             onShiftTabToSearch: focusSearch,
             onEnterToEditor: focusEditor,
@@ -522,15 +552,17 @@ struct ContentView: View {
     }
 
     @discardableResult
-    private func rebuildFilteredNotes(for query: String? = nil) -> [NoteFile] {
-        let notes = notesFiltered(by: query ?? debouncedSearchText)
-        filteredNotesCache = notes
-        return notes
+    private func rebuildFilteredNotes(for query: String? = nil, from notes: [NoteFile]? = nil) -> [NoteFile] {
+        let filtered = notesFiltered(by: query ?? debouncedSearchText, in: notes ?? noteStore.notes)
+        filteredNotesCache = filtered
+        return filtered
     }
 
-    private func notesFiltered(by query: String) -> [NoteFile] {
-        let lowercasedQuery = query.lowercased()
-        let baseNotes = query.isEmpty ? noteStore.notes : noteStore.notes.filter { $0.matches(lowercasedQuery: lowercasedQuery) }
+    private func notesFiltered(by query: String, in allNotes: [NoteFile]) -> [NoteFile] {
+        // Tokenize once per rebuild, not per note. AND-of-terms: a multi-word
+        // query matches notes containing every term anywhere, not the phrase.
+        let terms = NoteFile.searchTerms(from: query)
+        let baseNotes = terms.isEmpty ? allNotes : allNotes.filter { $0.matches(allLowercasedTerms: terms) }
 
         guard !unsavedNoteIDs.isEmpty else {
             return baseNotes
@@ -1630,6 +1662,33 @@ struct SearchBar: View {
     }
 }
 
+/// Draggable vertical divider between the file list and the editor.
+/// Reports the divider's x position (== desired list width) while dragging.
+struct PaneDivider: View {
+    var onDrag: (CGFloat) -> Void
+
+    var body: some View {
+        Rectangle()
+            .fill(Color(NSColor.separatorColor))
+            .frame(width: 1)
+            .contentShape(Rectangle().inset(by: -4))
+            .gesture(
+                DragGesture(minimumDistance: 1, coordinateSpace: .named("verticalSplit"))
+                    .onChanged { value in
+                        onDrag(value.location.x)
+                    }
+            )
+            .onHover { inside in
+                if inside {
+                    NSCursor.resizeLeftRight.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
+            .accessibilityIdentifier("pane-divider")
+    }
+}
+
 struct CollapsibleSearchDivider: View {
     @Binding var isSearchHidden: Bool
     var onHide: () -> Void
@@ -1698,6 +1757,7 @@ struct NoteListView: View {
     @FocusState var focusedField: FocusedField?
     var isLoading: Bool
     var searchText: String
+    var revealSelectionTrigger: Int = 0
     var onTabToEditor: () -> Void
     var onShiftTabToSearch: () -> Void
     var onEnterToEditor: () -> Void
@@ -1710,9 +1770,15 @@ struct NoteListView: View {
 
     @ObservedObject private var settings = AppSettings.shared
 
+    /// Terms used to recenter row previews on body matches (always active
+    /// during a search, independent of the highlighting setting).
+    private var snippetTerms: [String] {
+        searchText.isEmpty ? [] : NoteFile.searchTerms(from: searchText)
+    }
+
     private var searchTerms: [String] {
-        guard settings.searchHighlightingEnabled, !searchText.isEmpty else { return [] }
-        return [searchText]
+        guard settings.searchHighlightingEnabled else { return [] }
+        return snippetTerms
     }
 
     var body: some View {
@@ -1725,6 +1791,14 @@ struct NoteListView: View {
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
+                ScrollViewReader { proxy in
+                noteList(proxy: proxy)
+                }
+            }
+        }
+    }
+
+    private func noteList(proxy: ScrollViewProxy) -> some View {
                 List(notes, selection: $selectedNoteID) { note in
                     VStack(alignment: .leading, spacing: 2) {
                         HighlightedText(
@@ -1764,10 +1838,20 @@ struct NoteListView: View {
                         }
 
                         if !note.contentPreview.isEmpty {
-                            Text(note.contentPreview.replacingOccurrences(of: "\n", with: " "))
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
+                            if searchTerms.isEmpty {
+                                Text(note.previewSnippet(matching: snippetTerms))
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(2)
+                            } else {
+                                HighlightedText(
+                                    note.previewSnippet(matching: snippetTerms),
+                                    highlighting: searchTerms,
+                                    font: .system(size: 11),
+                                    color: .secondary
+                                )
                                 .lineLimit(2)
+                            }
                         }
                     }
                     .tag(note.id)
@@ -1828,8 +1912,13 @@ struct NoteListView: View {
                     }
                     return .ignored
                 }
-            }
-        }
+                .onChange(of: revealSelectionTrigger) { _, _ in
+                    // Fired when the search is cleared: the full list replaces
+                    // the narrowed one, so re-center the restored selection.
+                    if let id = selectedNoteID {
+                        proxy.scrollTo(id, anchor: .center)
+                    }
+                }
     }
 }
 

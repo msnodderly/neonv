@@ -20,6 +20,11 @@ struct NoteFile: Identifiable, Equatable {
     var modificationDate: Date
     var title: String
     var contentPreview: String
+    /// Original-case file content, capped at `NoteStore.searchIndexMaxBytes`.
+    /// Powers full-content search (via its lowercased copy in `searchCombined`)
+    /// and deep-match snippets. Empty for unsaved notes and cache-warmed notes
+    /// until discovery refreshes them; never persisted to the metadata cache.
+    private(set) var indexedContent: String = ""
     var isUnsaved: Bool = false
     var isReadOnly: Bool = false
     var tags: [String] = []
@@ -31,13 +36,14 @@ struct NoteFile: Identifiable, Equatable {
     private(set) var searchTags: String = ""
 
     // swiftlint:disable:next line_length
-    init(id: UUID? = nil, url: URL, relativePath: String, modificationDate: Date, title: String, contentPreview: String = "", isUnsaved: Bool = false, isReadOnly: Bool = false, tags: [String] = []) {
+    init(id: UUID? = nil, url: URL, relativePath: String, modificationDate: Date, title: String, contentPreview: String = "", indexedContent: String = "", isUnsaved: Bool = false, isReadOnly: Bool = false, tags: [String] = []) {
         self.id = id ?? Self.stableID(for: url)
         self.url = url
         self.relativePath = relativePath
         self.modificationDate = modificationDate
         self.title = title
         self.contentPreview = contentPreview
+        self.indexedContent = indexedContent
         self.isUnsaved = isUnsaved
         self.isReadOnly = isReadOnly
         self.tags = tags
@@ -45,19 +51,31 @@ struct NoteFile: Identifiable, Equatable {
         self.searchPath = relativePath.lowercased()
         self.searchPreview = contentPreview.lowercased()
         self.searchTags = tags.joined(separator: " ").lowercased()
-        self.searchCombined = "\(self.searchTitle)\n\(self.searchPath)\n\(self.searchPreview)\n\(self.searchTags)"
+        self.searchCombined = Self.combine(title: searchTitle, path: searchPath,
+                                           preview: searchPreview, content: indexedContent, tags: searchTags)
     }
 
     /// Perf-sensitive: combine all searchable fields once so filtering can
-    /// lowercase the query once per rebuild and do a single contains check.
+    /// tokenize the query once per rebuild and do contains checks per term.
     private(set) var searchCombined: String = ""
 
-    func matches(query: String) -> Bool {
-        matches(lowercasedQuery: query.lowercased())
+    private static func combine(title: String, path: String, preview: String, content: String, tags: String) -> String {
+        // Full content supersedes the preview when available (cache-warmed
+        // notes only carry the preview until discovery refreshes them).
+        let body = content.isEmpty ? preview : content.lowercased()
+        return "\(title)\n\(path)\n\(body)\n\(tags)"
     }
 
-    func matches(lowercasedQuery: String) -> Bool {
-        searchCombined.contains(lowercasedQuery)
+    /// Splits a query into lowercased whitespace-separated search terms.
+    static func searchTerms(from query: String) -> [String] {
+        query.lowercased().split(whereSeparator: { $0.isWhitespace }).map(String.init)
+    }
+
+    /// AND-of-terms matching: every term must appear somewhere in the note's
+    /// searchable text (title, path, content, tags). An empty term list
+    /// matches everything, preserving empty-query behavior.
+    func matches(allLowercasedTerms terms: [String]) -> Bool {
+        terms.allSatisfy { searchCombined.contains($0) }
     }
 
     private static func stableID(for url: URL) -> UUID {
@@ -78,16 +96,18 @@ struct NoteFile: Identifiable, Equatable {
         return UUID(uuidString: uuidString) ?? UUID()
     }
 
-    mutating func updateContent(title: String, contentPreview: String, modificationDate: Date, tags: [String] = []) {
+    mutating func updateContent(title: String, contentPreview: String, indexedContent: String, modificationDate: Date, tags: [String] = []) {
         self.title = title
         self.contentPreview = contentPreview
+        self.indexedContent = indexedContent
         self.modificationDate = modificationDate
         self.tags = tags
         self.isUnsaved = false
         self.searchTitle = title.lowercased()
         self.searchPreview = contentPreview.lowercased()
         self.searchTags = tags.joined(separator: " ").lowercased()
-        self.searchCombined = "\(self.searchTitle)\n\(self.searchPath)\n\(self.searchPreview)\n\(self.searchTags)"
+        self.searchCombined = Self.combine(title: searchTitle, path: searchPath,
+                                           preview: searchPreview, content: indexedContent, tags: searchTags)
     }
     
     var displayTitle: String {
@@ -116,6 +136,57 @@ struct NoteFile: Identifiable, Equatable {
         } else {
             return relativePath
         }
+    }
+
+    /// Preview text for list rows. When a search term matches the note body
+    /// but the match sits past the visible head of the preview, the text is
+    /// recentered on the earliest match (with a little lead-in context) so the
+    /// row shows *why* the note is in the search results. Falls back to the
+    /// full indexed content for matches past the preview head.
+    func previewSnippet(matching terms: [String]) -> String {
+        let flattenedPreview = contentPreview.replacingOccurrences(of: "\n", with: " ")
+        guard !terms.isEmpty else { return flattenedPreview }
+
+        // Common case first: the preview head is small and usually contains
+        // the match, so the (potentially large) indexed content is only
+        // flattened and searched for genuinely deep matches.
+        if let matchRange = Self.earliestRange(of: terms, in: flattenedPreview) {
+            return Self.recentered(flattenedPreview, around: matchRange)
+        }
+        if !indexedContent.isEmpty {
+            let flattenedFull = indexedContent.replacingOccurrences(of: "\n", with: " ")
+            if let matchRange = Self.earliestRange(of: terms, in: flattenedFull) {
+                return Self.recentered(flattenedFull, around: matchRange)
+            }
+        }
+        return flattenedPreview
+    }
+
+    private static func earliestRange(of terms: [String], in text: String) -> Range<String.Index>? {
+        var earliest: Range<String.Index>?
+        for term in terms {
+            guard let range = text.range(of: term, options: .caseInsensitive) else { continue }
+            if earliest == nil || range.lowerBound < earliest!.lowerBound {
+                earliest = range
+            }
+        }
+        return earliest
+    }
+
+    private static func recentered(_ text: String, around matchRange: Range<String.Index>) -> String {
+        // A match near the head is already visible without recentering.
+        let matchOffset = text.distance(from: text.startIndex, to: matchRange.lowerBound)
+        guard matchOffset > 48 else { return String(text.prefix(300)) }
+
+        // Back up a little context, then snap forward to a word boundary so
+        // the snippet doesn't open mid-word.
+        var snippetStart = text.index(matchRange.lowerBound, offsetBy: -24, limitedBy: text.startIndex)
+            ?? text.startIndex
+        if let space = text[snippetStart..<matchRange.lowerBound].firstIndex(of: " ") {
+            snippetStart = text.index(after: space)
+        }
+
+        return "…" + String(text[snippetStart...].prefix(300))
     }
 }
 
@@ -150,23 +221,52 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
     private var suggestionsAllLower: [(suggestion: WikiLinkSuggestion, lowerTarget: String)] = []
 
     private let allowedExtensions: Set<String> = ["txt", "md", "markdown", "org", "text"]
+
+    /// Per-file cap for the full-content search index (and deep-match
+    /// snippets). Keeps memory bounded for pathological files; ordinary
+    /// notes fit entirely.
+    static let searchIndexMaxBytes = 256 * 1024
+
+    /// Derives the ~2 KB row preview from (possibly much larger) raw content.
+    static func makeContentPreview(fromRawContent rawContent: String, isOrgFile: Bool) -> String {
+        let head = String(rawContent.prefix(2048))
+        if isOrgFile {
+            let filteredLines = head.components(separatedBy: .newlines)
+                .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#+") }
+            return filteredLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return head.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
     private let folderBookmarkKey = "selectedFolderBookmark"
     private var fileWatcher: FileWatcher?
     private var discoveryTask: Task<Void, Never>?
     
     init() {
         if let testDir = ProcessInfo.processInfo.environment["NEONV_TEST_NOTES_DIR"] {
-            let url = URL(fileURLWithPath: testDir)
-            selectedFolderURL = url
+            selectedFolderURL = Self.canonicalFolderURL(fromPath: testDir)
             discoveryTask = Task { await discoverFiles() }
-        } else if let cliPath = Self.parseCommandLineFolder() {
+        } else if let cliPath = Self.launchFolderArgument() {
             setFolder(from: cliPath)
         } else {
             loadSavedFolder()
         }
     }
 
-    private static func parseCommandLineFolder() -> String? {
+    /// Canonicalizes a folder path with realpath(3) so it matches the paths
+    /// FileManager's enumerator and FSEvents report. URL.resolvingSymlinksInPath()
+    /// is NOT equivalent: it strips the /private prefix that those APIs include,
+    /// which previously mangled relative paths for symlinked folders like /tmp.
+    static func canonicalFolderURL(fromPath path: String) -> URL {
+        let expanded = (path as NSString).expandingTildeInPath
+        guard let resolved = realpath(expanded, nil) else {
+            return URL(fileURLWithPath: expanded, isDirectory: true)
+        }
+        defer { free(resolved) }
+        return URL(fileURLWithPath: String(cString: resolved), isDirectory: true)
+    }
+
+    /// The folder path passed as the first command-line argument, if any.
+    static func launchFolderArgument() -> String? {
         let args = ProcessInfo.processInfo.arguments
         guard args.count > 1 else { return nil }
         let firstArg = args[1]
@@ -175,8 +275,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
     }
 
     func setFolder(from path: String) {
-        let expandedPath = (path as NSString).expandingTildeInPath
-        let url = URL(fileURLWithPath: expandedPath)
+        let url = Self.canonicalFolderURL(fromPath: path)
 
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
@@ -196,12 +295,29 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
     }
 
     private func showInvalidPathAlert(path: String) {
-        let alert = NSAlert()
-        alert.messageText = "Invalid Folder Path"
-        alert.informativeText = "The path \"\(path)\" is not a valid folder.\n\nPlease provide a path to an existing directory."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
+        let present = {
+            let alert = NSAlert()
+            alert.messageText = "Invalid Folder Path"
+            alert.informativeText = "The path \"\(path)\" is not a valid folder.\n\nPlease provide a path to an existing directory."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            NSApp.activate(ignoringOtherApps: true)
+            alert.runModal()
+        }
+
+        if NSApp.isRunning {
+            present()
+        } else {
+            // setFolder can run during app init (command-line folder argument).
+            // A modal alert presented before the run loop starts is never shown,
+            // so wait until the app is actually running.
+            Task { @MainActor in
+                while !NSApp.isRunning {
+                    try? await Task.sleep(for: .milliseconds(50))
+                }
+                present()
+            }
+        }
     }
     
     private func startWatching() {
@@ -317,12 +433,21 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             }
         }
 
-        notes.sort { $0.modificationDate > $1.modificationDate }
+        notes.sort(by: Self.noteOrdering)
 
         // Keep the cache fresh after incremental updates.
         if let folderURL = selectedFolderURL {
             MetadataCache.save(notes, for: folderURL)
         }
+    }
+
+    /// Newest first; ties broken by path so the order is deterministic for
+    /// notes that share a modification date.
+    static func noteOrdering(_ lhs: NoteFile, _ rhs: NoteFile) -> Bool {
+        if lhs.modificationDate != rhs.modificationDate {
+            return lhs.modificationDate > rhs.modificationDate
+        }
+        return lhs.relativePath.localizedCaseInsensitiveCompare(rhs.relativePath) == .orderedAscending
     }
 
     private func addOrUpdateNote(at url: URL, folderURL: URL) {
@@ -337,21 +462,15 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             let modDate = resourceValues.contentModificationDate ?? Date()
             let relativePath = url.path.replacingOccurrences(of: folderURL.path + "/", with: "")
             let title = readFirstLine(from: url)
-            let rawContent = readRawContent(from: url)
+            let rawContent = readRawContent(from: url, maxBytes: Self.searchIndexMaxBytes)
             let isOrgFile = ext == "org"
-            let tags = Self.parseTagsStatic(from: rawContent, isOrgFile: isOrgFile)
-            let contentPreview: String
-            if isOrgFile {
-                let filteredLines = rawContent.components(separatedBy: .newlines)
-                    .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#+") }
-                contentPreview = filteredLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-            } else {
-                contentPreview = rawContent.trimmingCharacters(in: .whitespacesAndNewlines)
-            }
+            let contentPreview = Self.makeContentPreview(fromRawContent: rawContent, isOrgFile: isOrgFile)
+            let tags = Self.parseTagsStatic(from: String(rawContent.prefix(2048)), isOrgFile: isOrgFile)
 
             let writable = FileManager.default.isWritableFile(atPath: url.path)
             if let index = notes.firstIndex(where: { $0.url == url }) {
-                notes[index].updateContent(title: title, contentPreview: contentPreview, modificationDate: modDate, tags: tags)
+                notes[index].updateContent(title: title, contentPreview: contentPreview,
+                                           indexedContent: rawContent, modificationDate: modDate, tags: tags)
                 notes[index].isReadOnly = !writable
             } else {
                 let note = NoteFile(
@@ -360,6 +479,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
                     modificationDate: modDate,
                     title: title,
                     contentPreview: contentPreview,
+                    indexedContent: rawContent,
                     isReadOnly: !writable,
                     tags: tags
                 )
@@ -426,6 +546,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             modificationDate: modDate,
             title: note.title,
             contentPreview: note.contentPreview,
+            indexedContent: note.indexedContent,
             tags: note.tags
         )
         notes[index] = renamed
@@ -514,7 +635,8 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         panel.message = "Select your notes folder"
         panel.prompt = "Select"
         
-        if panel.runModal() == .OK, let url = panel.url {
+        if panel.runModal() == .OK, let panelURL = panel.url {
+            let url = Self.canonicalFolderURL(fromPath: panelURL.path)
             saveFolder(url)
             selectedFolderURL = url
             discoveryTask?.cancel()
@@ -620,17 +742,10 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
                 let modDate = resourceValues.contentModificationDate ?? Date.distantPast
                 let relativePath = fileURL.path.replacingOccurrences(of: folderPath, with: "")
                 let title = readFirstLineStatic(from: fileURL)
-                let rawContent = readRawContentStatic(from: fileURL)
+                let rawContent = readRawContentStatic(from: fileURL, maxBytes: searchIndexMaxBytes)
                 let isOrgFile = ext == "org"
-                let tags = parseTagsStatic(from: rawContent, isOrgFile: isOrgFile)
-                let contentPreview: String
-                if isOrgFile {
-                    let filteredLines = rawContent.components(separatedBy: .newlines)
-                        .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#+") }
-                    contentPreview = filteredLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-                } else {
-                    contentPreview = rawContent.trimmingCharacters(in: .whitespacesAndNewlines)
-                }
+                let contentPreview = makeContentPreview(fromRawContent: rawContent, isOrgFile: isOrgFile)
+                let tags = parseTagsStatic(from: String(rawContent.prefix(2048)), isOrgFile: isOrgFile)
 
                 let writable = fileManager.isWritableFile(atPath: fileURL.path)
                 let note = NoteFile(
@@ -639,6 +754,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
                     modificationDate: modDate,
                     title: title,
                     contentPreview: contentPreview,
+                    indexedContent: rawContent,
                     isReadOnly: !writable,
                     tags: tags
                 )
@@ -648,7 +764,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             }
         }
 
-        result.sort { $0.modificationDate > $1.modificationDate }
+        result.sort(by: noteOrdering)
         return result
     }
 
@@ -846,7 +962,8 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         var candidates: [WikiLinkSuggestion] = []
 
         // Reuse the same matching rules as the main Cmd+L search path.
-        for note in notes where note.matches(lowercasedQuery: normalizedPrefix) {
+        let prefixTerms = NoteFile.searchTerms(from: normalizedPrefix)
+        for note in notes where note.matches(allLowercasedTerms: prefixTerms) {
             let canonical = canonicalByNoteID[note.id] ?? canonicalWikiTarget(for: note)
             guard isSafeWikiLinkTargetForInsertion(canonical) else { continue }
             let lowerCanonical = canonical.lowercased()
@@ -969,12 +1086,14 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
                 relativeTo: nil,
                 bookmarkDataIsStale: &isStale
             ) {
-                if url.startAccessingSecurityScopedResource() {
-                    selectedFolderURL = url
-                    discoveryTask?.cancel()
-                    discoveryTask = Task {
-                        await discoverFiles()
-                    }
+                // Required under the sandbox; a harmless no-op without it.
+                // Don't gate on the return value — bookmarks created by older
+                // sandboxed builds report false here once the sandbox is gone.
+                _ = url.startAccessingSecurityScopedResource()
+                selectedFolderURL = url
+                discoveryTask?.cancel()
+                discoveryTask = Task {
+                    await discoverFiles()
                 }
             }
         } else if let storedPath = UserDefaults.standard.string(forKey: "selectedNotesFolder"),

@@ -237,7 +237,7 @@ Beyond the original MVP spec, the following features were added based on daily u
 
 ### UI Customization
 - **✅ Collapsible search field:** Drag divider to hide/show search (double-click to restore)
-- **✅ Toggle file list visibility:** View menu option to hide/show list
+- **✅ Toggle file list visibility:** Cmd-Shift-B (also in View menu) to hide/show list
 - **✅ Toggle search field visibility:** Cmd-Shift-L to hide/show independently
 - **✅ Font customization:** Settings panel for font family and size (8-72pt)
 - **✅ Search highlighting:** Optional highlighting of search terms in editor

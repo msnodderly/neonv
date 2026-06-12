@@ -6,6 +6,7 @@ struct HorizontalNoteListView: View {
     @FocusState var focusedField: FocusedField?
     var isLoading: Bool
     var searchText: String
+    var revealSelectionTrigger: Int = 0
     var onTabToEditor: () -> Void
     var onShiftTabToSearch: () -> Void
     var onEnterToEditor: () -> Void
@@ -18,9 +19,15 @@ struct HorizontalNoteListView: View {
 
     @ObservedObject private var settings = AppSettings.shared
 
+    /// Terms used to recenter row previews on body matches (always active
+    /// during a search, independent of the highlighting setting).
+    private var snippetTerms: [String] {
+        searchText.isEmpty ? [] : NoteFile.searchTerms(from: searchText)
+    }
+
     private var searchTerms: [String] {
-        guard settings.searchHighlightingEnabled, !searchText.isEmpty else { return [] }
-        return [searchText]
+        guard settings.searchHighlightingEnabled else { return [] }
+        return snippetTerms
     }
 
     private static let dateFormatter: DateFormatter = {
@@ -54,6 +61,38 @@ struct HorizontalNoteListView: View {
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
+                ScrollViewReader { proxy in
+                noteList(proxy: proxy)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func rowContextMenu(for note: NoteFile) -> some View {
+        if !note.isUnsaved, let onAddTag = onAddTag {
+            Button("Add Tags...") {
+                onAddTag(note)
+            }
+        }
+        if !note.isUnsaved, let onRenameNote = onRenameNote {
+            Button("Rename") {
+                onRenameNote(note)
+            }
+        }
+        if let onShowInFinder = onShowInFinder {
+            Button("Show in Finder") {
+                onShowInFinder(note)
+            }
+        }
+        if let onDeleteNote = onDeleteNote {
+            Button("Move to Trash", role: .destructive) {
+                onDeleteNote(note)
+            }
+        }
+    }
+
+    private func noteList(proxy: ScrollViewProxy) -> some View {
                 List(notes, selection: $selectedNoteID) { note in
                     HStack(alignment: .top, spacing: 12) {
                         VStack(alignment: .leading, spacing: 2) {
@@ -87,11 +126,22 @@ struct HorizontalNoteListView: View {
                         .frame(width: 180, alignment: .leading)
 
                         if !note.contentPreview.isEmpty {
-                            Text(note.contentPreview.replacingOccurrences(of: "\n", with: " "))
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
+                            if searchTerms.isEmpty {
+                                Text(note.previewSnippet(matching: snippetTerms))
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(2)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            } else {
+                                HighlightedText(
+                                    note.previewSnippet(matching: snippetTerms),
+                                    highlighting: searchTerms,
+                                    font: .system(size: 11),
+                                    color: .secondary
+                                )
                                 .lineLimit(2)
                                 .frame(maxWidth: .infinity, alignment: .leading)
+                            }
                         } else {
                             Spacer()
                                 .frame(maxWidth: .infinity)
@@ -105,28 +155,7 @@ struct HorizontalNoteListView: View {
                     .padding(.vertical, 4)
                     .tag(note.id)
                     .accessibilityIdentifier("note-row")
-                    .contextMenu {
-                        if !note.isUnsaved, let onAddTag = onAddTag {
-                            Button("Add Tags...") {
-                                onAddTag(note)
-                            }
-                        }
-                        if !note.isUnsaved, let onRenameNote = onRenameNote {
-                            Button("Rename") {
-                                onRenameNote(note)
-                            }
-                        }
-                        if let onShowInFinder = onShowInFinder {
-                            Button("Show in Finder") {
-                                onShowInFinder(note)
-                            }
-                        }
-                        if let onDeleteNote = onDeleteNote {
-                            Button("Move to Trash", role: .destructive) {
-                                onDeleteNote(note)
-                            }
-                        }
-                    }
+                    .contextMenu { rowContextMenu(for: note) }
                 }
                 .listStyle(.sidebar)
                 .focusable()
@@ -163,7 +192,12 @@ struct HorizontalNoteListView: View {
                     }
                     return .ignored
                 }
-            }
-        }
+                .onChange(of: revealSelectionTrigger) { _, _ in
+                    // Fired when the search is cleared: the full list replaces
+                    // the narrowed one, so re-center the restored selection.
+                    if let id = selectedNoteID {
+                        proxy.scrollTo(id, anchor: .center)
+                    }
+                }
     }
 }
