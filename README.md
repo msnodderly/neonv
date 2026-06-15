@@ -49,7 +49,8 @@ Mac app icon:
 ### Homebrew (Recommended)
 
 ```bash
-brew install --cask msnodderly/tap/neonv```
+brew install --cask msnodderly/tap/neonv
+```
 
 ### Manual Download
 
