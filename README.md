@@ -13,7 +13,7 @@ Bug reports and feature requests are accepted, preferably in the form of a codin
 - Auto-saves continuously.
 - Fuzzy full-text search as you type. 
 - Files are plain `.txt`, `.md`, or `.org`. No databases.
-- CMD-G to open in external editor. Neonv is focused on text capture and search, it isn't a replacement for your full-featured text editor.
+- CMD-G to open in external editor. 
 - Wiki-style `[[target]]` and `[[target|label]]` links in editor and preview. Cmd-click opens links.
 
 ## Screenshots
