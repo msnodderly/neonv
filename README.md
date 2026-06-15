@@ -49,8 +49,7 @@ Mac app icon:
 ### Homebrew (Recommended)
 
 ```bash
-brew install --cask msnodderly/tap/neonv
-```
+brew install --cask msnodderly/tap/neonv```
 
 ### Manual Download
 
@@ -61,18 +60,7 @@ brew install --cask msnodderly/tap/neonv
    - Open **System Settings → Privacy & Security**
    - Scroll to **Security**, click **"Open Anyway"**
 
-## Opening a Notes Folder from the Command Line
 
-Pass a folder path as the first argument to open it at launch (it also becomes
-the saved folder for future launches):
-
-```bash
-# Launch a new instance with a specific notes folder
-open -na NeoNV --args ~/Documents/notes
-
-# Or run the binary directly
-/Applications/NeoNV.app/Contents/MacOS/NeoNV ~/Documents/notes
-```
 
 ## Building from Source
 
