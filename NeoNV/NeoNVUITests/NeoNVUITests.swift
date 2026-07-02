@@ -18,11 +18,17 @@ final class NeoNVUITests: XCTestCase {
         continueAfterFailure = false
 
         fixturesURL = try createFixtures(noteCount: Self.noteCount)
+        for testArtifact in ["0420.md", "0420-immediate-note.md", "0137.md"] {
+            try? FileManager.default.removeItem(
+                at: fixturesURL.appendingPathComponent(testArtifact)
+            )
+        }
 
         app = XCUIApplication()
         app.launchEnvironment["NEONV_TEST_NOTES_DIR"] = fixturesURL.path
         app.launchArguments += ["-isSearchFieldHidden", "0"]
         app.launchArguments += ["-isFileListHidden", "0"]
+        app.launchArguments += ["-defaultFileExtension", "md"]
         // Window/split state restored from a previous manual session would
         // override the defaults under test (e.g. list pane width).
         app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
@@ -63,20 +69,105 @@ final class NeoNVUITests: XCTestCase {
         XCTAssertTrue(waitForEditor(editor, containing: "Line 2 for Note 0137."), "Editor did not load the selected note content")
     }
 
-    /// Pressing Return after a partial search opens the current top match instead of creating a note.
-    func testSearchReturnOpensTopPartialMatch() {
+    /// Pressing Return creates from the search text even when partial matches exist.
+    func testSearchReturnCreatesFromPartialMatch() {
         XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
 
+        app.typeKey("l", modifierFlags: .command)
         let searchField = app.textFields["search-field"]
         XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Search field not found")
 
-        searchField.click()
-        searchField.typeText("0420")
+        let createdNoteURL = fixturesURL.appendingPathComponent("0420.md")
+        try? FileManager.default.removeItem(at: createdNoteURL)
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: createdNoteURL)
+        }
+
+        app.typeText("0420")
+
+        app.typeKey(.return, modifierFlags: [])
+
+        XCTAssertTrue(
+            waitForFile(at: createdNoteURL, containing: "0420\n\n"),
+            "Return from search did not create 0420.md from the partial-match query"
+        )
+
+        let editor = app.textViews["note-editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 3), "Editor not found")
+        XCTAssertTrue(
+            waitForEditor(editor, containing: "0420\n\n"),
+            "Editor did not open the newly created note"
+        )
+    }
+
+    /// Return uses every character currently in the field without waiting for search debounce.
+    func testImmediateSearchReturnUsesCurrentText() {
+        XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
+
+        app.typeKey("l", modifierFlags: .command)
+        let searchField = app.textFields["search-field"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Search field not found")
+
+        let createdNoteURL = fixturesURL.appendingPathComponent("0420-immediate-note.md")
+        try? FileManager.default.removeItem(at: createdNoteURL)
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: createdNoteURL)
+        }
+
+        app.typeText("0420 immediate note")
+        app.typeKey(.return, modifierFlags: [])
+
+        XCTAssertTrue(
+            waitForFile(at: createdNoteURL, containing: "0420 immediate note\n\n"),
+            "Immediate Return did not create from the complete current field value"
+        )
+    }
+
+    /// An exact first-line title opens the existing note instead of creating a duplicate.
+    func testSearchReturnOpensExactTitle() {
+        XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
+
+        app.typeKey("l", modifierFlags: .command)
+        let searchField = app.textFields["search-field"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Search field not found")
+        app.typeText("Note 0137")
+
         app.typeKey(.return, modifierFlags: [])
 
         let editor = app.textViews["note-editor"]
         XCTAssertTrue(editor.waitForExistence(timeout: 3), "Editor not found")
-        XCTAssertTrue(waitForEditor(editor, containing: "Line 2 for Note 0420."), "Return from search did not open the top partial match")
+        XCTAssertTrue(
+            waitForEditor(editor, containing: "Line 2 for Note 0137."),
+            "Return from an exact title did not open the existing note"
+        )
+    }
+
+    /// Moving into the result list keeps partial-match opening explicit and keyboard-driven.
+    func testSearchResultNavigationOpensPartialMatch() {
+        XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
+
+        app.typeKey("l", modifierFlags: .command)
+        let searchField = app.textFields["search-field"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Search field not found")
+
+        let unexpectedNoteURL = fixturesURL.appendingPathComponent("0137.md")
+        try? FileManager.default.removeItem(at: unexpectedNoteURL)
+
+        app.typeText("0137")
+        app.typeKey(.downArrow, modifierFlags: [])
+        app.typeKey(.return, modifierFlags: [])
+
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: unexpectedNoteURL.path),
+            "Navigating into results unexpectedly created a note"
+        )
+
+        let editor = app.textViews["note-editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 3), "Editor not found")
+        XCTAssertTrue(
+            waitForEditor(editor, containing: "Line 2 for Note 0137."),
+            "Return from the result list did not open the selected partial match"
+        )
     }
 
     /// Cmd-N creates a new note and opens the editor ready for input.
@@ -276,14 +367,14 @@ final class NeoNVUITests: XCTestCase {
         XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
         let searchField = app.textFields["search-field"]
 
-        XCTContext.runActivity(named: "Search, open top hit via Return") { _ in
+        XCTContext.runActivity(named: "Search, open exact title via Return") { _ in
             searchField.click()
-            searchField.typeText("0042")
+            searchField.typeText("Note 0042")
             app.typeKey(.return, modifierFlags: [])
             let editor = app.textViews["note-editor"]
             XCTAssertTrue(editor.waitForExistence(timeout: 3), "Editor missing after search Return")
-            XCTAssertTrue(waitForEditor(editor, containing: "Line 2 for Note 0042."), "Top hit did not open")
-            takeScreenshot(named: "exercise-1-open-top-hit")
+            XCTAssertTrue(waitForEditor(editor, containing: "Line 2 for Note 0042."), "Exact title did not open")
+            takeScreenshot(named: "exercise-1-open-exact-title")
         }
 
         XCTContext.runActivity(named: "Preview toggle (Cmd-P) on and off") { _ in
@@ -481,6 +572,24 @@ final class NeoNVUITests: XCTestCase {
         }
 
         return (editor.value as? String)?.contains(expectedText) == true
+    }
+
+    private func waitForFile(
+        at url: URL,
+        containing expectedText: String,
+        timeout: TimeInterval = 5
+    ) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+
+        while Date() < deadline {
+            if let content = try? String(contentsOf: url, encoding: .utf8),
+               content.contains(expectedText) {
+                return true
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+
+        return (try? String(contentsOf: url, encoding: .utf8))?.contains(expectedText) == true
     }
 
     // MARK: - Fixture helpers

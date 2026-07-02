@@ -188,11 +188,13 @@ This document tracks keyboard navigation and UX requirements. Originally written
 **Implemented features:**
 - **✅ Fuzzy full-text search:** Searches title, path, and content preview
 - **✅ Real-time filtering:** Instant results as you type (50ms debounce)
-- **✅ Match counter:** Shows "N matches" or "⏮ to create" in search bar
+- **✅ Action hint:** Shows whether Return will create or open while preserving the match count
 - **✅ Auto-selection:** First match auto-selects when searching
 - **✅ Selection memory:** Restores previous selection when clearing search
 - **✅ Search highlighting:** Optional highlighting of search terms in editor (toggle in settings)
-- **✅ Smart create:** Enter key creates new note if no matches, or navigates to note if matches exist
+- **✅ Deterministic create:** Return creates from any non-exact input, even when partial matches exist
+- **✅ Exact identity open:** Return opens an existing note only for an exact normalized title, filename, basename, relative path, or sanitized destination match
+- **✅ Explicit result navigation:** Tab or Down Arrow enters the result list; Return there opens the selected partial match
 
 **Performance:**
 - **✅ Fast:** Searches through 1000+ notes instantly
