@@ -85,6 +85,20 @@ final class SearchSubmissionPolicyTests: XCTestCase {
         XCTAssertEqual(action, .none)
     }
 
+    func testUncreatablePathOnlyInputDoesNothing() {
+        // Queries that reduce to no path components have no creatable destination,
+        // so resolve must return .none rather than a .create the creation flow drops.
+        for query in [".", "..", "/", "\\", "//", "./", "../"] {
+            let action = SearchSubmissionPolicy.resolve(
+                query: query,
+                notes: [],
+                emptyQueryMatchCount: 0
+            )
+
+            XCTAssertEqual(action, .none, "Expected .none for uncreatable query \(query)")
+        }
+    }
+
     func testEmptyInputPreservesExistingNavigationBehavior() {
         let noMatches = SearchSubmissionPolicy.resolve(
             query: "",

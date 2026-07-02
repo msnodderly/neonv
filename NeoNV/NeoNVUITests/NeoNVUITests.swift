@@ -152,6 +152,9 @@ final class NeoNVUITests: XCTestCase {
 
         let unexpectedNoteURL = fixturesURL.appendingPathComponent("0137.md")
         try? FileManager.default.removeItem(at: unexpectedNoteURL)
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: unexpectedNoteURL)
+        }
 
         app.typeText("0137")
         app.typeKey(.downArrow, modifierFlags: [])

@@ -37,10 +37,11 @@ enum SearchSubmissionPolicy {
 
         let normalizedTitleQuery = normalizeTitle(query)
         let normalizedPathQuery = normalizePath(query)
-        let normalizedDestination = NotePathNaming.relativePath(
+        let destination = NotePathNaming.relativePath(
             for: query,
             defaultExtension: defaultExtension
-        ).map(normalizePath)
+        )
+        let normalizedDestination = destination.map(normalizePath)
 
         if let exactMatch = notes.first(where: { note in
             if !normalizedTitleQuery.isEmpty,
@@ -55,6 +56,10 @@ enum SearchSubmissionPolicy {
             return .open(exactMatch.id)
         }
 
+        // A query whose components are all "."/".." (e.g. ".", "/", "..") has no
+        // creatable destination; without this guard resolve would return .create
+        // and the hint would promise creation that createNewNote(from:) silently drops.
+        guard destination != nil else { return .none }
         return .create(query)
     }
 
@@ -107,10 +112,7 @@ enum SearchSubmissionPolicy {
     }
 
     private static func removingRecognizedExtension(from path: String) -> String {
-        for ext in NotePathNaming.validExtensions where path.hasSuffix(".\(ext)") {
-            return String(path.dropLast(ext.count + 1))
-        }
-        return path
+        NotePathNaming.splitRecognizedExtension(from: path).base
     }
 }
 
@@ -146,8 +148,19 @@ enum NotePathNaming {
     }
 
     static func hasValidExtension(_ name: String) -> Bool {
+        splitRecognizedExtension(from: name).ext != nil
+    }
+
+    /// Splits a recognized note extension off the end of `name`, returning the
+    /// base (original case preserved, without the extension) and the matched
+    /// lowercased extension. Returns `(name, nil)` when no recognized extension
+    /// is present. The single source of truth for extension detection.
+    static func splitRecognizedExtension(from name: String) -> (base: String, ext: String?) {
         let lowercased = name.lowercased()
-        return validExtensions.contains { lowercased.hasSuffix(".\($0)") }
+        for ext in validExtensions where lowercased.hasSuffix(".\(ext)") {
+            return (String(name.dropLast(ext.count + 1)), ext)
+        }
+        return (name, nil)
     }
 
     private static func sanitizePathComponent(
@@ -158,12 +171,9 @@ enum NotePathNaming {
         var extensionPart: String?
 
         if preserveExtension {
-            let lowercased = name.lowercased()
-            for ext in validExtensions where lowercased.hasSuffix(".\(ext)") {
-                baseName = String(name.dropLast(ext.count + 1))
-                extensionPart = ext
-                break
-            }
+            let split = splitRecognizedExtension(from: name)
+            baseName = split.base
+            extensionPart = split.ext
         }
 
         var sanitized = baseName.lowercased()
