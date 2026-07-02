@@ -14,7 +14,7 @@ struct HelpView: View {
                 Shortcut(key: "Shift + Tab", description: "Move to previous pane"),
                 Shortcut(key: "→", description: "Move to editor from list"),
                 Shortcut(key: "↑", description: "Move to search from list (first item)"),
-                Shortcut(key: "Return", description: "Confirm action / navigate"),
+                Shortcut(key: "Return", description: "Create typed title / open exact match"),
                 Shortcut(key: "Escape", description: "Cancel / go back")
             ]
         ),

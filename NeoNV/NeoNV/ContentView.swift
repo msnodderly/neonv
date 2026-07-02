@@ -86,7 +86,7 @@ struct ContentView: View {
                 SearchBar(
                     text: $searchText,
                     focusedField: _focusedField,
-                    matchCount: filteredNotes.count,
+                    submissionHint: searchSubmissionHint,
                     onNavigateToList: navigateToList,
                     onSubmitSearch: handleSearchSubmit,
                     onClearSearch: clearSearch
@@ -983,31 +983,17 @@ struct ContentView: View {
         }.value
     }
     
-    private func createNewNote() {
-        guard let folderURL = noteStore.selectedFolderURL, !searchText.isEmpty else {
+    private func createNewNote(from title: String) {
+        guard let folderURL = noteStore.selectedFolderURL,
+              let relativePath = NotePathNaming.relativePath(
+                for: title,
+                defaultExtension: settings.defaultExtension.rawValue
+              ) else {
             return
         }
 
-        let parts = sanitizePathComponents(searchText)
-        guard !parts.isEmpty else { return }
-
-        let directoryParts = parts.dropLast()
-        let baseName = parts.last!
-
-        var dirURL = folderURL
-        for part in directoryParts {
-            dirURL = dirURL.appendingPathComponent(part, isDirectory: true)
-        }
-
-        let fileName: String
-        if hasValidExtension(baseName) {
-            fileName = baseName
-        } else {
-            let ext = AppSettings.shared.defaultExtension.rawValue
-            fileName = "\(baseName).\(ext)"
-        }
-        let fileURL = dirURL.appendingPathComponent(fileName)
-        let initialContent = searchText + "\n\n"
+        let fileURL = folderURL.appendingPathComponent(relativePath)
+        let initialContent = title + "\n\n"
 
         // If the file already exists, open it instead of overwriting
         if let existingNote = noteStore.notes.first(where: { $0.url == fileURL }) {
@@ -1066,66 +1052,6 @@ struct ContentView: View {
         searchText = ""
         // Don't clear selectedNoteID - let autoSelectTopMatch() handle it
         // This allows it to restore the last manual selection
-    }
-
-    private static let validExtensions: Set<String> = ["md", "txt", "org", "markdown", "text"]
-
-    private func sanitizePathComponent(_ name: String, preserveExtension: Bool = false) -> String {
-        var baseName = name
-        var extensionPart: String?
-
-        if preserveExtension {
-            let lowercased = name.lowercased()
-            for ext in Self.validExtensions {
-                if lowercased.hasSuffix(".\(ext)") {
-                    let extWithDot = ".\(ext)"
-                    baseName = String(name.dropLast(extWithDot.count))
-                    extensionPart = ext
-                    break
-                }
-            }
-        }
-
-        var sanitized = baseName.lowercased()
-            .replacingOccurrences(of: " ", with: "-")
-            .replacingOccurrences(of: "[^a-z0-9-]", with: "", options: .regularExpression)
-
-        if sanitized.count > 100 {
-            sanitized = String(sanitized.prefix(100))
-        }
-
-        if sanitized.isEmpty {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyyMMdd-HHmmss"
-            sanitized = "untitled-\(formatter.string(from: Date()))"
-        }
-
-        if let ext = extensionPart {
-            sanitized += ".\(ext)"
-        }
-
-        return sanitized
-    }
-
-    private func sanitizePathComponents(_ input: String) -> [String] {
-        let normalized = input
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "\\", with: "/")
-
-        let rawParts = normalized.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
-
-        var parts: [String] = []
-        for (index, part) in rawParts.enumerated() {
-            if part == "." || part == ".." { continue }
-            let isLastPart = index == rawParts.count - 1
-            let sanitized = sanitizePathComponent(part, preserveExtension: isLastPart)
-            if !sanitized.isEmpty { parts.append(sanitized) }
-        }
-        return parts
-    }
-
-    private func hasValidExtension(_ name: String) -> Bool {
-        Self.validExtensions.contains { name.lowercased().hasSuffix(".\($0)") }
     }
 
     private func scheduleAutoSave() {
@@ -1280,6 +1206,14 @@ struct ContentView: View {
 }
 
 private extension ContentView {
+    var searchSubmissionHint: String? {
+        let action = resolveSearchSubmission(
+            query: searchText,
+            emptyQueryMatchCount: filteredNotes.count
+        )
+        return SearchSubmissionPolicy.hint(for: action, matchCount: filteredNotes.count)
+    }
+
     func focusSearch() {
         if settings.isSearchFieldHidden { settings.isSearchFieldHidden = false }
         NSApp.keyWindow?.makeFirstResponder(nil)
@@ -1307,25 +1241,41 @@ private extension ContentView {
         debouncedSearchText = searchText
         let currentMatches = rebuildFilteredNotes(for: searchText)
 
-        guard !searchText.isEmpty else {
-            if currentMatches.count == 1 {
-                focusEditor()
-            } else if currentMatches.count > 1 {
-                navigateToList()
-            }
-            return
-        }
-        if let exactTitleMatch = findExactTitleMatch(in: noteStore.notes, for: searchText) {
-            selectedNoteID = exactTitleMatch.id
+        switch resolveSearchSubmission(
+            query: searchText,
+            emptyQueryMatchCount: currentMatches.count
+        ) {
+        case .create(let title):
+            createNewNote(from: title)
+        case .focusEditor:
             focusEditor()
-            return
-        }
-        if let firstMatch = currentMatches.first {
-            selectedNoteID = firstMatch.id
+        case .navigateToResults:
+            navigateToList()
+        case .none:
+            break
+        case .open(let noteID):
+            selectedNoteID = noteID
             focusEditor()
-            return
         }
-        createNewNote()
+    }
+
+    func resolveSearchSubmission(
+        query: String,
+        emptyQueryMatchCount: Int
+    ) -> SearchSubmissionPolicy.Action {
+        let identities = noteStore.notes.map {
+            SearchSubmissionPolicy.NoteIdentity(
+                id: $0.id,
+                title: $0.title,
+                relativePath: $0.relativePath
+            )
+        }
+        return SearchSubmissionPolicy.resolve(
+            query: query,
+            notes: identities,
+            emptyQueryMatchCount: emptyQueryMatchCount,
+            defaultExtension: settings.defaultExtension.rawValue
+        )
     }
 
     func switchToEditor() {
@@ -1396,7 +1346,7 @@ private extension ContentView {
     func createNoteFromWikiTarget(_ target: String) {
         guard let folderURL = noteStore.selectedFolderURL else { return }
 
-        let parts = sanitizePathComponents(target)
+        let parts = NotePathNaming.pathComponents(for: target)
         guard !parts.isEmpty else {
             let alert = NSAlert()
             alert.messageText = "Invalid Link Target"
@@ -1416,7 +1366,7 @@ private extension ContentView {
         }
 
         let fileName: String
-        if hasValidExtension(baseName) {
+        if NotePathNaming.hasValidExtension(baseName) {
             fileName = baseName
         } else {
             fileName = "\(baseName).\(AppSettings.shared.defaultExtension.rawValue)"
@@ -1498,31 +1448,6 @@ private func atomicWrite(content: String, to url: URL) async throws {
     }
 }
 
-private func findExactTitleMatch(in notes: [NoteFile], for query: String) -> NoteFile? {
-    let normalizedQuery = normalizeTitleForExactMatch(query)
-    guard !normalizedQuery.isEmpty else { return nil }
-
-    return notes.first { note in
-        normalizeTitleForExactMatch(note.title) == normalizedQuery
-    }
-}
-
-private func normalizeTitleForExactMatch(_ text: String) -> String {
-    var normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
-
-    if normalized.hasPrefix("#") {
-        normalized = normalized.drop(while: { $0 == "#" || $0 == " " }).description
-    }
-    if normalized.hasPrefix("- ") || normalized.hasPrefix("* ") || normalized.hasPrefix("+ ") {
-        normalized = String(normalized.dropFirst(2))
-    }
-    if normalized.hasPrefix("> ") {
-        normalized = String(normalized.dropFirst(2))
-    }
-
-    return normalized.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-}
-
 struct ContentEmptyStateView: View {
     var hasNotes: Bool
     var searchText: String
@@ -1599,7 +1524,7 @@ struct EmptyStateView: View {
 struct SearchBar: View {
     @Binding var text: String
     @FocusState var focusedField: FocusedField?
-    var matchCount: Int
+    var submissionHint: String?
     var onNavigateToList: () -> Void
     var onSubmitSearch: () -> Void
     var onClearSearch: () -> Void
@@ -1650,11 +1575,13 @@ struct SearchBar: View {
                     return .handled
                 }
 
-            if !text.isEmpty {
-                Text(matchCount > 0 ? "\(matchCount) match\(matchCount == 1 ? "" : "es")" : "⏎ to create")
+            if let submissionHint {
+                Text(submissionHint)
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .padding(.trailing, 4)
+                    .accessibilityIdentifier("search-submit-hint")
+                    .accessibilityLabel(submissionHint)
             }
         }
         .padding(8)

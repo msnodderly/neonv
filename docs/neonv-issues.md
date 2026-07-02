@@ -378,13 +378,13 @@ Search across 1000 files must feel instant (<100ms).
 **Dependencies:** MVP-008
 
 **Description:**  
-Unify search and file creation in single input. If search has no matches, Enter creates new file.
+Unify search and file creation in a single input. Enter creates from any non-exact input; exact note identities open the existing note.
 
 **Acceptance Criteria:**
 - [ ] Search bar filters existing files as user types
-- [ ] If matches exist: Enter selects top match
-- [ ] If no matches: Enter creates new file with search text as content/title
-- [ ] Visual indication of mode: "X matches" vs "Enter to create"
+- [ ] If an exact title, filename, basename, relative path, or sanitized destination exists: Enter opens the top exact match
+- [ ] Otherwise: Enter creates a new file with the search text as content/title, even when partial matches exist
+- [ ] Visual indication states whether Enter will create or open while retaining the match count
 - [ ] Escape clears search and returns to full list
 - [ ] Newly created file immediately selected and editable
 
@@ -526,7 +526,7 @@ Additional keyboard shortcuts beyond basic Tab navigation (which is in MVP-012).
 - [ ] **Cmd-Z / Cmd-Shift-Z:** Undo/Redo working correctly
 - [ ] **Cmd-A:** Select all in current pane
 - [ ] **Esc:** Return focus to search, clear search text (works from list and editor)
-- [ ] **Enter in Search:** If matches exist, select top match; if no matches, create new note
+- [ ] **Enter in Search:** Open an exact identity match; otherwise create a new note
 - [ ] **Enter in List:** Focus editor for selected note
 
 **Technical Notes:**

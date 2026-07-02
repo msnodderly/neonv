@@ -321,7 +321,7 @@ If distributed via Mac App Store with sandbox:
 | **Up Arrow** (in list, first item) | Move to search |
 | **Right Arrow** (in list) | Move to editor |
 | **Enter** (in list) | Open note in editor |
-| **Enter** (in search) | Create new note or navigate if matches exist |
+| **Enter** (in search) | Create typed title, or open an exact identity match |
 | **Page Up/Down** (in preview) | Scroll content by page |
 | **Up/Down** (in preview) | Scroll content line by line |
 
