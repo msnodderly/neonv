@@ -846,6 +846,9 @@ struct ContentView: View {
             Task {
                 guard let newContent = try? await loadFileAsync(url: change.url) else { return }
                 await MainActor.run {
+                    // Selection may have moved on while the read was in
+                    // flight; don't overwrite the newly selected note's editor.
+                    guard selectedNoteURL == change.url else { return }
                     if isDirty {
                         saveTask?.cancel()
                         externalConflict = ExternalConflict(url: change.url, externalContent: newContent)
@@ -949,6 +952,11 @@ struct ContentView: View {
             do {
                 let content = try await loadFileAsync(url: note.url)
                 await MainActor.run {
+                    // The user may have switched notes while the read was in
+                    // flight. Applying a stale load would display the wrong
+                    // content under the new selection — and a subsequent
+                    // keystroke would autosave it into the wrong file.
+                    guard selectedNoteID == noteID else { return }
                     originalContent = content
                     editorContent = content
                     if pendingCursorAtEnd {
@@ -965,6 +973,7 @@ struct ContentView: View {
                 }
             } catch {
                 await MainActor.run {
+                    guard selectedNoteID == noteID else { return }
                     loadError = LoadError(fileURL: note.url, error: error)
                     originalContent = ""
                     editorContent = ""
