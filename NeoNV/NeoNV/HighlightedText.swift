@@ -52,23 +52,18 @@ struct HighlightedText: View {
 
     private func findAllRanges() -> [Range<String.Index>] {
         var ranges: [Range<String.Index>] = []
-        let lowercasedText = text.lowercased()
 
+        // Search the original text case-insensitively rather than searching a
+        // lowercased copy and mapping offsets back: lowercasing can change a
+        // string's length (e.g. "İ"), which made the offset math mis-highlight
+        // or trap past endIndex.
         for term in searchTerms {
-            let lowercasedTerm = term.lowercased()
-            var searchStart = lowercasedText.startIndex
-
-            while searchStart < lowercasedText.endIndex {
-                if let range = lowercasedText.range(of: lowercasedTerm, range: searchStart..<lowercasedText.endIndex) {
-                    let originalRange = Range(uncheckedBounds: (
-                        lower: text.index(text.startIndex, offsetBy: lowercasedText.distance(from: lowercasedText.startIndex, to: range.lowerBound)),
-                        upper: text.index(text.startIndex, offsetBy: lowercasedText.distance(from: lowercasedText.startIndex, to: range.upperBound))
-                    ))
-                    ranges.append(originalRange)
-                    searchStart = range.upperBound
-                } else {
-                    break
-                }
+            var searchStart = text.startIndex
+            while searchStart < text.endIndex,
+                  let range = text.range(of: term, options: .caseInsensitive,
+                                         range: searchStart..<text.endIndex) {
+                ranges.append(range)
+                searchStart = range.upperBound
             }
         }
 
