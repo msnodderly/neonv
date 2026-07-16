@@ -461,8 +461,8 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             
             let modDate = resourceValues.contentModificationDate ?? Date()
             let relativePath = url.path.replacingOccurrences(of: folderURL.path + "/", with: "")
-            let title = readFirstLine(from: url)
-            let rawContent = readRawContent(from: url, maxBytes: Self.searchIndexMaxBytes)
+            let title = Self.readFirstLineStatic(from: url)
+            let rawContent = Self.readRawContentStatic(from: url, maxBytes: Self.searchIndexMaxBytes)
             let isOrgFile = ext == "org"
             let contentPreview = Self.makeContentPreview(fromRawContent: rawContent, isOrgFile: isOrgFile)
             let tags = Self.parseTagsStatic(from: String(rawContent.prefix(2048)), isOrgFile: isOrgFile)
@@ -831,19 +831,6 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         return ""
     }
 
-    private static func readContentPreviewStatic(from url: URL, maxBytes: Int = 2048) -> String {
-        let content = readRawContentStatic(from: url, maxBytes: maxBytes)
-        
-        // For org files, filter out metadata lines (#+KEY:)
-        if url.pathExtension.lowercased() == "org" {
-            let filteredLines = content.components(separatedBy: .newlines)
-                .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#+") }
-            return filteredLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        
-        return content.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
     private static func readRawContentStatic(from url: URL, maxBytes: Int = 2048) -> String {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
         defer { try? handle.close() }
@@ -851,44 +838,6 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         return String(data: data, encoding: .utf8) ?? ""
     }
     
-    private func readFirstLine(from url: URL) -> String {
-        guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
-        defer { try? handle.close() }
-
-        guard let data = try? handle.read(upToCount: 256) else { return "" }
-        guard let content = String(data: data, encoding: .utf8) else { return "" }
-
-        // Find first non-empty line
-        for line in content.components(separatedBy: .newlines) {
-            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmed.isEmpty {
-                return trimmed
-            }
-        }
-        return ""
-    }
-
-    private func readRawContent(from url: URL, maxBytes: Int = 2048) -> String {
-        guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
-        defer { try? handle.close() }
-
-        guard let data = try? handle.read(upToCount: maxBytes) else { return "" }
-        return String(data: data, encoding: .utf8) ?? ""
-    }
-
-    private func readContentPreview(from url: URL, maxBytes: Int = 2048) -> String {
-        let content = readRawContent(from: url, maxBytes: maxBytes)
-
-        // For org files, filter out metadata lines (#+KEY:)
-        if url.pathExtension.lowercased() == "org" {
-            let filteredLines = content.components(separatedBy: .newlines)
-                .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#+") }
-            return filteredLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        
-        return content.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
     private func normalizedWikiTarget(_ target: String) -> String {
         let trimmed = target
             .trimmingCharacters(in: .whitespacesAndNewlines)
