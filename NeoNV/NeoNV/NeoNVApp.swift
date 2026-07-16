@@ -6,6 +6,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var hasUnsavedChanges = false
     private var mouseMonitor: Any?
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // @NSApplicationDelegateAdaptor instantiates its own delegate; repoint
+        // `shared` at it so the hasUnsavedChanges flag written by ContentView
+        // is the same one applicationShouldTerminate reads.
+        AppDelegate.shared = self
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let window = NSApp.windows.first {
             window.setFrameAutosaveName("NeoNVMainWindow")
