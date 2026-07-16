@@ -117,7 +117,10 @@ enum SearchSubmissionPolicy {
 }
 
 enum NotePathNaming {
+    /// The note file extensions NeoNV recognizes — the single source of truth
+    /// for discovery, file watching, renaming, and wiki-link normalization.
     static let validExtensions = ["md", "txt", "org", "markdown", "text"]
+    static let validExtensionSet = Set(validExtensions)
 
     static func relativePath(for input: String, defaultExtension: String) -> String? {
         var components = pathComponents(for: input)
