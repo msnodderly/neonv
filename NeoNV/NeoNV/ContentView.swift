@@ -1112,7 +1112,7 @@ struct ContentView: View {
                 if let name = collisionName {
                     withAnimation { externalToastMessage = "File already existed — saved as \(name)" }
                 }
-                AppDelegate.shared.hasUnsavedChanges = !isDirty
+                AppDelegate.shared.hasUnsavedChanges = !unsavedNoteIDs.isEmpty
             }
         } catch is CancellationError {
             return

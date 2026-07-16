@@ -283,6 +283,69 @@ final class NeoNVUITests: XCTestCase {
         XCTAssertTrue(app.wait(for: .notRunning, timeout: 5), "App did not quit after closing its window")
     }
 
+    /// Once autosave finishes, Cmd-Q quits without an unsaved-changes prompt.
+    func testQuitAfterAutosaveDoesNotWarn() {
+        XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
+
+        let noteURL = fixturesURL.appendingPathComponent("note-0137.md")
+
+        let searchField = app.textFields["search-field"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Search field not found")
+        searchField.click()
+        searchField.typeText("0137")
+
+        let row = app.staticTexts[Self.noteTitle(137)]
+        XCTAssertTrue(row.waitForExistence(timeout: 3), "Narrowed list missing target note")
+        row.click()
+
+        let editor = app.textViews["note-editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 3), "Editor not found")
+        let marker = "Autosave quit regression marker \(UUID().uuidString)"
+        editor.click()
+        editor.typeKey(.downArrow, modifierFlags: .command)
+        editor.typeText("\n\(marker)")
+
+        XCTAssertTrue(
+            waitForFile(at: noteURL, containing: marker),
+            "Edit did not autosave before quit"
+        )
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+
+        app.typeKey("q", modifierFlags: .command)
+        XCTAssertTrue(
+            app.wait(for: .notRunning, timeout: 5),
+            "Cmd-Q showed an unsaved-changes prompt after autosave completed"
+        )
+    }
+
+    /// Before autosave finishes, Cmd-Q warns instead of discarding the edit.
+    func testQuitBeforeAutosaveWarns() {
+        XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
+
+        let searchField = app.textFields["search-field"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Search field not found")
+        searchField.click()
+        searchField.typeText("0137")
+
+        let row = app.staticTexts[Self.noteTitle(137)]
+        XCTAssertTrue(row.waitForExistence(timeout: 3), "Narrowed list missing target note")
+        row.click()
+
+        let editor = app.textViews["note-editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 3), "Editor not found")
+        editor.click()
+        editor.typeKey(.downArrow, modifierFlags: .command)
+        editor.typeText("\nImmediate quit regression marker \(UUID().uuidString)")
+        app.typeKey("q", modifierFlags: .command)
+
+        let warning = app.staticTexts["Unsaved Changes"]
+        XCTAssertTrue(
+            warning.waitForExistence(timeout: 3),
+            "Cmd-Q did not warn while an edit was still awaiting autosave"
+        )
+        app.dialogs.buttons["Cancel"].click()
+    }
+
     /// Clearing the search scrolls the restored selection back into view.
     func testClearingSearchRevealsSelection() {
         let window = app.windows.firstMatch
@@ -438,7 +501,7 @@ final class NeoNVUITests: XCTestCase {
             app.typeKey("l", modifierFlags: .command)
             searchField.typeText("0003")
             RunLoop.current.run(until: Date().addingTimeInterval(0.5))
-            let row = app.staticTexts[Self.noteTitle(3)]
+            let row = app.staticTexts[Self.noteTitle(3)].firstMatch
             if row.waitForExistence(timeout: 3) {
                 row.rightClick()
                 let renameItem = app.menuItems["Rename"]
