@@ -23,7 +23,7 @@ final class FileWatcher {
     
     weak var delegate: FileWatcherDelegate?
     
-    private let allowedExtensions: Set<String> = ["txt", "md", "markdown", "org", "text"]
+    private let allowedExtensions = NotePathNaming.validExtensionSet
     
     init(path: String, debounceInterval: TimeInterval = 0.15) {
         self.path = path

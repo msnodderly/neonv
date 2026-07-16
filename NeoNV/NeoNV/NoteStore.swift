@@ -220,7 +220,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
     private var suggestionsAll: [WikiLinkSuggestion] = []
     private var suggestionsAllLower: [(suggestion: WikiLinkSuggestion, lowerTarget: String)] = []
 
-    private let allowedExtensions: Set<String> = ["txt", "md", "markdown", "org", "text"]
+    private let allowedExtensions = NotePathNaming.validExtensionSet
 
     /// Per-file cap for the full-content search index (and deep-match
     /// snippets). Keeps memory bounded for pathological files; ordinary
@@ -490,13 +490,6 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         }
     }
     
-    private static let validExtensions: Set<String> = ["md", "txt", "org", "markdown", "text"]
-
-    private func hasValidExtension(_ name: String) -> Bool {
-        let lowercased = name.lowercased()
-        return Self.validExtensions.contains { lowercased.hasSuffix(".\($0)") }
-    }
-
     @discardableResult
     func renameNote(id: UUID, newName: String) throws -> NoteFile {
         guard let index = notes.firstIndex(where: { $0.id == id }) else {
@@ -513,7 +506,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
         }
 
         let newFileName: String
-        if hasValidExtension(sanitized) {
+        if NotePathNaming.hasValidExtension(sanitized) {
             newFileName = sanitized
         } else {
             let ext = note.url.pathExtension
@@ -845,14 +838,7 @@ class NoteStore: ObservableObject, FileWatcherDelegate {
             .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard !trimmed.isEmpty else { return "" }
 
-        let lower = trimmed.lowercased()
-        for ext in Self.validExtensions {
-            let suffix = ".\(ext)"
-            if lower.hasSuffix(suffix) {
-                return String(trimmed.dropLast(suffix.count))
-            }
-        }
-        return trimmed
+        return NotePathNaming.splitRecognizedExtension(from: trimmed).base
     }
 
     private func relativePathWithoutExtension(for note: NoteFile) -> String {
