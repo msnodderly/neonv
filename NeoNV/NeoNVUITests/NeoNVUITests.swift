@@ -318,6 +318,53 @@ final class NeoNVUITests: XCTestCase {
         )
     }
 
+    /// Long notes remain editable and keep every edit when switching among files.
+    func testLongNoteTypingAndAutosaveAcrossSelectionChanges() throws {
+        app.terminate()
+        // The runner can read external fixtures but macOS sandboxes its writes.
+        let testFolder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: testFolder, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: testFolder) }
+        for filename in ["note-0001.md", "note-0137.md"] {
+            try FileManager.default.copyItem(at: fixturesURL.appendingPathComponent(filename),
+                                            to: testFolder.appendingPathComponent(filename))
+        }
+        let noteURL = testFolder.appendingPathComponent("long-typing-probe.md")
+        let original = "# Long Typing Probe\n"
+            + String(repeating: "A normal note line with some words and emoji 📝.\n", count: 50_000)
+        try original.write(to: noteURL, atomically: true, encoding: .utf8)
+        app.launchEnvironment["NEONV_TEST_NOTES_DIR"] = testFolder.path
+        app.launch()
+        XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")
+
+        let editor = app.textViews["note-editor"]
+        var expected = original
+        for iteration in 1...2 {
+            app.typeKey("l", modifierFlags: .command)
+            app.typeKey("a", modifierFlags: .command)
+            app.typeText("long-typing-probe")
+            let row = app.staticTexts["Long Typing Probe"]
+            XCTAssertTrue(row.waitForExistence(timeout: 5))
+            row.click()
+            XCTAssertTrue(waitForEditor(editor, containing: expected, timeout: 10))
+            editor.click()
+            editor.typeKey(.downArrow, modifierFlags: .command)
+            let marker = "Typing regression \(iteration)\n"
+            editor.typeText(marker)
+            expected += marker
+            XCTAssertTrue(waitForFile(at: noteURL, containing: marker, timeout: 10))
+            XCTAssertEqual(try String(contentsOf: noteURL, encoding: .utf8), expected)
+
+            app.typeKey("l", modifierFlags: .command)
+            app.typeKey("a", modifierFlags: .command)
+            app.typeText("0137")
+            let otherRow = app.staticTexts[Self.noteTitle(137)]
+            XCTAssertTrue(otherRow.waitForExistence(timeout: 5))
+            otherRow.click()
+            XCTAssertTrue(waitForEditor(editor, containing: "Line 2 for Note 0137."))
+        }
+    }
+
     /// Before autosave finishes, Cmd-Q warns instead of discarding the edit.
     func testQuitBeforeAutosaveWarns() {
         XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")

@@ -1070,13 +1070,17 @@ struct ContentView: View {
             AutosaveGuard.shared.reset(for: selectedID); isDirty = false; return
         }
 
+        isDirty = true
+        if unsavedNoteIDs.insert(selectedID).inserted {
+            rebuildFilteredNotes()
+        }
+        AppDelegate.shared.hasUnsavedChanges = true
+
         if AutosaveGuard.shared.shouldBlockSave(noteID: selectedID, originalContent: originalContent, currentContent: editorContent) {
-            isDirty = true; unsavedNoteIDs.insert(selectedID); rebuildFilteredNotes(); AppDelegate.shared.hasUnsavedChanges = true
             withAnimation { externalToastMessage = "Autosave paused: unusually large deletion detected. Undo if unexpected, then keep typing to confirm save." }
             return
         }
 
-        isDirty = true; unsavedNoteIDs.insert(selectedID); rebuildFilteredNotes(); AppDelegate.shared.hasUnsavedChanges = true
         let (capturedID, capturedContent) = (selectedID, editorContent)
         saveTask = Task { try? await Task.sleep(for: .milliseconds(500)); guard !Task.isCancelled, selectedNoteID == capturedID else { return }; await performSave(noteID: capturedID, content: capturedContent) }
     }

@@ -89,7 +89,7 @@ struct PlainTextEditor: NSViewRepresentable {
         scrollView.autohidesScrollers = true
         scrollView.borderType = .noBorder
 
-        textView.string = text
+        textView.string = text.replacingOccurrences(of: "\r\n", with: "\n")
 
         // Apply initial done-styling for the full document
         context.coordinator.applyDoneAttributesFullDocument()
@@ -114,15 +114,18 @@ struct PlainTextEditor: NSViewRepresentable {
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? CustomTextView else { return }
 
-        // Use normalized comparison to avoid unnecessary updates from line-ending differences
-        // that cause scroll jumps and cursor instability.
-        let normalizedText = text.replacingOccurrences(of: "\r\n", with: "\n")
-        let textChanged = textView.string != normalizedText
-        
-        if textChanged {
-            let selectedRanges = textView.selectedRanges
-            textView.string = normalizedText
-            textView.selectedRanges = selectedRanges
+        // Local edits already updated lastSyncedText. Comparing AppKit's UTF-16
+        // string with Swift's UTF-8 binding can scan the whole note on every update.
+        var textChanged = false
+        if context.coordinator.lastSyncedText != text {
+            let normalizedText = text.replacingOccurrences(of: "\r\n", with: "\n")
+            if textView.string != normalizedText {
+                let selectedRanges = textView.selectedRanges
+                textView.string = normalizedText
+                textView.selectedRanges = selectedRanges
+                textChanged = true
+            }
+            context.coordinator.lastSyncedText = text
         }
 
         // Sync cursor position only when NOT actively editing (avoids feedback loop)
@@ -298,6 +301,7 @@ struct PlainTextEditor: NSViewRepresentable {
 
     class Coordinator: NSObject, NSTextViewDelegate, NSTextStorageDelegate {
         var text: Binding<String>
+        var lastSyncedText: String
         var cursorPosition: Binding<Int>
         var scrollFraction: Binding<CGFloat>
         var resolveWikiLink: (String) -> WikiLinkResolution
@@ -324,6 +328,7 @@ struct PlainTextEditor: NSViewRepresentable {
             wikiAutocompleteEnabled: Bool
         ) {
             self.text = text
+            self.lastSyncedText = text.wrappedValue
             self.cursorPosition = cursorPosition
             self.scrollFraction = scrollFraction
             self.resolveWikiLink = resolveWikiLink
@@ -334,7 +339,13 @@ struct PlainTextEditor: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
-            let newText = textView.string
+            let editorString = textView.string
+            // Keep snapshots in Swift's native encoding so SwiftUI change detection
+            // and autosave comparisons don't repeatedly walk a bridged NSString.
+            // Foundation's bulk encoder is much faster than makeContiguousUTF8 here.
+            let utf8Data = (editorString as NSString).data(using: String.Encoding.utf8.rawValue)
+            let newText = utf8Data.map { String(decoding: $0, as: UTF8.self) } ?? editorString
+            lastSyncedText = newText
             if text.wrappedValue != newText {
                 text.wrappedValue = newText
             }
@@ -366,6 +377,11 @@ struct PlainTextEditor: NSViewRepresentable {
         }
 
         private func updateCompletionContext(for textView: NSTextView) {
+            guard wikiAutocompleteEnabled, textView.selectedRange().length == 0 else {
+                pendingCompletionContext = nil
+                completionSessionActive = false
+                return
+            }
             let cursor = textView.selectedRange().location
             let nsText = textView.string as NSString
             pendingCompletionContext = WikiLinkParser.contextAtCursor(in: nsText, cursorLocation: cursor)

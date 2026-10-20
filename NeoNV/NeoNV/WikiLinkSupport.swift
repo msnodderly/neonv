@@ -98,7 +98,14 @@ enum WikiLinkParser {
 
     static func contextAtCursor(in text: NSString, cursorLocation: Int) -> WikiLinkContext? {
         let safeCursor = max(0, min(cursorLocation, text.length))
-        let searchRange = NSRange(location: 0, length: safeCursor)
+        // Targets are single-line. Searching the entire prefix on every edit/selection
+        // change makes ordinary typing increasingly expensive in long notes.
+        var lineStart = 0
+        var lineContentsEnd = 0
+        text.getLineStart(&lineStart, end: nil, contentsEnd: &lineContentsEnd,
+                          for: NSRange(location: safeCursor, length: 0))
+        guard safeCursor <= lineContentsEnd else { return nil }
+        let searchRange = NSRange(location: lineStart, length: safeCursor - lineStart)
 
         let openRange = text.range(of: "[[", options: .backwards, range: searchRange)
         guard openRange.location != NSNotFound else { return nil }
@@ -113,16 +120,10 @@ enum WikiLinkParser {
             if closedBeforeCursor.location != NSNotFound {
                 return nil
             }
-            // Wiki-link targets are single-line. If cursor moved to a later line,
-            // do not treat this as an active completion context.
-            let newlineBeforeCursor = text.range(of: "\n", options: [], range: preCursorRange)
-            if newlineBeforeCursor.location != NSNotFound {
-                return nil
-            }
         }
 
-        let fromContentToEnd = NSRange(location: contentStart, length: text.length - contentStart)
-        let closeRange = text.range(of: "]]", options: [], range: fromContentToEnd)
+        let restOfLine = NSRange(location: contentStart, length: lineContentsEnd - contentStart)
+        let closeRange = text.range(of: "]]", options: [], range: restOfLine)
         let hasClosingBrackets = closeRange.location != NSNotFound
         // For unclosed wiki links, never let replacement extend beyond the cursor.
         // Otherwise completion can overwrite the remainder of the document.
