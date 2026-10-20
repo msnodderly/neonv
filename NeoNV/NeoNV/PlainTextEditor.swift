@@ -17,6 +17,7 @@ struct PlainTextEditor: NSViewRepresentable {
     var wikiIndexVersion: Int = 0
     var wikiAutocompleteEnabled: Bool = true
     var onOpenWikiLink: (String) -> Void = { _ in }
+    var onTextChange: (String) -> Void = { _ in }
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
 
@@ -113,6 +114,8 @@ struct PlainTextEditor: NSViewRepresentable {
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? CustomTextView else { return }
+        context.coordinator.text = $text
+        context.coordinator.onTextChange = onTextChange
 
         // Local edits already updated lastSyncedText. Comparing AppKit's UTF-16
         // string with Swift's UTF-8 binding can scan the whole note on every update.
@@ -295,7 +298,8 @@ struct PlainTextEditor: NSViewRepresentable {
             resolveWikiLink: resolveWikiLink,
             wikiSuggestions: wikiSuggestions,
             wikiIndexVersion: wikiIndexVersion,
-            wikiAutocompleteEnabled: wikiAutocompleteEnabled
+            wikiAutocompleteEnabled: wikiAutocompleteEnabled,
+            onTextChange: onTextChange
         )
     }
 
@@ -308,6 +312,7 @@ struct PlainTextEditor: NSViewRepresentable {
         var wikiSuggestions: (String) -> [WikiLinkSuggestion]
         var wikiIndexVersion: Int
         var wikiAutocompleteEnabled: Bool
+        var onTextChange: (String) -> Void
         var lastSearchTerms: [String] = []
         var lastWikiIndexVersion: Int = -1
         weak var textView: NSTextView?
@@ -325,7 +330,8 @@ struct PlainTextEditor: NSViewRepresentable {
             resolveWikiLink: @escaping (String) -> WikiLinkResolution,
             wikiSuggestions: @escaping (String) -> [WikiLinkSuggestion],
             wikiIndexVersion: Int,
-            wikiAutocompleteEnabled: Bool
+            wikiAutocompleteEnabled: Bool,
+            onTextChange: @escaping (String) -> Void = { _ in }
         ) {
             self.text = text
             self.lastSyncedText = text.wrappedValue
@@ -335,6 +341,7 @@ struct PlainTextEditor: NSViewRepresentable {
             self.wikiSuggestions = wikiSuggestions
             self.wikiIndexVersion = wikiIndexVersion
             self.wikiAutocompleteEnabled = wikiAutocompleteEnabled
+            self.onTextChange = onTextChange
         }
 
         func textDidChange(_ notification: Notification) {
@@ -346,9 +353,9 @@ struct PlainTextEditor: NSViewRepresentable {
             let utf8Data = (editorString as NSString).data(using: String.Encoding.utf8.rawValue)
             let newText = utf8Data.map { String(decoding: $0, as: UTF8.self) } ?? editorString
             lastSyncedText = newText
-            if text.wrappedValue != newText {
-                text.wrappedValue = newText
-            }
+            text.wrappedValue = newText
+            // Notify for every native edit, even if SwiftUI coalesces state changes.
+            onTextChange(newText)
 
             // Any direct text edit should end the previous completion session state.
             completionSessionActive = false

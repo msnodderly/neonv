@@ -185,6 +185,81 @@ final class NeoNVUITests: XCTestCase {
         editor.typeText("Automated test note\nContent written by XCUITest.")
     }
 
+    func testSearchCreationSelectsNewNoteInSidebar() throws {
+        try checkNewNoteSelection(layout: "vertical", useShortcut: false)
+    }
+
+    func testSearchCreationSelectsNewNoteInTopList() throws {
+        try checkNewNoteSelection(layout: "horizontal", useShortcut: false)
+    }
+
+    func testShortcutCreationSelectsNewNoteInSidebar() throws {
+        try checkNewNoteSelection(layout: "vertical", useShortcut: true)
+    }
+
+    func testShortcutCreationSelectsNewNoteInTopList() throws {
+        try checkNewNoteSelection(layout: "horizontal", useShortcut: true)
+    }
+
+    private func checkNewNoteSelection(layout: String, useShortcut: Bool) throws {
+        app.terminate()
+        let testFolder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: testFolder, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: testFolder) }
+        for filename in ["note-0001.md", "note-0500.md"] {
+            try FileManager.default.copyItem(at: fixturesURL.appendingPathComponent(filename),
+                                            to: testFolder.appendingPathComponent(filename))
+        }
+        let previousURL = testFolder.appendingPathComponent("note-0001.md")
+        let previousContent = try String(contentsOf: previousURL, encoding: .utf8)
+        app.launchEnvironment["NEONV_TEST_NOTES_DIR"] = testFolder.path
+        app.launchArguments += ["-layoutMode", layout]
+        app.launch()
+        XCTAssertTrue(waitForInitialListPopulation(timeout: 10))
+
+        // Establish the selection that clearing a search would normally restore.
+        app.staticTexts[Self.noteTitle(1)].click()
+        let editor = app.textViews["note-editor"]
+        XCTAssertTrue(waitForEditor(editor, containing: "Line 2 for Note 0001."))
+        app.typeKey("l", modifierFlags: .command)
+        app.typeText("Note 000")
+        XCTAssertTrue(app.staticTexts[Self.noteTitle(1)].waitForExistence(timeout: 3))
+        if useShortcut {
+            app.typeKey("n", modifierFlags: .command)
+        } else {
+            app.typeKey(.return, modifierFlags: [])
+        }
+
+        let title = useShortcut ? "Untitled" : "Note 000"
+        let row = app.descendants(matching: .outlineRow).containing(.staticText, identifier: title).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "New note row missing")
+        XCTAssertTrue(row.isSelected, "New note should be highlighted without clicking it")
+        XCTAssertTrue(app.staticTexts[title].firstMatch.isHittable, "New note should be visible")
+        let initialContent = useShortcut ? "" : "Note 000\n\n"
+        let loaded = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", initialContent), object: editor)
+        XCTAssertEqual(XCTWaiter.wait(for: [loaded], timeout: 3), .completed, "Editor should show the new note")
+
+        // Typing must already target the new note, without clicking the row/editor.
+        let marker = "New note selection regression"
+        app.typeText(marker)
+        let saved = NSPredicate { _, _ in
+            guard let urls = try? FileManager.default.contentsOfDirectory(at: testFolder, includingPropertiesForKeys: nil) else { return false }
+            return urls.contains { url in
+                guard url != previousURL,
+                      let content = try? String(contentsOf: url, encoding: .utf8),
+                      let insertion = content.range(of: marker) else { return false }
+                // Check the edit target and preserved content regardless of caret position.
+                return content.replacingCharacters(in: insertion, with: "") == initialContent
+            }
+        }
+        let saveResult = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: saved, object: nil)], timeout: 5)
+        let files = try FileManager.default.contentsOfDirectory(at: testFolder, includingPropertiesForKeys: nil)
+        let contents = try files.map { "\($0.lastPathComponent): \(try String(contentsOf: $0, encoding: .utf8))" }
+        XCTAssertEqual(saveResult, .completed, "Files after typing: \(contents); editor: \(String(describing: editor.value))")
+        XCTAssertEqual(try String(contentsOf: previousURL, encoding: .utf8), previousContent, "Previous note must stay intact")
+        takeScreenshot(named: "new-note-selected-\(layout)-\(useShortcut ? "shortcut" : "search")")
+    }
+
     /// Typing in the search field narrows the list to matching notes only.
     func testSearchNarrowsListToMatches() {
         XCTAssertTrue(waitForInitialListPopulation(timeout: 10), "Note list never populated")

@@ -75,11 +75,13 @@ final class PlainTextEditorTests: XCTestCase {
     @MainActor
     func testLocalEditPublishesIndependentSnapshot() {
         var content = "Original 📝 text"
+        var edits: [String] = []
         let coordinator = PlainTextEditor.Coordinator(
             text: Binding(get: { content }, set: { content = $0 }),
             cursorPosition: .constant(0), scrollFraction: .constant(0),
             resolveWikiLink: { .missing($0) }, wikiSuggestions: { _ in [] },
-            wikiIndexVersion: 0, wikiAutocompleteEnabled: true
+            wikiIndexVersion: 0, wikiAutocompleteEnabled: true,
+            onTextChange: { edits.append($0) }
         )
         let textView = NSTextView()
         textView.string = "Edited 📝 text"
@@ -94,6 +96,7 @@ final class PlainTextEditorTests: XCTestCase {
         coordinator.textDidChange(Notification(name: NSText.didChangeNotification, object: textView))
         XCTAssertEqual(content, "Next 📝 text")
         XCTAssertEqual(coordinator.lastSyncedText, content)
+        XCTAssertEqual(edits, ["Edited 📝 text", "Next 📝 text"])
     }
 
     @MainActor

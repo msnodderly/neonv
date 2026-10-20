@@ -146,9 +146,6 @@ struct ContentView: View {
             }
             loadSelectedNote(id: newID)
         }
-        .onChange(of: editorContent) { _, _ in
-            scheduleAutoSave()
-        }
         .onChange(of: searchText) { _, newText in
             if newText.isEmpty {
                 // Immediate update when clearing search
@@ -205,7 +202,7 @@ struct ContentView: View {
                 primaryButton: .default(Text("Keep Mine")) {
                     // Keep current editor content, mark dirty to re-save
                     isDirty = true
-                    scheduleAutoSave()
+                    scheduleAutoSave(content: editorContent)
                 },
                 secondaryButton: .destructive(Text("Use External")) {
                     editorContent = conflict.externalContent
@@ -538,6 +535,7 @@ struct ContentView: View {
                     wikiSuggestions: { query in noteStore.wikiLinkSuggestions(prefix: query, limit: 30) },
                     wikiIndexVersion: noteStore.wikiIndexVersion, wikiAutocompleteEnabled: settings.wikiAutocompleteEnabled,
                     onOpenWikiLink: { target in handleWikiLinkOpen(target) },
+                    onTextChange: { content in scheduleAutoSave(content: content) },
                     onShiftTab: navigateToList, onEscape: navigateToList)
                     .opacity(showPreview ? 0 : 1)
                     .allowsHitTesting(!showPreview)
@@ -873,18 +871,27 @@ struct ContentView: View {
 
     private func createNewNoteFromShortcut() {
         guard noteStore.selectedFolderURL != nil else { return }
-        
-        searchText = ""
-        
+
         if let newNote = noteStore.createNewUnsavedNote() {
             unsavedNoteIDs.insert(newNote.id)
-            rebuildFilteredNotes()
-            selectedNoteID = newNote.id
             originalContent = ""
             editorContent = ""
             isDirty = false
-            focusedField = .editor
+            selectCreatedNote(newNote)
         }
+    }
+
+    private func selectCreatedNote(_ note: NoteFile) {
+        searchDebounceTask?.cancel()
+        // Clearing the search restores lastManualSelection on the next view update.
+        // Make the created note that selection before clearing, so it stays selected.
+        lastManualSelection = note.id
+        searchText = ""
+        debouncedSearchText = ""
+        rebuildFilteredNotes()
+        selectedNoteID = note.id
+        revealSelectionTick += 1
+        focusedField = .editor
     }
     
     private func autoSelectTopMatch() {
@@ -1006,9 +1013,7 @@ struct ContentView: View {
 
         // If the file already exists, open it instead of overwriting
         if let existingNote = noteStore.notes.first(where: { $0.url == fileURL }) {
-            searchText = ""
-            selectedNoteID = existingNote.id
-            focusedField = .editor
+            selectCreatedNote(existingNote)
             return
         }
 
@@ -1026,11 +1031,9 @@ struct ContentView: View {
                 await noteStore.discoverFiles()
 
                 await MainActor.run {
-                    searchText = ""
                     if let newNote = noteStore.notes.first(where: { $0.url == fileURL }) {
                         pendingCursorAtEnd = true
-                        selectedNoteID = newNote.id
-                        focusedField = .editor
+                        selectCreatedNote(newNote)
                     }
                 }
             } catch let error as NSError
@@ -1038,10 +1041,8 @@ struct ContentView: View {
                 // File appeared between our check and the write — open it instead
                 await noteStore.discoverFiles()
                 await MainActor.run {
-                    searchText = ""
                     if let note = noteStore.notes.first(where: { $0.url == fileURL }) {
-                        selectedNoteID = note.id
-                        focusedField = .editor
+                        selectCreatedNote(note)
                     }
                 }
             } catch {
@@ -1063,10 +1064,10 @@ struct ContentView: View {
         // This allows it to restore the last manual selection
     }
 
-    private func scheduleAutoSave() {
+    private func scheduleAutoSave(content currentContent: String) {
         guard loadError == nil, let selectedID = selectedNoteID else { return }
         saveTask?.cancel()
-        guard editorContent != originalContent else {
+        guard currentContent != originalContent else {
             AutosaveGuard.shared.reset(for: selectedID); isDirty = false; return
         }
 
@@ -1076,12 +1077,12 @@ struct ContentView: View {
         }
         AppDelegate.shared.hasUnsavedChanges = true
 
-        if AutosaveGuard.shared.shouldBlockSave(noteID: selectedID, originalContent: originalContent, currentContent: editorContent) {
+        if AutosaveGuard.shared.shouldBlockSave(noteID: selectedID, originalContent: originalContent, currentContent: currentContent) {
             withAnimation { externalToastMessage = "Autosave paused: unusually large deletion detected. Undo if unexpected, then keep typing to confirm save." }
             return
         }
 
-        let (capturedID, capturedContent) = (selectedID, editorContent)
+        let (capturedID, capturedContent) = (selectedID, currentContent)
         saveTask = Task { try? await Task.sleep(for: .milliseconds(500)); guard !Task.isCancelled, selectedNoteID == capturedID else { return }; await performSave(noteID: capturedID, content: capturedContent) }
     }
     
@@ -1878,6 +1879,7 @@ struct EditorView: View {
     var wikiIndexVersion: Int = 0
     var wikiAutocompleteEnabled: Bool = true
     var onOpenWikiLink: (String) -> Void = { _ in }
+    var onTextChange: (String) -> Void = { _ in }
     var onShiftTab: (() -> Void)?
     var onEscape: (() -> Void)?
 
@@ -1898,6 +1900,7 @@ struct EditorView: View {
             wikiIndexVersion: wikiIndexVersion,
             wikiAutocompleteEnabled: wikiAutocompleteEnabled,
             onOpenWikiLink: onOpenWikiLink,
+            onTextChange: onTextChange,
             onShiftTab: onShiftTab,
             onEscape: onEscape
         )
